@@ -1,28 +1,32 @@
-# Kotlin client for the Agent Host Protocol
+# Kotlin 用戶端用於代理主機協定
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.microsoft.agenthostprotocol/agent-host-protocol)](https://central.sonatype.com/artifact/com.microsoft.agenthostprotocol/agent-host-protocol)
+[![Maven 中心](https://img.shields.io/maven-central/v/com.microsoft.agenthostprotocol/agent-host-protocol)](https://central.sonatype.com/artifact/com.microsoft.agenthostprotocol/agent-host-protocol)
 
-Pure Kotlin/JVM client library providing auto-generated wire types for the
-[Agent Host Protocol](https://microsoft.github.io/agent-host-protocol/). Designed to
-be consumed unmodified from Android apps, server-side JVM services, and
-KMP/JVM target consumers.
+純 Kotlin/JVM 用戶端庫為
+[代理主機協定](https://microsoft.github.io/agent-host-protocol/)。設計用於
+不加修改地從 Android 應用程式、伺服器端 JVM 服務使用，以及
+KMP/JVM 目標消費者。
 
-- **Pure Kotlin/JVM** — no Android SDK dependencies; targets Java 8 bytecode
-  (built with JDK 17 toolchain) so no AGP version requirement, no core library
-  desugaring, no minimum Android API level beyond what kotlinx.serialization
-  already requires.
-- **Auto-generated** from the canonical TypeScript protocol definitions in the
-  parent repo. Generated sources are committed so consumers don't need a
-  TypeScript or `tsx` toolchain.
-- **`kotlinx.serialization`-native** with idiomatic sealed interfaces for
-  every discriminated union, `value class` bitset enums, and nullable types
-  for optional fields.
+- **純 Kotlin/JVM** — 無 Android SDK 相依性；目標 Java 8 位元組碼
+  （使用 JDK 17 工具鏈建置）因此沒有 AGP 版本要求，沒有核心庫
+  脫糖，沒有最低 Android API 等級超出 kotlinx.serialization
+  已經需要了。
+- **根據規範的 TypeScript 協定定義自動產生**
+  父倉庫。產生的資源已提交，因此消費者不需要
+  TypeScript 或 `tsx` 工具鏈。
+- **`kotlinx.serialization`-native** 具有慣用的密封接口
+  每個判別聯集、`value class` 位元集列舉和可為 null 的型別
+  對於可選欄位。
 
-## Installation
+## 安裝
 
-Add the dependency to your Android or JVM project:
+將相依性新增至您的 Android 或 JVM 專案：
 
 ### Gradle (Kotlin DSL)
+
+
+
+
 
 ```kotlin
 dependencies {
@@ -30,7 +34,12 @@ dependencies {
 }
 ```
 
-### Gradle (Groovy DSL)
+
+### Gradle（Groovy DSL）
+
+
+
+
 
 ```groovy
 dependencies {
@@ -38,7 +47,12 @@ dependencies {
 }
 ```
 
+
 ### Maven
+
+
+
+
 
 ```xml
 <dependency>
@@ -48,17 +62,22 @@ dependencies {
 </dependency>
 ```
 
-The library transitively depends on `org.jetbrains.kotlinx:kotlinx-serialization-json`
-(`api` scope) — you do not need to declare it separately. You DO need to apply the
-[kotlin-serialization Gradle plugin](https://kotlinlang.org/docs/serialization.html#example-json-serialization)
-in any module that defines its own `@Serializable` classes alongside this library, but
-you do **not** need it just to consume the generated AHP types.
 
-## Usage
+該庫傳遞依賴於 `org.jetbrains.kotlinx:kotlinx-serialization-json`
+(`api` 範圍) — 您不需要單獨聲明它。您確實需要申請
+[kotlin-序列化 Gradle 插件](https://kotlinlang.org/docs/serialization.html#example-json-serialization)
+在與此庫一起定義自己的 `@Serializable` 類別的任何模組中，但是
+您**不需要**僅需要它來使用生成的 AHP 類型。
 
-Always use the pre-configured `Ahp.json` instance (or a `kotlinx.serialization.json.Json`
-instance with the same settings). The custom serializers for AHP discriminated unions
-require the JSON-aware encoder/decoder.
+## 用法
+
+始終使用預先配置的 `Ahp.json` 實例（或 `kotlinx.serialization.json.Json`
+具有相同設定的實例）。 AHP 判別聯集的自訂序列化器
+需要 JSON 感知的編碼器/解碼器。
+
+
+
+
 
 ```kotlin
 import com.microsoft.agenthostprotocol.Ahp
@@ -86,66 +105,75 @@ when (val action = envelope.action) {
 }
 ```
 
-### What's in the box
 
-- **`com.microsoft.agenthostprotocol.Ahp`** — `Ahp.json` configured `Json` instance.
-- **`com.microsoft.agenthostprotocol.generated.*`** — wire types: `RootState`,
-  `SessionState`, `ChangesetState`, `TerminalState`, `AgentInfo`, `AgentSelection`,
-  `ActionEnvelope` (with `channel` URI), all command params/results
-  (`InitializeParams`, `CreateSessionParams`, `SubscribeParams`,
-  `InvokeChangesetOperationParams`, etc.), every per-channel action type
-  (`session/*`, `root/*`, `terminal/*`, `changeset/*`), and discriminated-union
-  sealed interfaces (`StateAction`, `ResponsePart`, `ToolCallState`,
-  `ToolResultContent`, `MessageAttachment`, `SnapshotState`,
-  `ChangesetOperationTarget`, `ReconnectResult`, etc.).
-- **Pure reducers** — top-level `rootReducer`, `sessionReducer`,
-  `terminalReducer`, and `changesetReducer` functions (plus a
-  `Reducer<S, A>` fun-interface wrapped as `RootReducer` / `SessionReducer`
-  / `TerminalReducer` / `ChangesetReducer` objects) that produce the next
-  state from the current state and an applied action. Behavior parity with
-  the canonical TypeScript reducers is verified against the shared
-  `types/test-cases/reducers/` fixture corpus.
-- **Channel-scoped notification params** — `SessionAddedParams`,
-  `SessionRemovedParams`, `SessionSummaryChangedParams`, `AuthRequiredParams`,
-  `OtlpExportLogsParams`, etc. Notifications are routed by their JSON-RPC
-  `method` name (e.g. `root/sessionAdded`, `auth/required`,
-  `otlp/exportLogs`) — there is no embedded `type` discriminator union.
-- **JSON-RPC envelope types** (`JsonRpcRequest<P>`, `JsonRpcResponse`, etc.) and
-  helpers (`AhpCommands.initialize(id, params)`).
+### 盒子裡有什麼
 
-### What's NOT in the box (yet)
+- **`com.microsoft.agenthostprotocol.Ahp`** — `Ahp.json` 配置的 `Json` 實例。
+- **`com.microsoft.agenthostprotocol.generated.*`** — 線路類型：`RootState`，
+  `SessionState`、`ChangesetState`、`TerminalState`、`AgentInfo`、`AgentSelection`、
+  `ActionEnvelope`（帶有 `channel` URI），所有指令參數/結果
+  (`InitializeParams`、`CreateSessionParams`、`SubscribeParams`、
+  `InvokeChangesetOperationParams` 等），每個通道操作型別
+  (`session/*`、`root/*`、`terminal/*`、`changeset/*`) 和判別聯集
+  密封介面（`StateAction`、`ResponsePart`、`ToolCallState`、
+  `ToolResultContent`，`MessageAttachment`，`SnapshotState`，
+  `ChangesetOperationTarget`、`ReconnectResult` 等）。
+- **純 reducer** - 頂 `rootReducer`、`sessionReducer`、
+  `terminalReducer` 和 `changesetReducer` 函式（加上
+  `Reducer<S, A>` 有趣的介面包裝為 `RootReducer` / `SessionReducer`
+  / `TerminalReducer` / `ChangesetReducer` 物件）產生下一個
+  來自目前狀態的狀態和已套用的操作。行為與
+  規範的 TypeScript reducer根據共用進行驗證
+  `types/test-cases/reducers/` 固定語料庫。
+- **通道範圍的通知參數** - `SessionAddedParams`，
+  `SessionRemovedParams`、`SessionSummaryChangedParams`、`AuthRequiredParams`、
+  `OtlpExportLogsParams` 等。通知透過其 JSON-RPC 路由
+  `method` 名稱（例如 `root/sessionAdded`、`auth/required`、`otlp/exportLogs`) — 沒有嵌入的 `type` 鑑別器聯集。
+- **JSON-RPC 信封類型**（`JsonRpcRequest<P>`、`JsonRpcResponse` 等）和
+  助手（`AhpCommands.initialize(id, params)`）。
 
-- A WebSocket / network transport — bring your own (e.g. OkHttp, Ktor).
-- An example Android client — see the Swift `AHPClient` example for the architecture
-  pattern; a Kotlin/Android equivalent is planned for a follow-up release.
+### 盒子裡還沒有什麼
 
-## Protocol version mapping
+- WebSocket /網路傳輸－自備（例如OkHttp、Ktor）。
+- Android 用戶端範例 — 請參閱 Swift `AHPClient` 範例以了解架構
+  圖案；計劃在後續版本中推出 Kotlin/Android 等效版本。
 
-Two constants in `com.microsoft.agenthostprotocol.generated` track which
-protocol version this library implements:
+## 協定版本映射
 
-- `PROTOCOL_VERSION` — SemVer string for the version this library's
-  source tree implements.
-- `SUPPORTED_PROTOCOL_VERSIONS` — every version this library is willing
-  to negotiate (most-preferred-first). Pass it as `protocolVersions` on
-  `InitializeParams`.
+`com.microsoft.agenthostprotocol.generated` 中的兩個常數追蹤哪一個
+該庫實作的協定版本：
 
-The same information is mirrored, in machine-readable form, in
-[`release-metadata.json`](release-metadata.json) and, in human-readable
-form, in [`CHANGELOG.md`](CHANGELOG.md). CI verifies all three sources
-agree on every PR.
+- `PROTOCOL_VERSION` — SemVer 該函式庫版本的字串
+  源樹實作。
+- `SUPPORTED_PROTOCOL_VERSIONS` — 這個函式庫願意的每個版本
+  進行談判（最優先優先）。將其作為 `protocolVersions` 傳遞
+  `InitializeParams`。
 
-## Building from source
+相同的訊息以機器可讀的形式鏡像在
+[`release-metadata.json`](release-metadata.json) 並且，以人類可讀的形式
+形式，在 [`CHANGELOG.md`](CHANGELOG.md) 中。 CI 驗證所有三個來源
+同意每個PR。
 
-Requires JDK 17+ on `JAVA_HOME`. Gradle wrapper handles everything else.
+## 從原始碼構建
+
+`JAVA_HOME` 上需要 JDK 17+。 Gradle 包裝器處理其他所有事情。
+
+
+
+
 
 ```bash
 cd clients/kotlin
 ./gradlew build
 ```
 
-To regenerate the wire types from the TypeScript protocol definitions
-(requires Node.js for the generator):
+
+從 TypeScript 協定定義重新產生線路類型
+（生成器需要 Node.js）：
+
+
+
+
 
 ```bash
 # from the repo root
@@ -153,9 +181,10 @@ npm install
 npm run generate:kotlin
 ```
 
-CI verifies committed sources match the generator output — see
-[`AGENTS.md`](AGENTS.md) for details on the generator and release pipeline.
 
-## License
+CI 驗證提交的來源是否與生成器輸出相符 - 請參閱
+[`AGENTS.md`](AGENTS.md) 以了解有關生成器和發布管道的詳細資訊。
 
-MIT — see [`LICENSE`](../../LICENSE).
+## 授權
+
+MIT－參見[`LICENSE`](../../LICENSE)。

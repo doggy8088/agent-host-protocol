@@ -1,37 +1,41 @@
-# Clients
+# 用戶端
 
-This repository ships official client libraries for five languages.
-Every client's wire types are generated from the canonical TypeScript
-sources in [`types/`](https://github.com/microsoft/agent-host-protocol/tree/main/types),
-so the same protocol shape is presented idiomatically in each
-ecosystem. Each library is versioned and released independently — see
+該儲存庫提供了五種語言的官方用戶端庫。
+每個用戶端的線路類型都是從規範的 TypeScript 產生的
+來源在 [`types/`](https://github.com/microsoft/agent-host-protocol/tree/main/types) 中，
+因此，每個協定都慣用地呈現相同的協定形狀
+生態系。每個庫都有版本控制並獨立發布 - 請參閱
 [`RELEASING.md`](https://github.com/microsoft/agent-host-protocol/blob/main/RELEASING.md)
-for the per-language tag scheme.
+對於每種語言的標籤方案。
 
-Pick the language you want to integrate against and install from the
-package registry it normally ships through.
+選擇您想要整合的語言並從
+它通常透過包註冊表進行傳送。
 
-| Language       | Package                                                  | Registry        |
-| -------------- | -------------------------------------------------------- | --------------- |
-| [Rust](#rust)             | `ahp-types`, `ahp`, `ahp-ws`                  | crates.io       |
-| [TypeScript](#typescript) | `@microsoft/agent-host-protocol`              | npm             |
-| [Kotlin / JVM](#kotlin)   | `com.microsoft.agenthostprotocol:agent-host-protocol` | Maven Central |
-| [Swift](#swift)           | `AgentHostProtocol`, `AgentHostProtocolClient` | Swift Package Manager |
-| [Go](#go)                 | `github.com/microsoft/agent-host-protocol/clients/go` | Go module proxy |
+|語言 |套件 |註冊表 |
+| -------------- | -------------------------------------------------------------------------------- |
+| [Rust](#rust) | `ahp-types`，`ahp`，`ahp-ws`| crates.io |
+| [TypeScript](#typescript) | `@microsoft/agent-host-protocol` | npm |
+| [Kotlin / JVM](#kotlin) | `com.microsoft.agenthostprotocol:agent-host-protocol` | Maven 中心 |
+| [Swift](#swift) | `AgentHostProtocol`，`AgentHostProtocolClient` | Swift 套件管理器 |
+| [Go](#go) | `github.com/microsoft/agent-host-protocol/clients/go` | Go 模組代理程式 |
 
 ## Rust
 
-Three crates on [crates.io](https://crates.io), mirroring the split
-between wire types, transport-agnostic client, and a WebSocket
-adapter:
+[crates.io](https://crates.io) 上的三個crate，反映了分割情況
+線路類型、傳輸無關的用戶端和 WebSocket 之間
+適配器：
 
-- [`ahp-types`](https://crates.io/crates/ahp-types) — generated wire
-  types, no I/O.
-- [`ahp`](https://crates.io/crates/ahp) — async `Client` with pure
-  reducers, a pluggable `Transport` trait, and the multi-host
-  registry under `ahp::hosts`.
-- [`ahp-ws`](https://crates.io/crates/ahp-ws) — WebSocket transport
-  built on `tokio-tungstenite`.
+- [`ahp-types`](https://crates.io/crates/ahp-types) — 產生的連線
+  類型，無 I/O。
+- [`ahp`](https://crates.io/crates/ahp) — 非同步 `Client` 與純
+  reducer、可插入的 `Transport` 特徵和多主機
+  `ahp::hosts` 下的註冊表。
+- [`ahp-ws`](https://crates.io/crates/ahp-ws) — WebSocket 傳輸
+  建立在 `tokio-tungstenite` 之上。
+
+
+
+
 
 ```bash
 cargo add ahp ahp-ws
@@ -39,40 +43,56 @@ cargo add ahp ahp-ws
 # the client runtime.
 ```
 
-See the [Rust client README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/rust)
-for the quick start, custom transports, and multi-host details.
+
+請參閱 [Rust 用戶端 README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/rust)
+了解快速入門、自訂傳輸和多主機詳細資訊。
 
 ## TypeScript
 
-A single browser- and Node-friendly package on
+單一瀏覽器和節點友善的包
 [npm](https://www.npmjs.com/package/@microsoft/agent-host-protocol)
-with four subpath entry points (wire types, client, multi-host
-orchestration, WebSocket transport):
+具有四個子路徑入口點（線路類型、用戶端、多主機
+編排、WebSocket 傳輸）：
 
 [![npm](https://img.shields.io/npm/v/@microsoft/agent-host-protocol.svg)](https://www.npmjs.com/package/@microsoft/agent-host-protocol)
+
+
+
+
 
 ```bash
 npm install @microsoft/agent-host-protocol
 ```
+
+
+
+
+
+
 
 ```ts
 import { AhpClient } from '@microsoft/agent-host-protocol/client';
 import { WebSocketTransport } from '@microsoft/agent-host-protocol/ws';
 ```
 
-See the [TypeScript client README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/typescript)
-for the full subpath table and a complete quick start.
+
+請參閱 [TypeScript 用戶端 README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/typescript)
+取得完整的子路徑表和完整的快速啟動。
 
 ## Kotlin
 
-Pure Kotlin/JVM artifact on
-[Maven Central](https://central.sonatype.com/artifact/com.microsoft.agenthostprotocol/agent-host-protocol).
-Targets Java 8 bytecode, so it can be consumed unchanged from
-Android, server-side JVM services, and KMP/JVM targets.
+純 Kotlin/JVM 工件
+[Maven 中心](https://central.sonatype.com/artifact/com.microsoft.agenthostprotocol/agent-host-protocol)。
+以 Java 8 位元組碼為目標，因此可以直接使用
+Android、伺服器端 JVM 服務和 KMP/JVM 目標。
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.microsoft.agenthostprotocol/agent-host-protocol)](https://central.sonatype.com/artifact/com.microsoft.agenthostprotocol/agent-host-protocol)
+[![Maven 中心](https://img.shields.io/maven-central/v/com.microsoft.agenthostprotocol/agent-host-protocol)](https://central.sonatype.com/artifact/com.microsoft.agenthostprotocol/agent-host-protocol)
 
 ### Gradle (Kotlin DSL)
+
+
+
+
 
 ```kotlin
 dependencies {
@@ -80,7 +100,12 @@ dependencies {
 }
 ```
 
-### Gradle (Groovy DSL)
+
+### Gradle（Groovy DSL）
+
+
+
+
 
 ```groovy
 dependencies {
@@ -88,7 +113,12 @@ dependencies {
 }
 ```
 
+
 ### Maven
+
+
+
+
 
 ```xml
 <dependency>
@@ -98,25 +128,35 @@ dependencies {
 </dependency>
 ```
 
-The library transitively depends on `org.jetbrains.kotlinx:kotlinx-serialization-json`.
-See the [Kotlin client README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/kotlin)
-for usage, the `Ahp.json` serializer instance, and what is/isn't
-included in the box (no transport yet — bring your own OkHttp/Ktor).
+
+該庫傳遞依賴於 `org.jetbrains.kotlinx:kotlinx-serialization-json`。
+請參閱 [Kotlin 用戶端 README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/kotlin)
+對於用法，`Ahp.json` 序列化器實例，以及什麼是/不是
+包含在盒子中（還沒有傳輸 - 帶上您自己的 OkHttp/Ktor）。
 
 ## Swift
 
-Distributed via Swift Package Manager. The `Package.swift` manifest
-lives at the repository root because SwiftPM only resolves manifests
-at the root of a remote git repo; the Swift sources themselves live
-under `clients/swift/AgentHostProtocol/`.
+透過 Swift 套件管理器分發。 `Package.swift` 清單
+位於儲存庫根目錄，因為 SwiftPM 只解析清單
+在遠端 git 儲存庫的根目錄下； Swift 來源本身已存在
+在`clients/swift/AgentHostProtocol/`下。
 
-### Package.swift dependency
+### Package.swift 依賴項
+
+
+
+
 
 ```swift
 .package(url: "https://github.com/microsoft/agent-host-protocol.git", from: "0.1.0")
 ```
 
-### Target dependencies
+
+### 目標依賴項
+
+
+
+
 
 ```swift
 .target(
@@ -128,30 +168,41 @@ under `clients/swift/AgentHostProtocol/`.
 )
 ```
 
-- `AgentHostProtocol` — generated wire types, commands, notifications,
-  actions, and pure reducers.
-- `AgentHostProtocolClient` — single-host `AHPClient`, `MultiHostClient`,
-  state mirrors, and the `URLSessionWebSocketTransport` /
-  `NWConnectionWebSocketTransport` transports.
 
-See the [Swift client README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/swift/AgentHostProtocol)
-for the minimal single-host and multi-host examples, transport
-choices, and reconnect layering guidance.
+- `AgentHostProtocol` — 產生的線路類型、指令、通知、
+  動作和純 reducer。
+- `AgentHostProtocolClient` — 單主機 `AHPClient`、`MultiHostClient`、
+  狀態鏡子，以及 `URLSessionWebSocketTransport` /
+  `NWConnectionWebSocketTransport` 運輸。
+
+請參閱 [Swift 用戶端 README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/swift/AgentHostProtocol)
+對於最小的單主機和多主機範例，傳輸
+選擇，並重新連線分層指導。
 
 ## Go
 
-Single Go module resolved through the public Go module proxy. Three
-packages mirror the Rust three-crate split:
+透過公用 Go 模組代理程式解析單一 Go 模組。三
+軟體包鏡像了 Rust 三箱分割：
 
-- `ahptypes` — wire protocol types only.
-- `ahp` — async `Client` over a pluggable `Transport`, pure reducers,
-  and the multi-host runtime under `ahp/hosts`.
-- `ahpws` — WebSocket transport built on
-  [`github.com/coder/websocket`](https://github.com/coder/websocket).
+- `ahptypes` — 僅線路協定類型。
+- `ahp` — 透過可插入的 `Transport` 非同步 `Client`，純 reducer，
+  以及 `ahp/hosts` 下的多主機執行時間。
+- `ahpws` — WebSocket 傳輸建構於
+  [`github.com/coder/websocket`](https://github.com/coder/websocket)。
+
+
+
+
 
 ```bash
 go get github.com/microsoft/agent-host-protocol/clients/go@latest
 ```
+
+
+
+
+
+
 
 ```go
 import (
@@ -161,24 +212,25 @@ import (
 )
 ```
 
-See the [Go client README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/go)
-for the WebSocket quick start.
 
-## Picking a protocol version
+請參閱 [Go 用戶端 README](https://github.com/microsoft/agent-host-protocol/tree/main/clients/go)
+WebSocket 快速入門。
 
-Every client exposes two protocol-version constants:
+## 選擇協定版本
 
-- `PROTOCOL_VERSION` — the SemVer string for the version that
-  client's current release implements.
-- `SUPPORTED_PROTOCOL_VERSIONS` — every version the client is
-  willing to negotiate, most-preferred-first. Pass it (or a
-  derived list/array) as `protocolVersions` on `InitializeParams`
-  during the handshake.
+每個用戶端公開兩個協定版本常數：
 
-Client package versions track the spec version, but they are not
-required to match exactly — a client released after a patch-only
-client fix may sit at a higher patch than the matching spec
-release. The two version constants above always reflect the
-protocol versions that build of the client can speak. See
-[Versioning](/specification/versioning) for the full negotiation
-model.
+- `PROTOCOL_VERSION` — 版本的 SemVer 字串
+  用戶端的目前版本實作了。
+- `SUPPORTED_PROTOCOL_VERSIONS` — 用戶端的每個版本
+  願意洽談，首選優先。透過它（或
+  派生清單/陣列）作為 `InitializeParams` 上的 `protocolVersions`
+  在握手過程中。
+
+用戶端軟體包版本追蹤規格版本，但它們不是
+需要完全匹配 - 僅補丁後發布的用戶端
+用戶端修復可能位於比匹配的規格更高的補丁上
+釋放。上面的兩個版本常數始終反映
+用戶端建構的協定版本可以說話。參見
+[版本控制](/specification/versioning) 用於完整協商
+模型。

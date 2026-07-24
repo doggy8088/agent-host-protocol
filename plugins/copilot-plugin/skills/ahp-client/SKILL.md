@@ -1,25 +1,29 @@
 ---
 description: >-
-  Interact with an Agent Host Protocol (AHP) server via WebSocket.
-  Use when asked to connect to, message, or control an AHP server.
+  透過 WebSocket 與代理主機協定（AHP）伺服器互動。
+  當被要求連線、傳送訊息或控制 AHP 伺服器時使用。
 ---
 
-# Agent Host Protocol – Copilot Skill
+# 代理主機協定 – 副駕駛技能
 
-You have access to an MCP server (`ahp-websocket`) that lets you connect to an
-Agent Host Protocol server over WebSocket and exchange JSON-RPC 2.0 messages.
+您可以存取 MCP 伺服器 (`ahp-websocket`)，它可以讓您連線到
+透過 WebSocket 的代理主機協定伺服器並交換 JSON-RPC 2.0 訊息。
 
-## Available MCP tools
+## 可用的 MCP 工具
 
-| Tool                | Purpose                                                                  |
-| ------------------- | ------------------------------------------------------------------------ |
-| `connect`           | Open (or re-open) a WebSocket to an AHP server URL                       |
-| `send`              | Send a JSON-RPC message and get the response + any pending notifications |
-| `get_notifications` | Drain the notification inbox (optionally wait N seconds first)           |
-| `status`            | Check connection state, pending request count, inbox depth               |
-| `next_id`           | Get a unique incrementing integer for JSON-RPC request `id` fields       |
+|工具|目的|
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `connect` |開啟（或重新開啟）到 AHP 伺服器 URL 的 WebSocket |
+| `send` |傳送 JSON-RPC 訊息並取得回應 + 任何待處理的通知 |
+| `get_notifications` |清空通知收件匣（可以選擇先等待 N 秒）|
+| `status` |檢查連線狀態、待處理請求計數、收件匣深度 |
+| `next_id` |取得 JSON-RPC 請求 `id` 欄位的唯一遞增整數 |
 
-## Quick-start workflow
+## 快速啟動工作流程
+
+
+
+
 
 ```
 1. connect(url: "ws://localhost:3000")
@@ -29,29 +33,34 @@ Agent Host Protocol server over WebSocket and exchange JSON-RPC 2.0 messages.
 5. create a session, subscribe, send turns
 ```
 
-## Protocol overview
 
-AHP is a **Redux-inspired state synchronisation protocol** built on JSON-RPC 2.0
-over WebSocket. The server maintains an authoritative state tree; clients apply
-actions optimistically and reconcile with the server's echoed actions.
+## 協定概述
 
-Key concepts:
+AHP 是一個基於 JSON-RPC 2.0 建構的 **Redux 啟發的狀態同步協定**
+透過 WebSocket。伺服器維護權威的狀態樹；用戶端申請
+樂觀地採取行動並與伺服器的回應行動保持一致。
 
-- **Root state** (`ahp-root://`) – lists available agents/models.
-- **Session state** (`ahp-session:/<uuid>`) – per-conversation state with turns,
-  deltas, tool calls, and permissions.
-- **Actions** – the sole mutation mechanism, wrapped in `ActionEnvelope`s with a
-  `serverSeq`.
-- **Subscriptions** – clients subscribe to URI-identified state resources to
-  receive action streams.
-- **Notifications** – ephemeral broadcasts (session added/removed) that are NOT
-  part of the state tree and NOT replayed on reconnect.
+關鍵概念：
 
-## Connection lifecycle
+- **根狀態** (`ahp-root://`) – 列出可用的代理/模型。
+- **工作階段狀態** (`ahp-session:/<uuid>`) – 每回合的對話狀態，
+  增量、工具呼叫和權限。
+- **Actions** – 唯一的突變機制，套件在帶有 a 的 `ActionEnvelope` 中
+  `serverSeq`。
+- **訂閱** – 用戶端訂閱 URI 標識的狀態資源
+  接收動作流。
+- **通知** – 臨時廣播（工作階段新增/刪除）不是
+  狀態樹的一部分，並且在重新連線時不會重播。
 
-### 1. Initialize
+## 連結生命週期
 
-Send an `initialize` **notification** (no `id` field):
+### 1.初始化
+
+發送 `initialize` **通知**（無 `id` 欄位）：
+
+
+
+
 
 ```json
 {
@@ -65,10 +74,15 @@ Send an `initialize` **notification** (no `id` field):
 }
 ```
 
-Then call `get_notifications(wait: 2)` to collect the `serverHello` response,
-which includes snapshots for any initial subscriptions.
 
-### 2. Subscribe to state
+然後呼叫 `get_notifications(wait: 2)` 收集 `serverHello` 回應，
+其中包括任何初始訂閱的快照。
+
+### 2.訂閱狀態
+
+
+
+
 
 ```json
 {
@@ -79,10 +93,15 @@ which includes snapshots for any initial subscriptions.
 }
 ```
 
-The response contains the current state snapshot.
-After subscribing, subsequent mutations arrive as `action` notifications.
 
-### 3. Create a session
+回應包含目前的狀態快照。
+訂閱後，後續突變將作為 `action` 通知到達。
+
+### 3. 建立一個工作階段
+
+
+
+
 
 ```json
 {
@@ -97,11 +116,16 @@ After subscribing, subsequent mutations arrive as `action` notifications.
 }
 ```
 
-Then subscribe to the session URI. Wait for a `session/ready` action.
 
-### 4. Send a message (start a turn)
+然後訂閱工作階段 URI。等待 `session/ready` 操作。
 
-Dispatch a `session/turnStarted` action as a **notification** (fire-and-forget):
+### 4.發送訊息（開始一輪）
+
+將 `session/turnStarted` 操作作為 **通知** 分派（即發即棄）：
+
+
+
+
 
 ```json
 {
@@ -119,17 +143,22 @@ Dispatch a `session/turnStarted` action as a **notification** (fire-and-forget):
 }
 ```
 
-Then poll `get_notifications(wait: 2)` to collect streaming `session/delta`
-actions until you see `session/turnComplete`.
 
-### 5. Handle tool calls and permissions
+然後輪詢 `get_notifications(wait: 2)` 以收集串流媒體 `session/delta`
+執行操作，直到您看到 `session/turnComplete`。
 
-If the agent calls a tool, the server sends:
+### 5. 處理工具呼叫與權限
 
-- `session/toolStart` – tool invocation started
-- `session/permissionRequest` – user approval needed
+如果代理呼叫工具，則伺服器發送：
 
-Resolve permissions with:
+- `session/toolStart` – 工具呼叫開始
+- `session/permissionRequest` – 需要使用者批准
+
+解決權限問題：
+
+
+
+
 
 ```json
 {
@@ -148,24 +177,29 @@ Resolve permissions with:
 }
 ```
 
-### 6. Other commands
 
-| Command          | Purpose                              |
-| ---------------- | ------------------------------------ |
-| `listSessions`   | List all session summaries           |
-| `disposeSession` | Tear down a session                  |
-| `resourceRead`   | Read content by URI reference        |
-| `resourceList`   | List directory entries               |
-| `resourceCopy`   | Copy a resource                      |
-| `resourceDelete` | Delete a resource                    |
-| `resourceMove`   | Move/rename a resource               |
-| `resourceWrite`  | Write content to a file              |
-| `fetchTurns`     | Fetch historical turns for a session |
+### 6.其他指令
 
-### 7. Reconnection
+|命令 |目的|
+| ---------------- | ------------------------------------------------ |
+| `listSessions` |列出所有工作階段摘要 |
+| `disposeSession` |拆掉一個工作階段 |
+| `resourceRead` |透過 URI 引用讀取內容 |
+| `resourceList` |列出目錄條目 |
+| `resourceCopy` |複製資源 |
+| `resourceDelete` |刪除資源 |
+| `resourceMove` |移動/重新命名資源 |
+| `resourceWrite` |將內容寫入檔案 |
+| `fetchTurns` |取得工作階段 | 的歷史轉捩點
 
-If the connection drops, call `connect` again and send a `reconnect` message
-instead of `initialize`:
+### 7. 重新連線
+
+如果連線斷開，請再次呼叫 `connect` 並傳送 `reconnect` 訊息
+而不是 `initialize`：
+
+
+
+
 
 ```json
 {
@@ -179,52 +213,53 @@ instead of `initialize`:
 }
 ```
 
-## Action types reference
 
-### Client-dispatchable actions
+## 動作類型參考
 
-| Action                       | Effect                                    |
-| ---------------------------- | ----------------------------------------- |
-| `session/turnStarted`        | Begin a new turn with a user message      |
-| `session/permissionResolved` | Approve or deny a pending tool permission |
-| `session/turnCancelled`      | Abort an in-progress turn                 |
-| `session/modelChanged`       | Switch the model for future turns         |
+### 用戶端-可分派操作
 
-### Server-originated actions
+|行動|效果|
+| ---------------------------- | ---------------------------------------------------- |
+| `session/turnStarted` |用使用者訊息開始新的回合 |
+| `session/permissionResolved` |核准或拒絕待處理的工具權限 |
+| `session/turnCancelled` |中止正在進行的回合 |
+| `session/modelChanged` |為未來的轉變而切換模型 |
 
-| Action                      | Meaning                            |
-| --------------------------- | ---------------------------------- |
-| `root/agentsChanged`        | Available agents or models changed |
-| `session/ready`             | Session backend initialized        |
-| `session/creationFailed`    | Session failed to initialize       |
-| `session/delta`             | Streaming text content for a turn  |
-| `session/toolStart`         | Agent is calling a tool            |
-| `session/toolDelta`         | Streaming tool output              |
-| `session/toolComplete`      | Tool execution finished            |
-| `session/permissionRequest` | User approval needed for a tool    |
-| `session/turnComplete`      | Turn finished                      |
-| `session/error`             | Error during turn                  |
+### 伺服器發起的操作
 
-## Full documentation
+|行動|意義|
+| ------------------------ | | ---------------------------------- |
+| `root/agentsChanged` |可用代理或型號變更 |
+| `session/ready` | 工作階段後端已初始化 |
+| `session/creationFailed` | 工作階段初始化失敗 |
+| `session/delta` | 串流文字內容一圈 |
+| `session/toolStart` |代理正在呼叫工具 |
+| `session/toolDelta` |串流媒體工具輸出 |
+| `session/toolComplete` |工具執行完成 |
+| `session/permissionRequest` |工具需要使用者批准|
+| `session/turnComplete` |轉完了|
+| `session/error` |回合時發生錯誤 |
 
-For complete protocol details, refer to the docs in this repository:
+## 完整文件
 
-- **Guide**: `docs/guide/` – conceptual overviews and walkthroughs
-  - `getting-started.md` – end-to-end example
-  - `state-model.md` – full state tree shape
-  - `actions.md` – how actions work
-  - `reconciliation.md` – write-ahead reconciliation algorithm
-- **Specification**: `docs/specification/` – normative protocol spec
-  - `transport.md` – transport requirements
-  - `lifecycle.md` – connection, session, and reconnection lifecycle
-  - `subscriptions.md` – subscription mechanics
-  - `versioning.md` – version negotiation
-- **Reference**: `docs/reference/` – complete type references
-  - `messages.md` – all state types
-  - `actions.md` – all action types with fields
-  - `commands.md` – all JSON-RPC commands
-  - `notifications.md` – all notification types
-  - `error-codes.md` – error code reference
+有關完整的協定詳細資訊，請參閱此儲存庫中的文件：
 
-Read these files when you need exact field names, type shapes, or edge-case
-behaviour.
+- **指南**：`docs/guide/` – 概念概述與演練
+  - `getting-started.md` – 端對端範例
+  - `state-model.md` – 完整的狀態樹形
+  - `actions.md` – 操作如何運作
+  - `reconciliation.md` – 預寫入協調演算法
+- **規格**：`docs/specification/` – 規範協定規格
+  - `transport.md` – 運輸要求
+  - `lifecycle.md` – 連結、工作階段和重新連結生命週期
+  - `subscriptions.md` – 訂閱機制
+  - `versioning.md` – 版本協商
+- **參考**：`docs/reference/` – 完整的型別參考
+  - `messages.md` – 所有狀態類型
+  - `actions.md` – 所有帶有欄位的操作類型
+  - `commands.md` – 所有 JSON-RPC 指令
+  - `notifications.md` – 所有通知類型
+  - `error-codes.md` – 錯誤代碼參考
+
+當您需要精確的欄位名稱、型別形狀或邊緣情況時，請閱讀這些文件
+行為。

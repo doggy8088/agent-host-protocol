@@ -1,65 +1,69 @@
-# Multiple Chats in a Session — Feature Overview
+# 工作階段中的多個聊天 — 功能概述
 
-> A conceptual walkthrough of the multi-chat feature for presentations and
-> design discussion. This document deliberately stays at the *feature* level —
-> it explains **what** the capability is and **why** it exists, without going
-> into the protocol's concrete actions, state shapes, or wire format.
-
----
-
-## 1. The problem
-
-An agent session today is **a single, linear conversation**. The session *is*
-the chat: one stream of messages, tool calls, and results between a user and an
-agent.
-
-That model is increasingly at odds with where agent products are heading.
-Modern harnesses run **more than one agent at a time**:
-
-- A lead agent that breaks a feature into subtasks and farms them out to workers.
-- A "team" of specialised agents (a reviewer, a test-writer, an implementer)
-  working in parallel.
-- A swarm of workers, each operating in its own checkout of the repository.
-
-When a single session can only ever be one conversation, a user interface has no
-honest way to *show* this. The work either gets flattened into one noisy
-transcript, or it gets split across unrelated sessions that lose their shared
-context (the same workspace, the same project, the same configuration).
-
-**The feature in one sentence:** let a single session contain *multiple
-concurrent chats* that share one context, so that multi-agent work can be
-represented, observed, and interacted with as a coherent whole.
+> 用於演示和演示的多聊天功能的概念演練
+> 設計討論。本文件故意停留在*功能*層級 -
+> 它解釋了**什麼**功能以及**為什麼**它存在，而不需要Go
+> 進入協定的具體操作、狀態形狀或線路格式。
 
 ---
 
-## 2. The mental model
+## 1. 問題
 
-The shift is to stop treating "session" and "conversation" as the same thing,
-and split them into two roles:
+如今的代理人工作階段是**一次單一的線性對話**。工作階段 *是*
+聊天：使用者和物件之間的訊息流、工具呼叫和結果
+代理。
 
-- **A session is a coordination *scope*.** It owns everything that is shared:
-  the workspace, the project, the default model and agent, configuration, and
-  any customizations. It is the boundary of trust and identity — everything
-  inside a session is "the same actor working on the same thing."
+這種模式與代理產品的發展方向越來越不一致。
+現代線束**一次運行多個代理程式**：
 
-- **A chat is a conversation *stream* over that scope.** Each chat is an
-  independently-followable thread of messages and activity. Chats are created
-  and removed over the lifetime of the session, and each one can be watched on
-  its own.
+- 一個主要代理，將功能分解為子任務並將其分配給工作人員。
+- 專業代理「團隊」（審查者、測試編寫者、實作者）
+  並行工作。
+- 一群工作人員，每個人都在自己的儲存庫簽出中操作。
 
-> Scope vs. stream is the whole idea. One scope, many streams.
+當單一工作階段只能是一個對話時，使用者介面就沒有
+誠實地「展示」這一點。工作要麼被扁平化成一件吵鬧的事情
+轉錄本，或它被分割成不相關的工作階段，從而失Go了共享的
+上下文（相同的工作空間、相同的專案、相同的配置）。
 
-A helpful analogy: a session is a **project workspace**, and chats are the
-**individual work threads** happening inside it. Closing one thread doesn't tear
-down the workspace; the workspace is what gives every thread its shared ground.
+**一句話中的特徵：**讓單一工作階段包含*多個
+共享一個上下文的並發聊天*，以便可以進行多代理工作
+作為一個連貫的整體來表示、觀察和互動。
 
 ---
 
-## 3. Where this feature lives in the stack
+## 2.心智模型
 
-This is the single most important framing for a reviewer or an audience, because
-it answers the obvious follow-up question ("where do the agents talk to each
-other?") before it's asked.
+轉變是停止將「工作階段」和「對話」視為同一件事，
+並將他們分為兩個角色：
+
+- **A 工作階段是協調*範圍*。 ** 它擁有共享的所有內容：
+  工作區、專案、預設模型和代理、配置以及
+  任何定制。這是信任與認同的邊界——一切
+  工作階段裡面是「同一個演員在做同樣的事情」。
+
+- **聊天是在該範圍內的對話*流*。 **每個聊天都是一個
+  獨立可追蹤的訊息和活動執行緒。聊天已建立
+  並在工作階段的生命週期內刪除，並且每個都可以在
+  它自己的。
+
+> 範圍與流是整個想法。一個範圍，多個流。
+
+一個有用的類比：工作階段是一個**專案工作區**，聊天是
+**各個工作執行緒**發生在其中。關閉一條線不會撕裂
+向下工作區；工作區為每個執行緒提供了共享空間。
+
+---
+
+## 3. 該功能在堆疊中的位置
+
+對於評論家或觀眾來說，這是最重要的框架，因為
+它回答了明顯的後續問題（“代理人在哪裡與每個人交談”）
+其他？」）在被問到之前。
+
+
+
+
 
 ```
    ┌─────────────┐                         ┌──────────────────────────────┐
@@ -71,48 +75,53 @@ other?") before it's asked.
                                            └──────────────────────────────┘
 ```
 
-There are two distinct layers, and this feature only touches one of them:
 
-- **The harness layer** is where the *agents actually run*. Spawning a worker,
-  giving it a task, routing a message to it, and collecting its result are all
-  things the harness does inside its own runtime.
+有兩個不同的層，此功能僅涉及其中一層：
 
-- **The feature/interoperability layer** (where this feature lives) is the
-  **window** onto that work. Its job is to let a user interface *represent and
-  interact with* what the harness is doing — to show the chats, stream their
-  activity, and surface their combined status.
+- **線束層**是*代​​表實際運作*的地方。產生一個工作者，
+  給它一個任務，向它路由一條訊息，並收集它的結果都是
+  線束在其自己的運行時內執行的操作。
 
-**The feature is about observability and interaction, not agent runtime.** It
-makes multi-agent work *visible and usable*; it does not dictate how agents
-coordinate internally.
+- **功能/互通性層**（此功能所在的位置）是
+  該作品的**視窗**。它的工作是讓使用者介面*代表和
+  與*安全帶正在執行的操作進行互動 - 顯示聊天內容、串流傳輸
+  活動，並顯示它們的綜合狀態。
+
+**該功能與可觀察性和互動有關，而不是代理運行時。 **
+使多代理工作*可見且可用*；它沒有規定代理如何
+內部協調。
 
 ---
 
-## 4. What the feature gives you
+## 4. 該功能為您提供了什麼
 
-At the feature level, multi-chat introduces a small number of capabilities:
+在功能層面，多聊天引入了少量功能：
 
-1. **A catalog of chats per session.** A session exposes the set of chats it
-   currently contains. Chats can be added and removed as work spins up and winds
-   down, and each chat carries a lightweight summary (title, current status,
-   most recent activity).
+1. **每個工作階段的聊天目錄。 ** 工作階段公開它的聊天集
+   目前包含。隨著工作的進行和進展，可以新增和刪除聊天
+   下來，每個聊天都帶著一個輕量級摘要（標題、目前狀態、
+   最近的活動）。
 
-2. **A default chat.** One chat is designated the "primary" thread — the natural
-   place a user lands, and the fallback the session points at when nothing more
-   specific applies.
+2. **預設聊天。 ** 一個聊天被指定為「主」執行緒 — 自然的
+   放置使用者著陸，並且當沒有更多內容時工作階段指向的後備
+   具體適用。
 
-3. **Independent, subscribable streams.** Each chat can be followed on its own:
-   its messages, its tool calls, its progress. Watching one chat doesn't require
-   pulling in the noise of the others.
+3. **獨立的、可訂閱的串流。 ** 每個聊天都可以單獨關注：
+   它的訊息、它的工具呼叫、它的進度。觀看一場聊天不需要
+   拉進其他人的噪音。
 
-4. **Per-chat working directory.** Each chat may pin to its own working
-   directory. By default a chat inherits the session's, but a chat can override
-   it — which is exactly what a swarm of workers in separate worktrees needs.
+4. **每個聊天的工作目錄。 ** 每個聊天都可以固定在自己的工作目錄
+   目錄。預設情況下，聊天繼承工作階段，但聊天可以覆蓋
+   它——這正是不同工作樹中的一群工作人員所需要的。
 
-5. **An aggregated session view.** The session presents a roll-up of its chats:
-   a combined status (e.g. "needs input" bubbles up if *any* chat is blocked),
-   an overall activity, and a most-recently-modified timestamp. This lets a UI
-   show a single, honest summary chip for the whole session.
+5. **聚合的工作階段視圖。 ** 工作階段顯示其聊天的總和：
+   組合狀態（例如，如果*任何*聊天被阻止，「需要輸入」就會冒泡），
+   總體活動和最近修改的時間戳。這讓 UI
+   顯示整個工作階段的單一、誠實的摘要晶片。
+
+
+
+
 
 ```mermaid
 flowchart LR
@@ -122,60 +131,65 @@ flowchart LR
     Sum["Session summary<br/><b>status: NEEDS INPUT</b> ⬅ bubbles up<br/>activity: from primary chat<br/>modified: max across chats"]
 ```
 
+
 ---
 
-## 5. Worked example: an agent team
+## 5. 工作範例：代理團隊
 
-Consider a harness that runs a "team": a lead agent plus a couple of workers,
-each in its own checkout of the repository.
+考慮一個運行“團隊”的安全帶：一個首席代理加上幾個工作人員，
+每個都在自己的儲存庫簽出中。
 
-| What the harness does | How the feature represents it |
+|安全帶的作用是什麼 |該功能如何表示它 |
 | --- | --- |
-| Lead agent starts | A session with one default chat (the lead). |
-| Lead spins up two workers | Two new chats appear in the session's catalog. |
-| Each worker takes its own worktree | Each worker chat pins its own working directory. |
-| Workers stream progress | Each chat streams its own activity, watchable on its own. |
-| A worker gets stuck and needs input | The session summary rolls up to "needs input." |
-| A worker finishes and is torn down | Its chat is removed from the catalog. |
+|首席代理商開始 |具有一個預設聊天（潛在客戶）的工作階段。 |
+|鉛使兩名工作者旋轉工作階段的目錄中出現兩個新聊天。 |
+|每個工作者都有自己的工作樹|每個工作人員聊天都會固定自己的工作目錄。 |
+|工作者們記錄進度|每個聊天都會串流自己的活動，可以單獨觀看。 |
+|一名工作者陷入困境並需要輸入 | 工作階段摘要匯總為「需要輸入」。 |
+|工作者完工後被拆毀 |它的聊天記錄已從目錄中刪除。 |
 
-Crucially, **the team's internal coordination never crosses this layer.** The
-lead telling a worker what to do, and the worker returning its result, are the
-harness's own business. The feature's job is only to make the team *appear* as a
-set of chats a user can watch and step into.
+至關重要的是，**團隊的內部協調永遠不會跨越這一層。 **
+領導者告訴工作者要做什麼，工作者傳回其結果，是
+駕馭自己的事業。該功能的作用只是讓團隊「看起來」是一個
+使用者可以觀看和進入的一組聊天。
 
-This is why you can support a full agent-team experience **without any
-chat-to-chat communication in the protocol itself**: the communication already
-happens, one layer down, inside the harness.
+這就是為什麼您可以支援完整的代理團隊體驗**，無需任何
+協定本身中的聊天到聊天通訊**：通訊已經
+發生在安全帶內部的一層下方。
 
 ---
 
-## 6. What this feature deliberately is *not*
+## 6. 這個特性*不*是有意為之的
 
-Drawing the boundary is as important as the feature itself.
+劃定邊界與特徵本身一樣重要。
 
-- **It is not chat-to-chat messaging.** There is no primitive for one chat to
-  send a message to, or read the stream of, another chat. Chats are independent
-  streams that happen to share a scope. Coordination between agents is a harness
-  concern.
+- **這不是聊天到聊天的訊息傳遞。 ** 沒有用於一次聊天的原語
+  向另一個聊天發送訊息或讀取另一個聊天的流。聊天是獨立的
+  碰巧共享一個範圍的流。代理之間的協調是一種駕馭
+  關心。
 
-- **It does not model agent hierarchies.** The feature has no notion of
-  "lead vs. worker," "parent vs. child," or assignments and work items. All
-  chats are peers under one session. A harness may *use* them to represent a
-  hierarchy, but the feature stays neutral.
+- **它不會對代理層次結構進行建模。 ** 該功能沒有
+  「領導者與工作者」、「父與子」或作業與工作項目。全部
+  聊天是一個工作階段下的對等點。線束可以“使用”它們來代表
+  層次結構，但功能保持中立。
 
-- **It is not sub-sessions.** Multi-chat is about *cooperating threads that share
-  one trust/identity/context*. Independent agents with their own lifecycle and
-  their own handshake are a separate concept entirely.
+- **它不是子工作階段。 ** 多聊天是關於*共享的合作執行緒
+  一種信任/認同/背景*。具有自己生命週期的獨立代理
+  他們自己的握手完全是一個單獨的概念。
 
-These omissions are intentional. Richer coordination — work items, operations,
-assignments, cross-agent messaging — is a natural *future* axis that can be added
-later without breaking this feature. Multi-chat is designed to **compose with**
-that future work, not to pre-empt it.
+這些遺漏是故意的。更豐富的協調－工作項目、操作、
+分配、跨代理訊息傳遞－是一個可以新增的自然*未來*軸
+稍後不破壞此功能。多聊天旨在**與**撰寫
+那是未來的工作，而不是先發制人。
 
-The sub-session distinction is worth a picture, since it's the most common point
-of confusion. *Multi-chat* is cooperating threads under **one** identity, trust,
-and context. *Sub-sessions* are independent agents that authenticate on their
-own and have their own lifecycle — a separate, future concept:
+sub-工作階段的差異值得一張圖片，因為它是最常見的點
+的混亂。 *多聊天*是在**一個**身份、信任下合作執行緒，
+和背景。 *Sub-工作階段* 是獨立代理，在其上進行身份驗證
+擁有並擁有自己的生命週期－一個獨立的、未來的概念：
+
+
+
+
 
 ```mermaid
 flowchart TB
@@ -195,29 +209,34 @@ flowchart TB
     end
 ```
 
+
 ---
 
-## 7. Why this shape
+## 7. 為什麼是這個形狀
 
-A few principles drove the design:
+一些原則推動了設計：
 
-- **Represent, don't orchestrate.** Stay an observability-and-interaction layer.
-  The moment the feature starts routing messages between agents, it stops being a
-  neutral window and starts being an agent framework — a much larger commitment.
+- **代表，而不是編排。 ** 保持可觀察性和互動層。
+  一旦該功能開始在代理之間路由訊息，它就不再是一個
+  中立視窗並開始成為一個代理框架——這是一個更大的承諾。
 
-- **Shared context is the point.** The reason these chats belong together is that
-  they share a workspace, a project, and a configuration. That shared scope is
-  what a bundle of unrelated sessions could never give you.
+- **共享上下文是重點。 ** 這些聊天屬於在一起的原因是
+  他們共享一個工作區、一個專案和一個配置。該共享範圍是
+  一堆不相關的工作階段永遠無法帶給你什麼。
 
-- **Small, additive, composable.** Each capability (catalog, default, per-chat
-  working directory, aggregated summary) is a small addition that earns its
-  place, and leaves room for the bigger coordination story to land later.
+- **小型、可附加、可組合。 ** 每個功能（目錄、預設、每個聊天）
+  工作目錄，總結摘要）是一個小的補充，贏得了它的
+  的地方，並為以後更大的協調故事落地留出空間。
 
-- **Graceful degradation.** The feature is backward compatible: a harness that
-  only ever runs one conversation exposes exactly **one chat (the default)**, and
-  the experience is identical to today. As a harness grows richer multi-agent
-  behaviour, it simply lights up *more chats* in the same session — there is
-  nothing to opt out of, and nothing breaks.
+- **優雅降級。 ** 此功能向後相容：一種安全帶
+  只運行一次對話恰好暴露**一次聊天（預設）**，並且
+  這種經驗與今天是一樣的。隨著多智能體的利用變得更加豐富
+  行為，它只是在同一個工作階段中點亮*更多聊天* - 有
+  沒有什麼可以選擇退出，也沒有什麼中斷。
+
+
+
+
 
 ```mermaid
 flowchart LR
@@ -226,64 +245,67 @@ flowchart LR
     B -. tabs / tree of chats .-> B
 ```
 
-## 8. Scenarios — and how each harness supports them
 
-Each scenario below pairs a conceptual **diagram and real-world example** (the
-*feature* shape, not the wire format — written in Mermaid so they render in
-GitHub, VS Code, and most slide tools) with **how each harness supports it
-today**.
+## 8. 場景 - 以及每個線束如何支援它們
 
-> **Doc-verified snapshot, still a moving target.** The mappings below were
-> checked against each product's official documentation (June 2026) and cite
-> their sources, but harness capabilities change quickly and several features are
-> experimental. The point is the **pattern** — how each product's parallel-agent
-> work maps onto the feature — not a permanent scorecard.
+下面的每個場景都配對了一個概念**圖表和現實世界的範例**（
+*特徵*形狀，而不是線格式 - 用 Mermaid 編寫，以便它們渲染
+GitHub、VS Code 和大多數幻燈片工具）以及 **每個線束如何支援它
+今天**。
 
-Because the feature degrades gracefully (see §7), no harness ever "breaks" — the
-only question is **how many of the scenarios it lights up, and how a UI shows
-them.**
+> **經過文件驗證的快照，仍然是一個移動目標。 ** 下面的映射是
+> 根據每個產品的官方文件（2026 年 6 月）進行檢查並引用
+> 它們的來源，但線束功能變化很快，有幾個功能正在變化
+> 實驗性的。重點是 **模式** — 每個產品的平行代理如何
+> 工作映射到功能上—而不是永久的記分卡。
 
-Under each scenario, an **"Across harnesses today"** breakdown covers every
-harness across **both surfaces — CLI and desktop app** — with a real-time
-example and how it presents in the UI. Verified against official docs (checked
-June 2026; see [Sources](#sources)). Several features are experimental and
-capabilities move fast, so treat this as a current snapshot.
+由於此功能會優雅地降級（請參閱第 7 節），因此不會出現任何安全帶「斷裂」的情況 —
+唯一的問題是**它點亮了多少個場景，以及 UI 如何顯示
+他們。 **
 
-**Surface note up front:** Both **Claude Code** and **Codex** ship a graphical
-desktop **app** alongside their CLI, and the two apps are strikingly similar: a
-left **sidebar of parallel sessions/threads** grouped by the **repo/folder you
-open — not by worktree**. Each session still gets its own worktree, but the
-sidebar lists **every session in the repo across all features** as a **flat
-list**, so unrelated features are interleaved with no per-feature group (the
-CLI's "`cd` into a feature worktree to scope its chats" idiom doesn't carry
-over). The apps also offer **per-session Git-worktree isolation**, a **split
-view** to see two sessions at once, and arrangeable **diff / preview / terminal /
-subagent panes**. **GitHub Copilot CLI** is *terminal-only* for this work (its
-graphical surface is the separate, coarser VS Code coding-agent). Neither app,
-though, models the parallel work as **one shared session with a rolled-up status
-across peers** — they list independent sessions side by side.
+在每種情況下，**“今天的跨線束”**細分涵蓋了每一個
+跨**兩個表面 - CLI 和桌面應用程式** - 實時
+範例以及它在 UI 中的呈現方式。已根據官方文件進行驗證（已檢查
+2026 年 6 月；請參閱[來源](#sources))。有幾個功能是實驗性的
+功能變化很快，因此請將其視為當前快照。
 
-### 8.1 User-driven parallel work in one context
+**前面的表面註解：** **Claude Code** 和 **Codex** 皆提供圖形
+桌面 **應用程式** 及其 CLI，這兩個應用程式驚人地相似：
+並行工作階段/執行緒**的左側**側邊欄按您的**儲存庫/資料夾分組
+打開—不是透過工作樹**。每個工作階段仍然有自己的工作樹，但是
+側邊欄列出了**儲存庫中所有功能**中的每個工作階段作為 **平面
+列表**，因此不相關的功能與沒有每個功能組的交錯（
+CLI 的「`cd` 進入功能工作樹以限制其聊天範圍」慣用法不包含
+結束）。這些應用程式也提供 **per-工作階段 Git-worktree 隔離**，**分割
+view** 一次看到兩個工作階段，並且可排列 **diff / 預覽 / 終端機 /
+子代理窗格**。 **GitHub Copilot CLI** 僅*終端機*適用於這項工作（其
+圖形介面是獨立的、較粗糙的 VS Code 編碼代理）。兩個應用程式都沒有，不過，將平行工作建模為**一個具有匯總狀態的共享工作階段
+跨同行**－他們並排列出獨立的工作階段。
 
-The most common everyday case, and it's **driven by the user, not the agent**: a
-person deliberately opens several chats over the *same* shared context to push a
-piece of work forward. Three things come together here — the chats **share one
-scope** (workspace, model, config), they can **stream concurrently**, and they
-stay **grouped under one session** in the UI. No agent is spawning anything; the
-human is curating the threads.
+### 8.1 在一個情境中使用者驅動的平行工作
 
-> **Real-world example:** A developer is working in a `client-server` monorepo
-> that holds both the backend service and the frontend client, with the model and
-> the project's MCP servers configured once at the session level. To build a new
-> "live notifications" feature end-to-end, they open two chats themselves — one to
-> *build the server* (add the WebSocket endpoint and event schema), and one to
-> *build the client* (subscribe to the socket and render the notifications). Both
-> chats see the same checked-out branch, the same shared types, and the same lint
-> config (shared context). They have the server chat scaffold the endpoint while
-> they simultaneously work the client chat against the agreed event shape
-> (concurrent). The next morning they reopen the one session and both threads —
-> server and client — are still grouped together (grouped), instead of hunting
-> through unrelated histories to reassemble the feature.
+最常見的日常情況，它**由使用者驅動，而不是代理**：
+人們故意在「同一」共享上下文中開啟多個聊天來推送
+一項工作向前推進。這裡匯集了三件事—聊天**分享一件事
+範圍**（工作空間、模型、配置），它們可以**同時串流**，並且它們
+在 UI 中保持**分組在一個工作階段** 下。沒有代理生成任何東西；的
+人類正在整理執行緒。
+
+> **真實範例：** 開發人員正在 `client-server` monorepo 中工作
+> 同時包含後端服務和前端用戶端，以及模型和
+> 專案的 MCP 伺服器在工作階段層級配置過一次。為了建立一個新的
+> 端到端的「即時通知」功能，他們自己打開兩個聊天 - 一對一
+> *建置伺服器*（新增 WebSocket 端點和事件架構），並將其一
+> *建構用戶端* （訂閱套接字並呈現通知）。兩者都
+> 聊天看到相同的簽出分支、相同的共享類型和相同的 lint
+> 配置（共享上下文）。他們有伺服器聊天支架端點，同時
+> 他們同時根據商定的事件形狀進行用戶端聊天
+>（並發）。第二天早上，他們重新打開了一個工作階段和兩個執行緒 —
+> 伺服器和用戶端 — 仍然分組在一起（分組），而不是狩獵> 透過不相關的歷史來重新組合該功能。
+
+
+
+
 
 ```mermaid
 flowchart TB
@@ -296,55 +318,59 @@ flowchart TB
     end
 ```
 
-**Across harnesses today:**
 
-**Claude Code**
-- **CLI:** Supported via *named sessions* over one workspace — `claude -n
-  auth-refactor` (or `/rename`), switched through the `/resume` picker (a
-  terminal TUI that lists every session per project, with worktree/all-project
-  widening via Ctrl+W / Ctrl+A). Caveat: resuming the *same* session in two
-  terminals interleaves both transcripts, so genuinely parallel threads need a
-  fork (see 8.2) or separate named sessions.
-- **Desktop app:** Supported and graphical — the **Code tab** lists your sessions
-  in a sidebar and runs several in parallel; for Git repos **each session gets its
-  own isolated worktree**, and **Cmd-click** opens two sessions side by side
-  (split view). Sessions group by the project folder you open.
-- **Real-time example:** A dev opens `claude -n api` in one terminal and
-  `claude -n tests` in another over the same repo, curating two independent
-  threads side by side.
-- **UI:** terminal — the `/resume` session-picker list, or several terminal
-  windows / tmux panes. Desktop — the Code-tab sidebar of parallel sessions
-  with split view.
+**今天的安全帶：**
+
+**克勞德·代碼**
+- **CLI：** 透過一個工作區上的 *named 工作階段* 支援 — `claude -n
+  auth-refactor` (or `/rename`), switched through the `/resume` 選擇器（
+  終端機 TUI，列出每個專案的每個工作階段，帶有工作樹/所有項目
+  透過 Ctrl+W / Ctrl+A 擴大）。注意：將 *相同* 工作階段分成兩份
+  終端交錯兩個轉錄本，因此真正的平行執行緒需要
+  fork（參見 8.2）或單獨命名為工作階段。
+- **桌面應用程式：** 支援且圖形化 — **程式碼標籤** 列出您的工作階段
+  在側邊欄中並並行運行多個；對於 Git 儲存庫 **每個工作階段都有其
+  擁有獨立的工作樹**，並且 **Cmd-click** 並排打開兩個工作階段
+  （分割視圖）。工作階段依您開啟的專案資料夾分組。
+- **即時範例：** 開發人員在一個終端機中開啟 `claude -n api`，並且
+  `claude -n tests` 在同一個儲存庫的另一個中，規劃兩個獨立的
+  執行緒並排。- **UI:** 終端機 — `/resume` 工作階段-選擇器列表，或多個終端機
+  Windows / tmux 窗格。桌面 — 並行工作階段的程式碼標籤側邊欄
+  具有分割視圖。
 
 **Codex**
-- **CLI:** One main thread, but `/new` starts a fresh conversation in the same
-  process and `/agent` switches between active threads.
-- **Desktop app:** Supported and graphical — the app organizes work by *project*
-  and runs multiple threads at once, each **Local** (foreground) or in an
-  isolated Git **Worktree**; the sidebar lists threads per project. The cloud
-  view at `chatgpt.com/codex` shows queued/active tasks as cards.
-- **Real-time example:** In the Codex app a dev opens one project and launches
-  three threads — a worktree refactor, a test pass, and a docs update — all
-  visible in the sidebar and streaming in parallel.
-- **UI:** graphical app sidebar (per-project thread list) + cloud task cards;
-  CLI = thread switching via `/agent`.
+- **CLI:** 一個主執行緒，但 `/new` 在同一個主執行緒中開始新的對話
+  process 和 `/agent` 在活動執行緒之間切換。
+- **桌面應用程式：** 支援和圖形化 — 該應用程式按*專案*組織工作
+  並一次運行多個執行緒，每個**本地**（前台）或在一個
+  隔離的 Git **工作樹**；側邊欄列出了每個專案的執行緒。雲
+  `chatgpt.com/codex` 處的檢視將排隊/活動任務顯示為卡片。
+- **即時範例：** 在 Codex 應用程式中，開發人員開啟專案並啟動
+  三個執行緒——工作樹重構、測試通過和文件更新——全部
+  在側邊欄中可見並並行串流。
+- **UI：**圖形應用程式側邊欄（每個專案執行緒清單）+雲端任務卡；
+  CLI = 透過 `/agent` 進行執行緒切換。
 
 **GitHub Copilot CLI**
-- **CLI:** Partial — you can run `copilot` in several terminal instances over the
-  same workspace, and the `/resume` picker switches between saved sessions, but
-  only **one at a time** (no live in-session thread switching). `copilot --cloud`
-  lists "run multiple tasks in parallel" as a use case.
-- **Desktop app:** N/A for the CLI — terminal-only.
-- **Real-time example:** A dev runs `copilot` in two terminal tabs in the same
-  repo to push two threads forward at once.
-- **UI:** terminal — multiple windows, or the `/resume` session picker.
+- **CLI:** 部分 — 您可以在多個終端機實例中執行 `copilot`
+  相同的工作區，並且 `/resume` 選擇器在已儲存的工作階段之間切換，但是
+  一次只有一個**（沒有實時 in-工作階段執行緒切換）。 `copilot --cloud`
+  列出「並行運行多個任務」作為用例。
+- **桌面應用程式：** 對於 CLI 不適用 — 僅終端機。
+- **即時範例：** 開發人員在同一個選項卡的兩個終端機選項卡中執行 `copilot`
+  repo 同時向前推進兩個執行緒。
+- **UI:** 終端機 — 多個視窗，或 `/resume` 工作階段選擇器。
 
-#### How the UI looks
+#### 使用者介面的外觀
 
-**Claude Code — CLI** (the way a user works a feature in parallel today is to
-**create a feature-named git worktree and open a session per piece of
-work inside it** — Claude groups sessions by directory, so the worktree *is* the
-feature):
+**Claude Code — CLI**（當今使用者並行使用某個功能的方式是
+**建立一個名為 git 工作樹的功能並為每個工作樹開啟一個工作階段
+在其中工作** — Claude 按目錄將工作階段分組，因此工作樹*是*
+特點）：
+
+
+
+
 
 ```text
  $ git worktree add ../live-notifications   # the feature
@@ -359,21 +385,26 @@ feature):
       └ build-client   ▶ in progress
 ```
 
-> This is the real, idiomatic flow — the worktree directory is how you name a
-> feature and keep its parallel chats together. Its one limit: the grouping is a
-> *directory*, not a session object, so there's no rolled-up status/title across
-> the chats, and the worktree axis is now spent on grouping (you can't also give
-> each chat its *own* worktree — the 8.4 case). AHP keeps the same pattern but
-> separates the axes: the **`session`** is the feature (shared scope +
-> rolled-up status); **`workingDirectory`** (per session, optionally overridden
-> per chat) is the filesystem — so you group *and* can still isolate chats.
 
-**Claude Code — desktop app** (the **Code tab** groups sessions by the
-**repo/folder you open — not by worktree**. Each session still gets its *own*
-auto-created worktree, but the sidebar lists **every session in the repo across
-all features** as one **flat list**, so the CLI's feature-grouping idiom — `cd`
-into a feature worktree to scope its chats — doesn't carry over; unrelated
-features are interleaved, with no per-feature group and no rolled-up status):
+> 這是真正的、慣用的流程－工作樹目錄就是你如何命名一個
+> 功能並將其並行聊天保持在一起。它的一個限制是：分組是
+> *目錄*，不是一個工作階段物件，因此沒有滾動的狀態/標題
+> 聊天，工作樹軸現在用於分組（你不能也給出
+> 每個聊天都有其*自己的*工作樹 - 8.4 情況）。 AHP 保持相同的模式，但是
+> 分隔軸： **`session`** 是功能（共享範圍 +
+> 捲起狀態）； **`workingDirectory`** （根據工作階段，可選擇覆蓋
+> 每個聊天）是檔案系統 - 因此您分組*並且*仍然可以隔離聊天。
+
+**Claude Code — 桌面應用程式**（**Code 選項卡**將工作階段按
+**您打開的儲存庫/資料夾 - 不是透過工作樹**。每個工作階段仍然擁有它的*自己的*
+自動建立的工作樹，但側邊欄列出了倉庫中的**每個工作階段
+所有功能**作為一個**平面列表**，因此 CLI 的功能分組習慣用法 — `cd`
+進入功能工作樹以限制其聊天範圍 - 不會延續；無關的
+功能是交錯的，沒有每個功能組，也沒有匯總狀態）：
+
+
+
+
 
 ```text
  ┌ Claude — Code tab · repo: myapp ─────────────────┐
@@ -386,8 +417,13 @@ features are interleaved, with no per-feature group and no rolled-up status):
    grouped by REPO, not feature · all features mixed · per-session worktrees
 ```
 
-**Codex — CLI** (same idiom — a feature-named worktree holds the parallel
-threads; `/agent` switches between them, `/new` opens another):
+
+**Codex — CLI**（相同的慣用語 — 名為工作樹的功能具有平行性
+執行緒； `/agent` 在它們之間切換，`/new` 打開另一個）：
+
+
+
+
 
 ```text
  $ git worktree add ../live-notifications && cd ../live-notifications
@@ -398,10 +434,15 @@ threads; `/agent` switches between them, `/new` opens another):
   switch 1–2  ·  /new = another thread in this feature
 ```
 
-**Codex — desktop app** (same story — the app groups threads by the **repo/folder
-you open, not by worktree**. Open the repo and you see **every thread across all
-features** in one **flat list**; the worktree is only a per-thread *run* location,
-never a grouping node — so there's no per-feature group and no rolled-up status):
+
+**Codex — 桌面應用程式**（同一個故事 — 應用程式按 **repo/資料夾將執行緒分組
+你打開，不是透過工作樹**。打開儲存庫，您會看到**所線路程中的每個執行緒
+功能**在一個**平面列表中**；工作樹只是每個執行緒*運行*位置，
+從來不是分組節點 - 因此沒有每個功能組，也沒有匯總狀態）：
+
+
+
+
 
 ```text
  ┌ Codex app · repo: myapp ────────────────────────┐
@@ -414,8 +455,13 @@ never a grouping node — so there's no per-feature group and no rolled-up statu
    grouped by REPO, not feature · all features mixed in one list
 ```
 
-**GitHub Copilot CLI — CLI** (same idiom — create the feature worktree, then run
-a `copilot` per piece of work; `/resume` reopens one at a time):
+
+**GitHub Copilot CLI — CLI** （相同的習慣用法 — 建立功能工作樹，然後執行
+每件作品一個`copilot`； `/resume` 一次重新打開一個）：
+
+
+
+
 
 ```text
  $ git worktree add ../live-notifications && cd ../live-notifications
@@ -425,41 +471,46 @@ a `copilot` per piece of work; `/resume` reopens one at a time):
  (desktop app: N/A — terminal-only)
 ```
 
-### 8.2 Forking and side chats
 
-A new chat is forked from a point in an existing chat, seeded with that history,
-then diverges on its own. Both chats keep sharing the session's context.
+### 8.2 分岔與側聊
 
-A **fork** uses `{ kind: "fork", chat, turnId }` to copy visible history
-through a completed source turn into a new chat. A **side chat** uses
-`{ kind: "sideChat", chat, turnId, selection? }`. The host resolves that
-stable `turnId` against either a completed turn or the parent's current active
-turn at creation time, but the wire does not snapshot which lifecycle slot held
-it. If the id names the active turn, the host snapshots whatever response is
-available at that moment. When `selection` is present, the host also records an
-immutable `{ text, responsePartId? }` snapshot of the user's exact selected
-text; `text` must be non-empty and `responsePartId` is provenance only, not a
-range. This preserves `/btw`-style side questions without copying the parent's turns
-into its own transcript. It is a focused,
-independent conversation that can later be pulled back into the main chat as a
-bounded chat attachment. The distinction keeps the side transcript clean while
-making the result durable and reusable:
+新的聊天是從現有聊天中的一個點分叉出來的，並以該歷史記錄為種子，
+然後自行發散。兩個聊天都繼續分享工作階段的上下文。
 
-| Mode | Source context | New chat's visible history | Return path |
+**fork** 使用 `{ kind: "fork", chat, turnId }` 複製可見歷史記錄
+透過一個完整的來源變成一個新的聊天。 **邊聊**使用
+`{ kind: "sideChat", chat, turnId, selection? }`。樓主解決了
+穩定 `turnId` 對抗已完成的回合或父級當前的活動
+在建立時轉動，但線路不會快照哪個生命週期槽持有
+它。如果 id 指定了活動輪次，則主機會快照任何回應
+在那一刻可用。當存在 `selection` 時，主機也會記錄一個
+使用者確切選擇的不可變 `{ text, responsePartId? }` 快照
+文字； `text` 必須非空，且 `responsePartId` 僅是出處，而非
+範圍。這保留了 `/btw` 式的附帶問題，而無需複製父級的回合
+進入自己的轉錄本。它是一個專注、
+獨立對話，稍後可以作為主聊天拉回
+有界聊天附件。這種區別保持了側面記錄的乾淨，同時
+使結果持久且可重複使用：
+
+|模式|來源上下文 |新聊天的可見歷史記錄 |返迴路徑 |
 | --- | --- | --- | --- |
-| Fork | Copied through the source turn | Starts with copied parent turns | Continue either branch |
-| Side chat | Supplied through the source `turnId` (resolved against historical or active turn at create time) | Starts empty | Attach through a completed side-chat turn |
+|叉|透過原始碼轉複製|從複製的父回合開始 |繼續任一分支 |
+|側聊 |透過來源 `turnId` 提供（根據建立時的歷史或活動輪次進行解析）|開始為空 |透過完成的側聊回合進行附加 |
 
-Agents advertise these independently through `multipleChats.fork` and
-`multipleChats.sideChat`, so clients only offer creation modes the selected
-agent supports.
+代理人透過 `multipleChats.fork` 獨立宣傳這些內容，並且
+`multipleChats.sideChat`，因此用戶端僅提供所選的建立模式
+代理支援。
 
-> **Real-world example:** Mid-debugging, at message 12 the agent proposes two
-> fixes for a race condition. Rather than lose the current thread, the developer
-> forks a new chat *seeded from message 12* to try approach B (rewrite the path
-> around a queue) while the original chat still holds approach A. Both forks
-> share the same repo and config; the developer compares the two outcomes and
-> keeps the winner.
+> **真實世界的範例：** 偵錯中期，在訊息 12 處，代理人提出了兩個
+> 修復競爭條件。開發人員不會缺少當前執行緒，而是
+> 分叉一個新的聊天*從訊息 12* 中播種*以嘗試方法 B（重寫路徑
+> 圍繞隊列），而原始聊天仍然保留方法 A。兩個分叉
+> 共享相同的儲存庫和配置；開發人員比較兩個結果並
+> 保留獲勝者。
+
+
+
+
 
 ```mermaid
 flowchart LR
@@ -474,58 +525,62 @@ flowchart LR
     A2 -. fork from here .-> B1
 ```
 
-**Across harnesses today:**
 
-**Claude Code**
-- **CLI:** Supported — `/branch [name]` copies the conversation so far and
-  switches you into it (original preserved, resumable via `/resume`);
-  `claude --continue --fork-session` does the same from the command line; inside
-  a `/btw` overlay, `f` forks a new session inheriting the parent transcript plus
-  that Q&A. Distinct from rewind/checkpoints (Esc-Esc), which edit the *same*
-  thread.
-- **Desktop app:** Supported — the Code tab has **side chats** (`Cmd+;`): a side
-  question that reuses the session's context without derailing the main thread —
-  effectively a lightweight in-app fork. A **full fork lands as a flat sibling**
-  session in the repo list (in its own worktree); unlike the CLI's `/resume` tree,
-  the parent↔fork relationship is **not** shown in the sidebar.
-- **Real-time example:** Mid-debug at message 12, the dev runs
-  `/branch approach-b` to try the alternate fix while the original thread stays
-  intact.
-- **UI:** terminal — forks are grouped under their root session in the `/resume`
-  picker (expand with `→`). Desktop — a side chat opens beside the session, or a
-  forked **sibling** session in the flat sidebar (no fork tree).
+**今天的安全帶：**
+
+**克勞德·代碼**
+- **CLI:** 支援 — `/branch [name]` 複製到目前為止的對話並
+  將您切換到它（原始保留，可透過 `/resume` 恢復）；
+  `claude --continue --fork-session` 從命令列執行相同的操作；裡面
+  `/btw` 覆蓋，`f` 分叉一個新的工作階段繼承父轉錄物加上
+  那個問答。與倒帶/檢查點 (Esc-Esc) 不同，後者編輯*相同*
+  執行緒。
+- **桌面應用程式：** 支援 - 程式碼標籤具有 **側面聊天** (`Cmd+;`)：側面
+  重複使用工作階段上下文而不破壞主執行緒的問題 —
+  實際上是一個輕量級的應用內分支。 **完整的分叉作為扁平兄弟落地**
+  工作階段在倉庫清單中（在它自己的工作樹中）；與 CLI 的 `/resume` 樹不同，
+  父↔叉關係**未**顯示在側邊欄。
+- **即時範例：** 訊息 12 處的調試中期，開發運行
+  `/branch approach-b` 在原始執行緒保持不變的情況下嘗試替代修復
+  完好無損。- **UI:** 終端機 — 分叉分組在 `/resume` 中的根工作階段下
+  選擇器（以 `→` 擴充）。桌面版 — 在工作階段旁邊開啟一個側邊聊天視窗，或者
+  在扁平側邊欄中分叉**同級** 工作階段（無分叉樹）。
 
 **Codex**
-- **CLI:** Supported, several ways — `/fork` clones the current conversation into
-  a new thread (fresh ID, original untouched); pressing **Esc twice then Enter**
-  forks from an earlier message you walked back to; `/side` (alias `/btw`) opens
-  an ephemeral side branch while still showing the parent thread's status;
-  `codex fork` forks a *saved* session from a picker.
-- **Desktop app:** Forks surface as **new threads** in the repo's flat thread
-  list — **always as siblings**, never nested under the parent. Codex differs from
-  Claude in *where the fork runs*: the new-thread composer lets it stay in the
-  **same worktree**, take a fresh **Worktree**, or go to the **Cloud** — but
-  either way the thread is a flat sibling, so the parent↔fork link isn't shown.
-- **Real-time example:** The dev presses Esc twice to walk back to message 12 and
-  hits Enter to fork "approach B"; the original transcript is preserved.
-- **UI:** terminal CLI; in the app the fork is a new sibling thread entry (no fork
-  tree).
+- **CLI：** 支援，多種方式 - `/fork` 將目前對話複製到
+  一個新執行緒（新 ID，原始未更改）；按 **Esc 兩次，然後按 Enter**
+  從您傳回的較早訊息中分叉；`/side`（別名 `/btw`）打開
+  一個臨時側分支，同時仍然顯示父執行緒的狀態；
+  `codex fork` 從選擇器分叉*已儲存的* 工作階段。
+- **桌面應用程式：** 在儲存庫的平面執行緒中分叉表面為**新執行緒**
+  列表 - **總是作為同級**，從不巢狀在父項下。Codex不同於
+  克勞德在 *fork 運行的地方*：新執行緒撰寫器讓它留在
+  **相同的工作樹**，採用新的**工作樹**，或轉到**雲** - 但是
+  無論哪種方式，執行緒都是平面同級，因此不會顯示父級↔fork 連結。
+- **即時範例：** 開發人員按 Esc 兩次回到訊息 12 並
+  按 Enter 分叉「方法 B」；原始記錄被保留。
+- **使用者介面：** 終端機 CLI；在應用程式中，分叉是一個新的同級執行緒條目（沒有分叉
+  樹）。
 
 **GitHub Copilot CLI**
-- **CLI:** Not supported — there is no fork/branch concept. `/clear` starts fresh
-  with no seeded history, and `/resume` returns to a past session but can't branch
-  it.
-- **Desktop app:** N/A.
-- **Real-time example:** None — the closest workaround is starting a new session
-  and manually re-establishing context.
-- **UI:** N/A.
+- **CLI：** 不支援 — 沒有分叉/分支概念。 `/clear` 重新開始
+  沒有種子歷史記錄，`/resume` 回到過去的工作階段但無法分支
+  它。
+- **桌面應用程式：** N/A。
+- **即時範例：** 無 — 最接近的解決方法是啟動新的工作階段
+  並手動重新建立上下文。
+- **使用者介面：** 不適用。
 
-#### How the UI looks
+#### 使用者介面的外觀
 
-**Claude Code — CLI** (`/branch` copies the conversation and the fork shows up
-nested under its root in `/resume`; because both forks then **edit files**, you
-typically back each with its own **worktree** so approach-A and approach-B don't
-clobber each other):
+**克勞德代碼 - CLI**（`/branch` 複製對話並顯示分叉
+巢狀在 `/resume` 的根下；因為兩個分叉然後**編輯文件**，你
+通常每個都有自己的**工作樹**，因此方法 A 和方法 B 不會
+互相毆打）：
+
+
+
+
 
 ```text
  $ git worktree add ../approach-b   # isolate the fork's edits
@@ -537,11 +592,16 @@ clobber each other):
        └ approach-b   ▶  (wd: ../approach-b) ◀ isolated edits
 ```
 
-**Claude Code — desktop app** (unlike the CLI's `/resume` tree, a fork here is
-**always created as a flat sibling** session in the repo's session list — it is
-*not* nested under its parent, so the parent↔fork relationship is lost in the
-sidebar. A `Cmd+;` **side chat** is the only in-place branch that stays attached
-to the session's context):
+
+**Claude Code — 桌面應用程式**（與 CLI 的 `/resume` 樹不同，這裡的一個分支是
+**始終建立為平面同級** 工作階段在儲存庫的工作階段清單中 - 它是
+*不*巢狀在其父項下，因此父項↔fork關係在
+側邊欄。 `Cmd+;` **側聊天**是唯一保持附加狀態的就地分支
+到工作階段的上下文）：
+
+
+
+
 
 ```text
  ┌ Claude — Code tab · repo: myapp ─┬ side chat (Cmd+;) ─┐
@@ -553,8 +613,13 @@ to the session's context):
    fork = new sibling session · parent/fork link not shown in sidebar
 ```
 
-**Codex — CLI** (`/fork` clones the thread; Esc-Esc walks back then Enter forks;
-`/side` is an ephemeral branch):
+
+**Codex — CLI**（`/fork` 克隆執行緒；Esc-Esc 回到然後 Enter forks；
+`/side` 是一個暫存分支）：
+
+
+
+
 
 ```text
  codex › (Esc Esc → walk back to msg 12) … Enter = fork from here
@@ -563,9 +628,14 @@ to the session's context):
    /side = ephemeral side branch (parent status still shown)
 ```
 
-**Codex — desktop app** (the new-thread composer picks *where the fork runs* —
-same/Local worktree, a fresh isolated **Worktree**, or a **Cloud** task — but the
-resulting thread is **always a flat sibling** in the repo list, not nested):
+
+**Codex — 桌面應用程式**（新執行緒撰寫器選擇 *fork 運行的位置* —
+相同/本地工作樹，一個新的獨立的**工作樹**，或一個**雲**任務 - 但
+產生的執行緒**總是儲存庫清單中的平面同級**，而不是巢狀的）：
+
+
+
+
 
 ```text
  ┌ New thread ─────────────────────────┐     repo: myapp (flat list)
@@ -576,37 +646,46 @@ resulting thread is **always a flat sibling** in the repo list, not nested):
  └──────────────────────────────────────┘
 ```
 
-**GitHub Copilot CLI** — **not supported**; there is no fork/branch. `/clear`
-only starts fresh with no seeded history. (Desktop app: N/A.)
+
+**GitHub Copilot CLI** — **不支援**；沒有分叉/分支。 `/clear`
+只是重新開始，沒有種子歷史。（桌面應用程式：不適用。）
+
+
+
+
 
 ```text
  copilot › /clear        ✗ starts over — cannot branch from a point
 ```
 
-### 8.3 Mixing models across a plan → build → review pipeline
 
-Another user-driven case: the developer runs the *same* piece of work through a
-sequence of chats, each pinned to a **different model** chosen for what it's good
-at — and can keep **iterating on all three in parallel**, because each chat holds
-only its own context. The session shares the repo; each chat picks its own model
-and keeps its own clean history.
+### 8.3 在計畫→建構→審查管道中混合模型
 
-> **Real-world example:** A developer wants a careful, high-stakes refactor done
-> right. In chat 1 they ask a strong reasoning model to *come up with the plan* —
-> break the refactor into steps and flag the risky parts. In chat 2 they hand that
-> plan to a fast coding-optimized model to *implement it*. In chat 3 they pin a
-> third, independent model to *review the implementation* with fresh eyes — no
-> attachment to the choices the implementer made. All three chats share the same
-> repo and branch; only the model differs per chat, so each stage uses the model
-> best suited to it and the review stays genuinely independent.
+另一個使用者驅動的案例：開發人員透過
+聊天序列，每個固定到一個**不同的模型**，選擇它的好處
+at — 並且可以繼續**並行迭代所有三個**，因為每個聊天都包含
+只有它自己的上下文。工作階段共享儲存庫；每個聊天都會選擇自己的模型
+並保持自己乾淨的歷史。
+
+> **真實世界的範例：** 開發人員希望進行仔細、高風險的重構
+> 對。在聊天 1 中，他們要求一個強大的推理模型來「提出計劃」——
+> 將重構分解為步驟並標記有風險的部分。在聊天 2 中，他們遞出了
+> 規劃一個快速編碼最佳化模型來*實作它*。在聊天 3 中，他們固定了
+> 第三，獨立模型以新的眼光*審查實作* - 否
+> 附加到實作者所做的選擇。所有三個聊天都有相同的內容
+> 倉庫和分支；每個聊天中只有模型不同，因此每個階段都使用該模型
+> 最適合它並且評論保持真正的獨立性。
 >
-> Because each stage is its own chat, the developer can **iterate on all three in
-> parallel without polluting each other's context**: refine the plan in chat 1,
-> push a fix in chat 2, and re-run the review in chat 3 — each conversation keeps
-> only the history relevant to *its* job. The planning model never has the noisy
-> implementation transcript dumped into its context, and the reviewer never
-> inherits the implementer's rationalizations, so every stage stays focused and
-> the review stays unbiased even as the work goes back and forth.
+> 因為每個階段都有自己的聊天，所以開發人員可以**迭代所有三個階段
+> 並行而不污染彼此的上下文**：完善聊天 1 中的計劃，
+> 在聊天 2 中推送修復，並在聊天 3 中重新運行審核 - 每個對話都會保留> 僅與*其*工作相關的歷史記錄。規劃模型從來沒有噪音
+> 實作記錄轉儲到其上下文中，而審閱者從未
+> 繼承實作者的合理化，因此每個階段都保持重點和
+> 即使工作反覆進行，評審也保持公正。
+
+
+
+
 
 ```mermaid
 flowchart LR
@@ -620,49 +699,54 @@ flowchart LR
     end
 ```
 
-**Across harnesses today:**
 
-**Claude Code**
-- **CLI:** Supported — `/model` sets the model for the current session, and in
-  Agent Teams each teammate can run a different model ("Use Sonnet for each
-  teammate"; **Default teammate model** in `/config`). A user-driven three-stage
-  pipeline is assembled manually as separate sessions, each with its own
-  `/model`.
-- **Desktop app:** Supported — every session has a **model picker** next to the
-  send button (`Cmd+Shift+I`), changeable mid-session, so each parallel session
-  can run a different model.
-- **Real-time example:** A planning session on Opus, an implementer teammate on
-  Sonnet, and a third independent session on another model for review — each
-  pinned via `/model`.
-- **UI:** terminal — the `/model` selector and `/config` default-teammate-model
-  setting. Desktop — the per-session model picker.
+**今天的安全帶：**
+
+**克勞德·代碼**
+- **CLI:** 支援 — `/model` 設定目前工作階段的模型，並在
+  代理團隊的每個隊友都可以運行不同的模型（“為每個團隊使用 Sonnet”）
+  隊友」；**`/config` 中的預設隊友模型**）。使用者驅動的三階段
+  管道被手動組裝為單獨的工作階段，每個都有自己的
+  `/model`。
+- **桌面應用程式：** 支援 - 每個工作階段旁邊都有一個 **模型選擇器**
+  發送按鈕（`Cmd+Shift+I`），可變更中間工作階段，因此每個平行工作階段
+  可以運行不同的模型。
+- **即時範例：** Opus 上的規劃工作階段，Opus 上的實作者隊友
+  Sonnet，以及另一個模型上的第三個獨立的工作階段供審查 - 每個
+  透過 `/model` 固定。
+- **UI:** 終端機 — `/model` 選擇器與 `/config` 預設隊友模型
+  設定。桌面版 — 每工作階段模型選擇器。
 
 **Codex**
-- **CLI:** Supported — `/model` switches mid-session, `--model gpt-5.5` at launch,
-  and each subagent's TOML can pin its own `model` / `model_reasoning_effort`.
-- **Desktop app / IDE:** Supported — a model switcher sits directly under the chat
-  input, switchable per thread. **Cloud tasks are the gap**: they are pinned to
-  GPT‑5.3‑Codex with no per-task model choice (hence *partial* overall).
-- **Real-time example:** A plan thread on GPT‑5.5, an implement thread on
-  GPT‑5.3‑Codex, and a review thread on a different model — set via `/model` or
-  the app's switcher.
-- **UI:** CLI `/model`; app/IDE switcher under the input.
+- **CLI：** 支援 — `/model` 在啟動時在工作階段、`--model gpt-5.5` 中間切換，
+  每個子代理的 TOML 都可以固定自己的 `model` / `model_reasoning_effort`。
+- **桌面應用程式/IDE：** 支援 - 模型切換器直接位於聊天下方
+  輸入，每個執行緒可切換。 **雲端任務是差距**：它們被固定到
+  GPT-5.3-Codex 沒有針對每個任務的模型選擇（因此總體*部分*）。
+- **即時範例：** GPT-5.5 上的計畫執行緒，GPT-5.5 上的實作執行緒
+  GPT-5.3-Codex，以及不同模型上的審核執行緒 - 透過 `/model` 設定或
+  應用程式的切換器。
+- **使用者介面：** CLI `/model`；輸入下的應用程式/IDE 切換器。
 
 **GitHub Copilot CLI**
-- **CLI:** Supported — within one `/fleet` prompt you assign models per subtask
-  ("*Use GPT‑5.3‑Codex to create… Use Claude Opus 4.5 to analyze…*"), and
-  `@custom-agent` profiles carry their own pinned model (subagents otherwise
-  default to a low-cost model).
-- **Desktop app:** N/A — terminal-only.
-- **Real-time example:** One `/fleet` prompt routes design review to Opus and
-  code generation to GPT‑5.3‑Codex in the same run.
-- **UI:** terminal — model choices are written inline in the prompt.
+- **CLI：** 支援 — 在一個 `/fleet` 提示中，您可以為每個子任務指派模型
+  （“*使用 GPT-5.3-Codex 建立…使用 Claude Opus 4.5 分析…*”），以及
+  `@custom-agent` 設定檔帶有自己的固定模型（否則子代理
+  預設為低成本型號）。
+- **桌面應用程式：** N/A — 僅終端機。
+- **即時範例：** 一個 `/fleet` 提示將設計審核路由至 Opus 和
+  在同一運行中產生 GPT-5.3-Codex 的程式碼。
+- **UI:** 終端機 — 模型選擇內嵌寫入提示中。
 
-#### How the UI looks
+#### 使用者介面的外觀
 
-**Claude Code — CLI** (`/model` per session; a default model for teammates in
-`/config`. All three stages **share one working directory** — review must see what
-build produced — so *no* per-chat worktree here, unlike 8.2/8.4):
+**Claude Code — CLI**（`/model` per 工作階段；隊友的預設模型
+`/config`。所有三個階段**共享一個工作目錄** - 審查必須看到什麼
+產生的建置 - 所以這裡*沒有*每個聊天工作樹，與 8.2/8.4 不同）：
+
+
+
+
 
 ```text
  # all in the same feature worktree — shared wd
@@ -672,9 +756,14 @@ build produced — so *no* per-chat worktree here, unlike 8.2/8.4):
  /config › Default teammate model: Haiku
 ```
 
-**Codex — CLI** (`/model` mid-session; per-subagent model in TOML). **Desktop
-app:** a model switcher sits under the chat input, per thread. **Cloud tasks are
-the gap** — pinned to GPT‑5.3‑Codex:
+
+**Codex — CLI**（`/model` mid-工作階段；TOML 中的每個子代理程式模型）。 **桌面版
+app:** 每個執行緒的模型切換器位於聊天輸入下方。 **雲端任務是
+差距** — 固定在 GPT-5.3-Codex：
+
+
+
+
 
 ```text
  codex › /model gpt-5.5         (plan thread)
@@ -682,8 +771,13 @@ the gap** — pinned to GPT‑5.3‑Codex:
  app: ⌄ model switcher under composer · cloud task = gpt-5.3-codex (fixed)
 ```
 
-**GitHub Copilot CLI** (models assigned per subtask inside one `/fleet` prompt;
-desktop app: N/A):
+
+**GitHub Copilot CLI**（在一個 `/fleet` 提示內為每個子任務分配的模型；
+桌面應用程式：不適用）：
+
+
+
+
 
 ```text
  copilot › /fleet  "…Use gpt-5.3-codex to create… Use Opus 4.5 to review…"
@@ -691,19 +785,24 @@ desktop app: N/A):
    └─ subagent B · model: opus-4.5       ▶
 ```
 
-### 8.4 Task decomposition — an agent team
 
-Where 8.1 was *user-driven*, this case is **agent-driven**: the harness itself
-spins up chats to parallelize work. The key insight is **two layers** — the
-harness runs the agents and routes work between them internally; the feature only
-*represents* each agent as a chat the user can watch and step into.
+### 8.4 任務分解－代理團隊
 
-> **Real-world example:** A product manager files "migrate auth from server
-> sessions to JWT." The lead agent decomposes it and spins up three workers:
-> worker 1 rewrites the backend middleware (worktree A), worker 2 migrates the
-> client SDK (worktree B), and worker 3 writes the migration guide. The developer
-> watches all three stream in parallel and unblocks worker 2 when it asks which
-> token-refresh strategy to use — never touching the other two.
+8.1 是“使用者驅動”，而本例是“代理驅動”：線束本身
+啟動聊天以並行化工作。關鍵的見解是**兩層** -
+線束運行代理並在內部路由它們之間的工作；僅此功能
+*代表*每個代理作為使用者可以觀看和進入的聊天。
+
+> **真實範例：** 產品經理檔案“從伺服器遷移身份驗證”
+> 工作階段到 JWT。」主導代理人將其分解並啟動三個工作人員：
+>worker 1重寫後端中間件（工作樹A），worker 2遷移
+> 用戶端 SDK（工作樹 B），工作人員 3 撰寫遷移指南。開發商
+> 並行監視所有三個流，並在工作執行緒 2 詢問哪個流時解除阻塞
+> 使用令牌刷新策略－永遠不要碰其他兩個。
+
+
+
+
 
 ```mermaid
 flowchart TB
@@ -734,62 +833,66 @@ flowchart TB
     W2 -. surfaced as .-> WC2
 ```
 
-Note how the **task/result arrows live entirely inside the harness box** — they
-never cross into the feature layer. That is precisely why an agent team needs no
-chat-to-chat communication in the protocol.
 
-**Across harnesses today:**
+請注意**任務/結果箭頭如何完全位於線束盒內** - 它們
+永遠不要跨入要素圖層。這正是為什麼代理商團隊不需要
+協定中的聊天間通訊。
 
-**Claude Code** — *the richest case, and the motivating one for this feature.*
-- **CLI:** Fully supported via **Agent Teams**: a lead spawns teammates (each a
-  full Claude Code instance with its own context), coordinated through a shared
-  **task list** (pending/in-progress/completed, dependencies, file-locked
-  claiming) and a **mailbox** for direct agent-to-agent messaging, plus
-  per-teammate models, a plan-approval handshake, and graceful shutdown.
-  **Experimental** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, v2.1.32+).
-- **Desktop app:** **Agent Teams is not supported** — the experimental peer-team
-  feature (lead + teammates, shared task list, mailbox) is **CLI-only**. The Code
-  tab does have `tasks` and `subagent` panes for ordinary subagent/plan activity,
-  but it does not run or render an agent team. In the terminal the closest
-  "dashboard" is **split-pane mode** (tmux / iTerm2, each teammate its own pane)
-  or **in-process mode** (Shift+Down to cycle, Ctrl+T for the task list).
-- **Real-time example:** "Refactor the billing module" → the lead spawns an API
-  teammate and a tests teammate **in the CLI**, each in its own context; all three
-  run in parallel and one pauses for a plan-approval decision while the dev cycles
-  through them with Shift+Down.
-- **UI:** terminal only for teams — Shift+Down paging or tmux split panes, plus
-  the Ctrl+T task list (no agent-team view in the desktop app).
+**今天的安全帶：**
+
+**Claude Code** — *最豐富的案例，也是此功能的激勵案例。 *
+- **CLI：** 透過**代理團隊**完全支援：領導者產生隊友（每個人
+  完整的克勞德代碼實例及其自己的上下文），透過共享協調
+  **任務清單**（待處理/進行中/已完成、依賴項、檔案鎖定
+  聲稱）和用於直接代理到代理訊息傳遞的**郵箱**，以及
+  每個隊友的模型，計劃批准握手，以及優雅的關閉。
+  **實驗性**（`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`，v2.1.32+）。
+- **桌面應用程式：** **不支援 Agent Teams** — 實驗性對等團隊
+  功能（領導者 + 隊友、共享任務清單、郵箱）**僅限 CLI**。守則
+  選項卡確實有用於普通子代理程式/計劃活動的 `tasks` 和 `subagent` 窗格，
+  但它不會運行或呈現代理團隊。在終端機最接近的
+  「儀表板」是**分割窗格模式**（tmux / iTerm2，每個隊友都有自己的窗格）或**行程內模式**（Shift+向下鍵循環，Ctrl+T 循環任務清單）。
+- **即時範例：**「重構計費模組」→ 領導者產生一個 API
+  **在 CLI** 中的隊友和測試隊友，每個都有自己的上下文；所有三個
+  並行運行，並在開發週期中暫停以做出計劃批准決定
+  使用 Shift+Down 瀏覽它們。
+- **UI:** 終端機僅適用於團隊 — Shift+向下分頁或 tmux 分割窗格，加上
+  Ctrl+T 任務清單（桌面應用程式中沒有座席團隊視圖）。
 
 **Codex**
-- **CLI:** Partial — Codex parallelizes through **orchestrated subagent
-  fan-out** (built-in `default` / `worker` / `explorer` roles plus custom TOML
-  agents, `max_threads` defaulting to 6), but the parent orchestrates and
-  collects results; there is **no peer-to-peer messaging or shared task list**,
-  so this collapses into 8.5 rather than a true team.
-- **Desktop app:** **No agent-team support** — the subagent fan-out is a
-  CLI/config capability; the desktop app organizes independent **threads**, not a
-  lead-plus-teammates team, and surfaces none of the team coordination.
-- **Real-time example:** A main thread spawns a `worker` and an `explorer`
-  subagent in parallel **from the CLI**; they finish and report back, never
-  talking to each other.
-- **UI:** CLI — subagent activity shown inline; not a peer team, and not an
-  agent-team view in the app.
+- **CLI:** 部分 — Codex 透過 **精心安排的子代理進行並行化
+  扇出**（內建 `default` / `worker` / `explorer` 角色以及自訂 TOML
+  代理，`max_threads` 預設為 6)，但父級協調並
+  收集結果； **沒有點對點訊息傳遞或共享任務清單**，
+  所以這會分解為 8.5 而不是真正的團隊。
+- **桌面應用程式：** **無代理團隊支援** — 子代理程式扇出是
+  CLI/設定功能；桌面應用程式組織獨立的**執行緒**，而不是
+  領導者加隊友組隊，表面上沒有任何團隊配合。
+- **即時範例：** 主執行緒產生 `worker` 和 `explorer`
+  **來自 CLI** 的平行子代理；他們完成並報告回來，從來沒有
+  互相交談。
+- **UI:** CLI — 內嵌顯示子代理程式活動；不是一個同儕團隊，也不是一個
+  應用程式中的代理團隊視圖。
 
 **GitHub Copilot CLI**
-- **CLI:** Partial — `/fleet` makes the main agent an **orchestrator** that breaks
-  a plan into independent subtasks and runs them as parallel subagents with
-  dependency management; results report back (no peer messaging), so again this
-  is fan-out, not a peer team.
-- **Desktop app:** N/A — terminal-only.
-- **Real-time example:** In plan mode the dev picks "Accept plan and build on
-  autopilot + /fleet," and the orchestrator fans out tests / module-refactor /
-  docs subagents in parallel.
-- **UI:** terminal — subagent progress in the CLI response timeline.
+- **CLI:** 部分 — `/fleet` 使主代理程式成為一個破壞的 **協調器**
+  將計劃分解為獨立的子任務，並將它們作為平行子代理程式運行
+  依賴管理；結果報告回來（沒有同儕訊息傳遞），所以這又是
+  是扇出的，而不是對等團隊。
+- **桌面應用程式：** N/A — 僅終端機。
+- **即時範例：** 在計劃模式下，開發人員選擇「接受計劃並構建
+  autopilot + /fleet，”並且編排器扇出測試/模組重構/
+  並行文件子代理程式。
+- **UI:** 終端機 — CLI 回應時間軸中的子代理進度。
 
-#### How the UI looks
+#### 使用者介面的外觀
 
-**Claude Code — CLI, in-process mode** (Shift+Down cycles teammates; Ctrl+T
-toggles the shared task list):
+**Claude Code — CLI，行程內模式**（Shift+Down 循環隊友；Ctrl+T
+切換共享任務清單）：
+
+
+
+
 
 ```text
  ● lead  — "refactor billing"                 [Ctrl+T task list]
@@ -799,9 +902,14 @@ toggles the shared task list):
  ── task list ──  pending │ in-progress │ done   (file-locked claim)
 ```
 
-**Claude Code — CLI, split-pane mode** (tmux / iTerm2 — the closest thing to a
-"dashboard," but still terminal panes; each teammate that writes concurrently
-runs in its **own worktree** so parallel edits stay isolated):
+
+**Claude Code — CLI，分割窗格模式**（tmux / iTerm2 — 最接近
+“儀表板”，但仍然是終端機窗格；每個同時寫作的隊友
+在其**自己的工作樹**中運行，因此並行編輯保持隔離）：
+
+
+
+
 
 ```text
  ┌ lead ──────────┬ api-teammate ───┐
@@ -813,10 +921,15 @@ runs in its **own worktree** so parallel edits stay isolated):
    each writing teammate = its own worktree (isolated working dir)
 ```
 
-**Claude Code — desktop app** (**Agent Teams is not available here** — the Code
-tab runs independent sessions with `tasks` / `subagent` panes, but the
-lead-plus-teammates team only exists in the CLI; to run a team you stay in the
-terminal):
+
+**Claude Code — 桌面應用程式**（**Agent Teams 此處不可用** — 程式碼
+選項卡運行獨立的工作階段和 `tasks` / `subagent` 窗格，但
+領導者加隊友團隊僅存在於 CLI 中；管理你留在的團隊
+終端機）：
+
+
+
+
 
 ```text
  ┌ Claude — Code tab ────────────┬ tasks ───────────┐
@@ -828,8 +941,13 @@ terminal):
    agent teams = CLI only · the app shows sessions, not a team
 ```
 
-**Codex — CLI** (orchestrated fan-out — parent spawns subagents, no peer
-messaging):
+
+**Codex — CLI**（精心策劃的扇出 — 父代理生成子代理，沒有對等代理
+訊息傳遞）：
+
+
+
+
 
 ```text
  codex › spawn worker + explorer
@@ -838,10 +956,15 @@ messaging):
    (parent collects results; agents don't talk to each other)
 ```
 
-**Codex — desktop app** (the sidebar groups by the **repo/folder** — threads are
-a **flat list of siblings**, not nested by worktree; each thread can *run in* its
-own isolated Git **worktree**, but that's a per-thread isolation attribute, not a
-grouping axis):
+
+**Codex — 桌面應用程式**（側邊欄按 **repo/folder** 分組 — 執行緒是
+**同級的平面列表**，不由工作樹巢狀；每個執行緒都可以*運行*其
+擁有獨立的 Git **worktree**，但這是每個執行緒的隔離屬性，而不是
+分組軸）：
+
+
+
+
 
 ```text
  ┌ Codex app ───────────────────────────────────┐
@@ -853,8 +976,13 @@ grouping axis):
    worktree = per-thread isolation (a run attribute), not a sidebar group
 ```
 
-**GitHub Copilot CLI** (`/fleet` orchestrator fans the plan out with dependency
-management; desktop app: N/A):
+
+**GitHub Copilot CLI**（`/fleet` 編排器透過依賴項扇出計劃
+管理；桌面應用程式：不適用）：
+
+
+
+
 
 ```text
  copilot › ⇧⇥ plan → "Accept plan and build on autopilot + /fleet"
@@ -864,23 +992,28 @@ management; desktop app: N/A):
    └ subagent 3  ▶ migration guide      (results report back)
 ```
 
-### 8.5 Agent-driven parallel research (fan-out, then continue)
 
-A second agent-driven pattern: the main agent doesn't hand off the *whole* job —
-it stays in charge, but **dispatches parallel research agents** to investigate
-side questions, keeps working on its own thread in the meantime, and folds their
-findings back in when they return. Each parallel researcher is surfaced as its
-own chat, so the user can watch the research happen alongside the main work.
+### 8.5 代理驅動的平行研究（扇出，然後繼續）
 
-> **Real-world example:** The main agent is implementing a caching layer. Rather
-> than block, it spins up two research agents in parallel — one to *investigate
-> how the codebase currently invalidates caches*, another to *compare Redis vs.
-> in-memory trade-offs for this workload*. While they dig, the main agent keeps
-> scaffolding the interface. Each researcher streams into its own chat; as each
-> returns its summary, the main agent incorporates the answer and proceeds. The
-> user sees three live chats — the main implementation plus two short-lived
-> research threads — and can peek into a researcher's reasoning without
-> interrupting the main work.
+第二種代理驅動模式：主要代理不會移交「整個」工作 -
+它繼續負責，但**派遣平行研究人員**進行調查
+附帶問題，同時繼續處理自己的執行緒，並折疊他們的
+當他們回來時發現的結果。每個平行研究人員都以其
+自己的聊天，這樣使用者就可以在主要工作的同時觀看研究的進行。
+
+> **真實世界範例：** 主要代理正在實作快取層。而是
+> 與阻止相比，它同時啟動兩個研究代理——其中一個負責*調查
+> 程式碼庫目前如何讓快取失效*，另一個*比較 Redis 與 Redis
+> 此工作負載的記憶體中權衡*。當他們挖掘時，主要代理一直在
+> 搭建介面。每位研究人員都會加入自己的聊天室；作為每個
+> 傳回其摘要，主要代理合併答案並繼續。的
+> 使用者看到三個即時聊天 - 主要實作加上兩個短暫的
+> 研究線索－並且可以窺探研究者的推理，而無需
+> 中斷主要工作。
+
+
+
+
 
 ```mermaid
 flowchart TB
@@ -911,50 +1044,55 @@ flowchart TB
     R2 -. surfaced as .-> RC2
 ```
 
-The difference from 8.4: there the lead **decomposes and hands off** the work; here
-the main agent **stays the driver** and only fans out *research*, continuing its
-own thread without blocking. Both are just multiple chats under one session — the
-request/findings routing stays inside the harness.
 
-**Across harnesses today:**
+與 8.4 的區別：鉛**分解並移交**工作；這裡
+主要代理**仍然是驅動程式**並且只扇出*研究*，繼續其
+自己的執行緒，不阻塞。兩者都只是一個工作階段下的多個聊天 —
+請求/結果路由保留在線束內。
 
-**Claude Code**
-- **CLI:** Supported via **subagents** — the main agent dispatches focused workers
-  that run in their own context and report results back (lower token cost than a
-  full team).
-- **Desktop app:** Supported — the same **`subagent`** pane that renders team
-  activity shows the fan-out researchers and folds their findings back into the
-  session.
-- **Real-time example:** While scaffolding a caching layer, the main agent spins
-  up two subagents — one researching how the codebase invalidates caches, one
-  comparing Redis vs in-memory — and folds their summaries back in.
-- **UI:** terminal — subagents run inline and their findings return to the main
-  thread. Desktop — the `subagent` pane.
+**今天的安全帶：**
+
+**克勞德·代碼**
+- **CLI：** 透過 **子代理** 支援 - 主代理派遣專注的工作人員
+  在自己的上下文中運行並報告結果（比
+  全隊）。
+- **桌面應用程式：** 支援 - 呈現團隊的相同 **`subagent`** 窗格
+  活動展示了扇出研究人員並將他們的發現折疊回
+  工作階段。
+- **即時範例：** 在建立快取層時，主代理程式旋轉
+  兩個子代理程式－一個研究程式碼庫如何使快取失效，一個
+  比較 Redis 與記憶體中的資料 — 並將它們的摘要折回Go。
+- **UI:** 終端機 — 子代理內聯運行，其結果傳回主代理
+  執行緒。桌面 — `subagent` 窗格。
 
 **Codex**
-- **CLI / app:** Supported — the `explorer` subagent role is purpose-built for
-  read-heavy parallel research, and `spawn_agents_on_csv` fans one agent out per
-  CSV row for batch investigation.
-- **Desktop app:** Subagent/explorer activity is surfaced in the app and CLI.
-- **Real-time example:** A main thread dispatches several `explorer` subagents to
-  investigate different modules in parallel and returns a consolidated answer.
-- **UI:** app / CLI.
+- **CLI / app:** 支援 — `explorer` 子代理角色是專門為
+  大量閱讀的平行研究，並且 `spawn_agents_on_csv` 為每個代理扇出一個代理
+  用於批量調查的 CSV 行。
+- **桌面應用程式：** 子代理程式/資源管理器活動顯示在應用程式和 CLI 中。
+- **即時範例：** 主執行緒調度多個 `explorer` 子代理程式到
+  並行研究不同的模組並傳回統一的答案。
+- **使用者介面：**應用程式/CLI。
 
 **GitHub Copilot CLI**
-- **CLI:** Supported — `/fleet` subagents each get their own context window, run
-  in parallel, and report back to the orchestrator. This is the case `/fleet` fits
-  most naturally.
-- **Desktop app:** N/A — terminal-only.
-- **Real-time example:** The orchestrator fans out research subagents to compare
-  implementation approaches while the main plan proceeds.
-- **UI:** terminal — subagent output interleaved in the CLI timeline.
+- **CLI:** 支援 — `/fleet` 子代理程式每個都有自己的上下文視窗，運行
+  並行，並向協調器報告。 `/fleet` 適合這種情況
+  最自然的。
+- **桌面應用程式：** N/A — 僅終端機。
+- **即時範例：** 協調器分散研究子代理程式進行比較
+  在主要計劃進行的同時，實作方法也隨之展開。
+- **UI:** 終端機 — CLI 時間軸中交錯的子代理輸出。
 
-#### How the UI looks
+#### 使用者介面的外觀
 
-**Claude Code — CLI** (subagents run inside the one session and fold results
-back; they're **read-heavy research**, so they **share the working directory** —
-no isolation worktree needed, unlike the writing forks/teammates in 8.2/8.4. In
-the **desktop app** the same activity renders in the `subagent` pane):
+**克勞德代碼 — CLI**（子代理在一個工作階段內運行並折疊結果
+回來；他們**閱讀量大的研究**，所以他們**共享工作目錄** —
+與 8.2/8.4 中的寫叉/隊友不同，不需要隔離工作樹。在
+**桌面應用程式**相同的活動在 `subagent` 窗格中呈現）：
+
+
+
+
 
 ```text
  ● main — "caching layer"  ▶ scaffolding interface   (wd: ./ — shared)
@@ -963,9 +1101,14 @@ the **desktop app** the same activity renders in the `subagent` pane):
    findings ⤶ report back into main thread   (CLI inline · app: subagent pane)
 ```
 
-**Codex — CLI / desktop app** (the `explorer` role is built for read-heavy
-research; `spawn_agents_on_csv` fans one agent out per row). The parallel
-explorers appear in the same app thread list shown in §8.1:
+
+**Codex — CLI / 桌面應用程式**（`explorer` 角色是為讀取量大而建構的
+研究； `spawn_agents_on_csv` 每行扇出一個代理）。平行的
+瀏覽器出現在第 8.1 節中所示的相同應用程式執行緒清單中：
+
+
+
+
 
 ```text
  codex › explorer subagents
@@ -974,8 +1117,13 @@ explorers appear in the same app thread list shown in §8.1:
    spawn_agents_on_csv → one agent per CSV row (batch)
 ```
 
-**GitHub Copilot CLI** (`/fleet` research subagents, each its own context window;
-desktop app: N/A):
+
+**GitHub Copilot CLI**（`/fleet` 研究子代理，每個子代理程式都有自己的上下文視窗；
+桌面應用程式：不適用）：
+
+
+
+
 
 ```text
  copilot › /fleet  (research fan-out)
@@ -983,7 +1131,12 @@ desktop app: N/A):
    └ subagent  ▶ investigate approach B   (report back to orchestrator)
 ```
 
-### 8.6 What this means for the feature
+
+### 8.6 這對該功能意味著什麼
+
+
+
+
 
 ```mermaid
 flowchart LR
@@ -1001,24 +1154,29 @@ flowchart LR
     Today -. multi-chat represents the same work as .-> WithFeature
 ```
 
-Two patterns fall out of the scenarios above:
 
-- **Peer agent teams (8.4) exist only in Claude Code.** Codex and Copilot
-  parallelize via orchestrated fan-out (subagents that report back, no
-  agent-to-agent messaging), so for them 8.4 collapses into 8.5.
-- **Both Claude Code and Codex ship graphical desktop apps** (Copilot CLI stays
-  terminal-only), and the two apps look alike — a sidebar of parallel
-  sessions/threads, per-session Git-worktree isolation, split view, and
-  diff/preview/subagent panes. But **neither groups parallel work as one shared
-  *session* with a rolled-up status across peers**: they list independent sessions
-  as **flat siblings** under the folder/repo. That missing, cross-harness
-  "session → chats" representation — surface each agent/thread/task as a selectable
-  chat with its own stream, model, working directory, and a rolled-up session
-  status — is exactly what multi-chat adds.
+上述場景有兩種模式：
 
-Both apps converge on the same shape today — a project/repo sidebar, an active
-session, and a diff/review pane — but each stops short of a rolled-up,
-cross-harness *session* of peer chats:
+- **對等代理團隊 (8.4) 僅存在於 Claude Code 中。 ** Codex 和 Copilot
+  透過精心策劃的扇出進行並行化（傳回報告的子代理，無
+  代理到代理訊息傳遞），因此對他們來說 8.4 會分解為 8.5。
+- **Claude Code 和 Codex 均提供圖形桌面應用程式**（Copilot CLI 保持不變）
+  終端機-only），而這兩個應用程式看起來很相似 - 並行的側邊欄
+  工作階段/threads、每工作階段 Git 工作樹隔離、分割視圖和
+  差異/預覽/子代理窗格。但是**兩個群組都不能並行工作，因為它們是共享的
+  *工作階段* 具有跨同行的總和狀態**：它們列出獨立的工作階段
+  作為資料夾/repo 下的**平面兄弟**。那個缺少的交叉線束
+  「工作階段 → 聊天」表示 — 將每個代理程式/執行緒/任務顯示為可選擇
+  與自己的串流、模型、工作目錄和匯總的工作階段聊天
+  狀態－正是多聊天所新增的內容。
+
+如今，這兩個應用程式都集中在相同的形狀上——一個專案/儲存庫側邊欄，一個活動的
+工作階段，以及一個差異/審查窗格 - 但每個都沒有匯總，
+對等聊天的交叉利用*工作階段*：
+
+
+
+
 
 ```text
  ┌ Codex app ─────────────────────────────────────────┐
@@ -1031,34 +1189,35 @@ cross-harness *session* of peer chats:
    no single rolled-up "session" status across the peers
 ```
 
-> Note: the *full* coordination machinery (shared task lists, plan-approval and
-> shutdown handshakes, explicit lead/teammate roles, agent-to-agent mailboxes)
-> stays **inside each harness** and is a deliberate **future** axis. What
-> multi-chat delivers today is the **view + direct-interaction** slice.
 
-<a id="sources"></a>**Sources** (official docs, checked June 2026):
+> 注意：*完整的*協調機制（共享任務清單、計劃批准和
+> 關閉握手、明確的領導者/隊友角色、座席到座席信箱）
+> 留在**每個線束內部**並且是一個有意的**未來**軸。什麼
+> 今天的多重聊天提供的是**視圖 + 直接互動**部分。
 
-- Claude Code — Agent Teams: <https://code.claude.com/docs/en/agent-teams> ·
-  Sessions / `/branch` / `--fork-session`: <https://code.claude.com/docs/en/sessions> ·
-  Subagents: <https://code.claude.com/docs/en/sub-agents> ·
-  Desktop app (parallel sessions, Git-worktree isolation, split view, side
-  chats, panes): <https://code.claude.com/docs/en/desktop> ·
-  Worktrees: <https://code.claude.com/docs/en/worktrees>
-- Codex — Subagents: <https://developers.openai.com/codex/subagents> ·
-  Cloud (parallel tasks): <https://developers.openai.com/codex/cloud> ·
-  CLI features (`/fork`, `/model`, `--attempts`): <https://developers.openai.com/codex/cli/features> ·
-  Desktop app (parallel threads / worktrees): <https://developers.openai.com/codex/app/features>
-- GitHub Copilot CLI — `/fleet`: <https://docs.github.com/en/copilot/concepts/agents/copilot-cli/fleet> ·
-  CLI command reference: <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference>
+<a id="sources"></a>**來源**（官方文件，2026 年 6 月檢查）：
+
+- 克勞德·代碼 — 代理團隊：<https://code.claude.com/docs/en/agent-teams> ·
+  工作階段 / `/branch` / `--fork-session`：<https://code.claude.com/docs/en/sessions> ·
+  子代理人：<https://code.claude.com/docs/en/sub-agents> ·
+  桌面應用程式（並行工作階段、Git-worktree 隔離、分割視圖、側面
+  聊天、窗格）：<https://code.claude.com/docs/en/desktop> ·
+  工作樹：<https://code.claude.com/docs/en/worktrees>
+- Codex — 子代理人：<https://developers.openai.com/codex/subagents> ·
+  雲（平行任務）：<https://developers.openai.com/codex/cloud> ·
+  CLI 功能（`/fork`、`/model`、`--attempts`）：<https://developers.openai.com/codex/cli/features> ·
+  桌面應用程式（平行執行緒/工作樹）：<https://developers.openai.com/codex/app/features>
+- GitHub Copilot CLI — `/fleet`：<https://docs.github.com/en/copilot/concepts/agents/copilot-cli/fleet> ·
+  CLI 指令參考：<https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference>
 
 ---
 
-## 9. One-slide summary
+## 9. 一張投影片摘要
 
-- **Before:** a session *is* one linear chat.
-- **After:** a session is a **shared scope**; chats are **streams** over it.
-- **Why:** to represent multi-agent / agent-team work honestly in a UI.
-- **How agent teams work:** chats represent the agents; the team's coordination
-  stays inside the harness.
-- **What it is not:** not chat-to-chat messaging, not agent hierarchies, not
-  sub-sessions — those are a deliberate future axis.
+- **之前：** 工作階段 *是*一次線性聊天。
+- **之後：** 工作階段是 **共享範圍**；聊天是透過它的**流**。
+- **為什麼：** 表示多代理/代理團隊在 UI 中誠實地工作。
+- **代理商團隊如何運作：** 聊天代表代理商；團隊的協調
+  留在安全帶內。
+- **它不是：** 不是聊天之間的訊息傳遞，不是代理層次結構，不是
+  sub-工作階段 — 這些是有意為之的未來軸。

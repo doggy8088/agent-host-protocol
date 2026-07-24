@@ -1,79 +1,79 @@
-# Agent Host Protocol Doctrine
+# 代理主機協定原則
 
-The Agent Host Protocol (AHP) is a state synchronization protocol for agent experiences. It lets clients and hosts share an authoritative, replayable view of agent sessions without requiring the client to understand a particular agent runtime, tool vocabulary, filesystem model, model provider, or UI framework.
+代理主機協定 (AHP) 是用於代理體驗的狀態同步協定。它允許用戶端和主機共享代理工作階段的權威、可重播視圖，而不需要用戶端了解特定的代理執行時間、工具詞彙、檔案系統模型、模型提供者或 UI 框架。
 
-Compared to point-to-point agent protocols such as ACP, AHP treats synchronization, reconnection, and multi-client coordination as first-class protocol concerns. AHP is not a replacement for an agent protocol below the host; it is the client-facing layer above one or more agent implementations.
+與 ACP 等點對點代理協定相比，AHP 將同步、重新連線和多用戶端協調視為一流的協定問題。 AHP 不能取代主機下方的代理協定；它是一個或多個代理實作之上面向用戶端的層。
 
-## Principles
+## 原則
 
-### AHP is state-first
+### AHP 是狀態 - 第一個
 
-AHP standardizes shared state, ordered actions, snapshots, subscriptions, and replay. Clients render from state-bearing channels and update that state by applying protocol actions through pure reducers.
+AHP 標準化了共享狀態、有序操作、快照、訂閱和重播。用戶端從包含狀態的通道進行渲染，並透過純 reducer應用協定操作來更新該狀態。
 
-Protocol additions should therefore start by asking what durable state a client needs to render or reconcile, not which backend event happened first. Ephemeral notifications are useful for routing and short-lived signals, but user-visible session truth should be recoverable from state.
+因此，協定新增應該首先詢問狀態和用戶端需要呈現或協調哪些持久的狀態，而不是先詢問哪個後端事件。短暫通知對於路由和短暫訊號很有用，但使用者可見的工作階段事實應該可以從狀態恢復。
 
-### AHP is host-authoritative and client-responsive
+### AHP 是主機權威且用戶端回應
 
-The host owns the authoritative state for every state-bearing channel. Clients may apply their own actions optimistically for immediate feedback, then reconcile when the host echoes accepted or rejected actions in server order.
+主機擁有每個包含狀態的通道的權威狀態。用戶端可以樂觀地應用自己的操作以獲得即時回饋，然後在主機按伺服器順序回顯接受或拒絕的操作時進行協調。
 
-This lets multiple clients share the same session without turning the client into the source of truth. When conflicts occur, the host sequences the outcome and all clients converge on the same state.
+這使得多個用戶端共享相同的工作階段，而無需將用戶端轉變為事實來源。當衝突發生時，主機會對結果進行排序，並且所有用戶端收斂到同一個狀態。
 
-### AHP is easy to adopt incrementally
+### AHP 很容易逐步採用
 
-A minimal host should be able to expose a useful agent experience with root and session channels, session creation, basic turns, and state updates. A minimal client should be able to render and provide interactions for sessions without implementing every advanced feature.
+最小的主機應該能夠透過根和工作階段通道、工作階段建立、基本輪次和狀態更新來提供有用的代理體驗。最小的用戶端應該能夠為工作階段呈現並提供交互，而無需實作所有高級功能。
 
-Protocol additions should be additive whenever possible. Advanced hosts and clients can negotiate or ignore optional capabilities, while simple implementations continue to interoperate with the parts of the protocol they understand.
+協定新增應盡可能是附加的。高階主機和用戶端可以協商或忽略選用功能，而簡單的實作則繼續與它們所理解的協定部分進行互通。
 
-### AHP is opinionated about synchronization, not agent implementation
+### AHP 對同步有自己的看法，而不是代理實作
 
-AHP has strong opinions about state authority, action ordering, channel routing, replay, and reconciliation. It should not enshrine a particular agent loop, harness, model provider, tool schema, authentication system, storage backend, or filesystem assumption.
+AHP 對狀態權限、操作順序、通道路由、重播和協調有強烈的意見。它不應包含特定的代理循環、工具、模型提供者、工具模式、身份驗證系統、儲存後端或檔案系統假設。
 
-The same protocol should support traditional codebases backed by a Git repository, cloud workspaces without a local filesystem, browser-only clients, IDE integrations, CLIs, and hosted agent services.
+相同的協定應該支援由 Git 儲存庫支援的傳統程式碼庫、沒有本機檔案系統的雲端工作區、僅限瀏覽器的用戶端、IDE 整合、CLI 和託管代理服務。
 
-### AHP is channel-oriented
+### AHP 是面向通道的
 
-Every push-style interaction in AHP is scoped to a URI-addressed channel. Root state, sessions, terminals, changesets, and future relay-style resources all use the same basic subscription and routing model.
+AHP 中的每個推播式互動都限定在 URI 尋址的通道內。根狀態、工作階段、終端、變更集和未來的中繼資源都使用相同的基本訂閱和路由模型。
 
-New protocol surfaces should fit this model deliberately: choose the channel that owns the state or signal, make routing possible from the method and top-level channel URI, and avoid hidden coupling to a specific client view.
+新的協定表面應刻意適應此模型：選擇擁有狀態或訊號的通道，使從方法和頂級通道 URI 進行路由成為可能，並避免與特定用戶端視圖的隱藏耦合。
 
-### AHP is a client-facing presentation model
+### AHP 是針對用戶端的示範模型
 
-AHP describes display-ready session state and interaction primitives that clients can use to build agent experiences. It is not the place to implement an agent loop, define how a model reasons, or expose backend-specific tool names as client contract.
+AHP 描述了顯示就緒的工作階段狀態和交互原語，用戶端可用於建立代理體驗。它不是實作代理循環、定義模型推理方式或將特定於後端的工具名稱公開為用戶端合約的地方。
 
-Hosts translate agent-specific events into AHP actions and state. Clients should be able to render the core experience from protocol fields rather than provider-specific metadata or private tool vocabularies.
+主機將特定於代理的事件轉換為 AHP 操作和狀態。用戶端應該能夠從協定欄位而不是特定於提供者的元資料或私有工具詞彙表中呈現核心體驗。
 
-### AHP keeps escape hatches explicit
+### AHP 保持逃脫艙口明確
 
-The protocol allows provider-specific metadata, model configuration, customizations, and future extension points. These are important for experimentation and host-specific polish, but they should not be required for the baseline experience.
+該協定允許提供者特定的元資料、模型配置、自訂和未來的擴展點。這些對於實驗和特定於主機的完善很重要，但對於基線體驗來說不應該需要它們。
 
-If a feature becomes necessary for interoperable clients, it should graduate from an escape hatch into typed protocol state or capability-gated behavior.
+如果某個功能對於互通用戶端來說是必需的，那麼它應該從逃生艙過渡到類型化協定狀態或功能門控行為。
 
-### AHP evolves through compatibility and capabilities
+### AHP 透過相容性和功能不斷發展
 
-New features should preserve useful behavior for older or smaller implementations whenever practical. Optional fields, ignored unknown metadata, and capability checks are preferred over changes that force every client and host to upgrade at once.
+只要可行，新功能應該為舊的或較小的實作保留有用的行為。可選欄位、忽略的未知元資料和功能檢查優於強制每個用戶端和主機立即升級的變更。
 
-Breaking changes may still be necessary while the protocol is under active development, but the long-term direction is a protocol where clients can test capabilities and degrade gracefully.
+當協定正在積極開發時，可能仍需要進行重大更改，但長期方向是用戶端可以測試功能並優雅降級的協定。
 
-## Design tests
+## 設計測試
 
-When evaluating a protocol addition, ask:
+在評估協定新增時，詢問：
 
-- Can a minimal client ignore this and still render a coherent session?
-- Is the durable, user-visible result represented in state rather than only in an ephemeral notification?
-- Does the host remain the authority for sequencing and conflict resolution?
-- Does this expose an agent implementation detail that should stay behind the host boundary?
-- Does the feature fit an existing channel, or does it need a new URI-addressed channel?
-- Can clients discover support through capabilities or optional state?
-- Is provider-specific metadata an enhancement rather than a requirement?
+- 最小的用戶端可以忽略這一點並且仍然呈現連貫的工作階段嗎？
+- 持久的、使用者可見的結果是否在狀態中表示，而不僅僅是在臨時通知中？
+- 主持人是否仍然擁有排序和解決衝突的權威？
+- 這是否暴露了應該保留在主機邊界後面的代理實作細節？
+- 該功能是否適合現有管道，或是否需要新的 URI 尋址管道？
+- 用戶端能否透過功能或可選的狀態發現支援？
+- 特定於提供者的元資料是增強功能而不是要求？
 
-## Anti-goals
+## 反目標
 
-AHP intentionally does not define:
+AHP 故意不定義：
 
-- How agents reason, plan, call tools, or manage context.
-- A required model provider, model router, or credential flow.
-- A universal backend tool registry or tool schema.
-- A required UI layout, editor integration, or client framework.
-- A requirement that every workspace has a local filesystem or Git repository.
-- Agent-to-agent coordination semantics.
-- A replacement for ACP or other downstream agent protocols.
+- 代理如何推理、計劃、呼叫工具或管理上下文。
+- 所需的模型提供者、模型路由器或憑證流。
+- 通用後端工具註冊表或工具架構。
+- 所需的 UI 佈局、編輯器整合或用戶端框架。
+- 要求每個工作區都有一個本機檔案系統或 Git 儲存庫。
+- 代理到代理協調語意。
+- ACP 或其他下游代理協定的替代品。

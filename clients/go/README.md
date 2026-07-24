@@ -1,23 +1,32 @@
-# Agent Host Protocol — Go client
+# 代理主機協定 — Go 用戶端
 
-Go module for the [Agent Host Protocol](https://microsoft.github.io/agent-host-protocol/).
+[代理主機協定](https://microsoft.github.io/agent-host-protocol/) 的 Go 模組。
 
-The module is split into three packages that mirror the Rust client's
-three-crate split:
+本模組分為三個包，鏡像 Rust 用戶端的
+三箱分割：
 
-| Package | Use it for |
-| ------- | ---------- |
-| [`ahptypes`](./ahptypes) | Wire protocol types only — no I/O, no goroutines. Pull this in if you only need to parse or construct AHP JSON-RPC messages. |
-| [`ahp`](./ahp) | Async `Client` over a pluggable `Transport`, pure reducers, and the multi-host runtime under [`ahp/hosts`](./ahp/hosts). |
-| [`ahpws`](./ahpws) | WebSocket transport built on [`github.com/coder/websocket`](https://github.com/coder/websocket). |
+|套件 |用它來 |
+| -------- | ---------- |
+| [`ahptypes`](./ahptypes) |僅線路協定類型－沒有 I/O，沒有 goroutine。如果您只需要解析或建構 AHP JSON-RPC 訊息，請將其引入。 |
+| [`ahp`](./ahp) |透過可插入的 `Transport`、純 reducer和 [`ahp/hosts`](./ahp/hosts) 下的多主機執行時間非同步 `Client`。 |
+| [`ahpws`](./ahpws) |基於 [`github.com/coder/websocket`](https://github.com/coder/websocket) 建構的 WebSocket 傳輸。 |
 
-## Install
+## 安裝
+
+
+
+
 
 ```bash
 go get github.com/microsoft/agent-host-protocol/clients/go@latest
 ```
 
-Then import the package(s) you need:
+
+然後匯入您需要的套件：
+
+
+
+
 
 ```go
 import (
@@ -27,7 +36,12 @@ import (
 )
 ```
 
-## Quickstart (WebSocket)
+
+## 快速入門（WebSocket）
+
+
+
+
 
 ```go
 ctx := context.Background()
@@ -60,34 +74,39 @@ for evt := range sub.Events() {
 }
 ```
 
-## Code generation
 
-The contents of `ahptypes/*.go` (except `common.go`) are auto-generated
-from the TypeScript definitions in `../../types/`. Re-run the generator
-after protocol changes:
+## 程式碼生成
+
+`ahptypes/*.go` 的內容（`common.go` 除外）是自動產生的
+來自 `../../types/` 中的 TypeScript 定義。協定更改後重新生成：
+
+
+
+
 
 ```bash
 npm run generate:go        # from the repo root
 ```
 
-CI verifies the committed generated files match the generator output and
-fails on drift.
 
-## Releasing
+CI 驗證提交的生成檔案與生成器輸出匹配，並且
+漂移失敗。
 
-See [`../../RELEASING.md`](../../RELEASING.md) for the full release flow.
-Summary, scoped to Go:
+## 釋放
 
-1. Bump the bare semver in `clients/go/VERSION`.
-2. Run `npm run generate:metadata` and commit `clients/go/release-metadata.json`.
-3. Rotate the `## [Unreleased]` section of `clients/go/CHANGELOG.md`.
-4. Merge to `main`.
-5. Tag the merge commit using the module-path prefix Go expects for
-   sub-module releases: `git tag clients/go/v0.X.Y && git push origin clients/go/v0.X.Y`.
+請參閱 [`../../RELEASING.md`](../../RELEASING.md) 以了解完整的發布流程。
+摘要，範圍為 Go：
 
-The Go module proxy automatically indexes the tagged version; no
-registry-push step is required.
+1. 修改 `clients/go/VERSION` 中的裸語意版本。
+2. 執行 `npm run generate:metadata` 並提交 `clients/go/release-metadata.json`。
+3. 旋轉`clients/go/CHANGELOG.md` 的`## [Unreleased]` 部分。
+4. 合併到`main`。
+5. 使用模組路徑前綴 Go 標記合併提交
+   子模組發佈：`git tag clients/go/v0.X.Y && git push origin clients/go/v0.X.Y`。
 
-## License
+Go模組代理自動索引標記版本；不
+需要註冊表推送步驟。
 
-MIT — see [`../../LICENSE`](../../LICENSE).
+## 授權
+
+MIT－參見[`../../LICENSE`](../../LICENSE)。

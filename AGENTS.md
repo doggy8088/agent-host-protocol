@@ -1,71 +1,75 @@
-# Agent Guide — Agent Host Protocol Repo
+# 代理指南 — 代理主機協定儲存庫
 
-Cross-cutting rules for AI coding agents working in this repository. Per-client
-codegen conventions are in `clients/kotlin/AGENTS.md`,
-`clients/swift/AGENTS.md`, and `clients/go/AGENTS.md`. Editorial rules
-for protocol types are in
-`.github/instructions/general-instructions.instructions.md`. Release mechanics
-are in [`RELEASING.md`](RELEASING.md).
+在此儲存庫中工作的 AI 編碼代理的橫切規則。每-用戶端
+codegen 約定位於 `clients/kotlin/AGENTS.md` 中，
+`clients/swift/AGENTS.md`和`clients/go/AGENTS.md`。編輯規則
+協定類型位於
+`.github/instructions/general-instructions.instructions.md`。釋放機制
+位於 [`RELEASING.md`](RELEASING.md) 中。
 
-## Adding changelog fragments
+## 新增變更日誌片段
 
-This repo ships six independently-versioned artifacts (the spec plus
-the Rust / Kotlin / Swift / TypeScript / Go clients), each with its
-own `CHANGELOG.md` in Keep-a-Changelog format. The publish workflows
-refuse to release a tag whose matching `## [X.Y.Z]` heading is
-missing. To avoid merge conflicts in shared `CHANGELOG.md` files,
-normal PRs add JSON changelog fragments under `docs/.changes/` instead
-of editing the changelogs directly. Release PRs collapse those fragments
-into the six changelogs with `npm run changelog:release`.
+該儲存庫附帶了六個獨立版本的工件（規格加上
+Rust / Kotlin / Swift / TypeScript / Go 用戶端），每個都有其
+擁有 Keep-a-Changelog 格式的 `CHANGELOG.md`。發布工作流程
+拒絕發布匹配 `## [X.Y.Z]` 標題的標籤
+失蹤了。為了避免共享 `CHANGELOG.md` 檔案中的合併衝突，
+正常的 PR 在 `docs/.changes/` 下新增 JSON 變更日誌片段
+直接編輯變更日誌。 Release PR 折疊那些片段
+使用 `npm run changelog:release` 進入六個變更日誌。
 
-### When to add an entry
+### 何時新增條目
 
-Add a one-line fragment whenever your change is
-**user-visible**:
+每當您進行更改時新增一行片段
+**使用者可見**：
 
-- A new, removed, renamed, or behaviourally-changed action, command, state
-  field, error, notification, or version constant in `types/`.
-- A new, removed, or behaviourally-changed public API in one of the
-  `clients/<lang>/` source trees (constructor signatures, exported
-  functions/types, transport options, reducer outputs, etc.).
-- A bug fix that changes observable behaviour for a consumer of the spec or
-  any client.
-- A security-relevant change (use `"type": "security"`).
+- 新的、刪除的、重新命名的或行為改變的操作、指令，狀態
+  `types/` 中的欄位、錯誤、通知或版本常數。
+- 其中一個新的、刪除的或行為改變的公共 API
+  `clients/<lang>/` 來源樹（建構函式簽名，導出
+  功能/類型、傳輸選項、reducer 輸出等）。
+- 修正了更改規格或消費者的可觀察行為的錯誤
+  任何用戶端。
+- 與安全相關的變更（使用 `"type": "security"`）。
 
-**Skip the fragment** when the change is purely:
+**當純粹的更改時，跳過該片段**：
 
-- Edits under `**/generated/**` (those mirror a `types/` change that should
-  have its own entry).
-- Docs in `docs/`, `README.md`, comments, AGENTS.md, CONTRIBUTING.md.
-- Tests, CI, lint config, formatting, internal refactors with no observable
-  effect.
+- 在 `**/generated/**` 下進行編輯（這些內容反映了 `types/` 的更改，應
+  有自己的條目）。
+- `docs/`、`README.md`、評論、AGENTS.md、CONTRIBUTING.md 中的文件。
+- 測試、CI、lint 配置、格式化、內部重構，沒有可觀察的
+  效果。
 
-### Which artifact(s) to target
+### 以哪個工件為目標
 
-Each fragment may specify a `targets` array. Omit `targets` when the same
-entry applies to the spec and all clients (the common case for protocol
-surface changes). Set `targets` to a subset when the change is only visible
-to specific artifacts.
+每個片段可以指定一個 `targets` 陣列。相同時省略 `targets`
+條目適用於規格和所有用戶端（協定的常見情況
+表面變化）。當變更僅可見時，將 `targets` 設為子集
+到特定的工件。
 
-Map source paths to fragment targets:
+將來源路徑映射到片段目標：
 
-| Source path touched | Fragment target(s) |
+|觸及源碼路徑|片段目標 |
 | --- | --- |
-| `types/**` (protocol surface) | Omit `targets` (spec + all clients) unless the visibility is intentionally narrower. |
-| `clients/rust/**` (non-generated) | `"targets": ["rust"]` |
-| `clients/kotlin/**` (non-generated) | `"targets": ["kotlin"]` |
-| `clients/swift/**` (non-generated) | `"targets": ["swift"]` |
-| `clients/typescript/**` (non-generated) | `"targets": ["typescript"]` |
-| `clients/go/**` (non-generated) | `"targets": ["go"]` |
+| `types/**`（協定表面）|省略 `targets`（規格 + 所有用戶端），除非故意縮小可見範圍。 |
+| `clients/rust/**`（非生成）| `"targets": ["rust"]` |
+| `clients/kotlin/**`（非生成）| `"targets": ["kotlin"]` |
+| `clients/swift/**`（非生成）| `"targets": ["swift"]` |
+| `clients/typescript/**`（非生成）| `"targets": ["typescript"]` |
+| `clients/go/**`（非生成）| `"targets": ["go"]` |
 | `schema/**` | `"targets": ["spec"]` |
-| `scripts/generate*.ts` that changes any client's generated output | Omit `targets` or list every affected target. |
+| `scripts/generate*.ts` 更改任何用戶端產生的輸出 |省略 `targets` 或列出每個受影響的目標。 |
 
-### Format
+### 格式
 
-Create a uniquely named JSON file under `docs/.changes/`, usually
-`docs/.changes/YYYYMMDD-short-slug.json`. Use lowercase Keep-a-Changelog
-types: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
-Do not include the leading Markdown bullet in `message`.
+在`docs/.changes/`下建立一個唯一命名的JSON文件，通常
+`docs/.changes/YYYYMMDD-short-slug.json`。使用小寫的 Keep-a-Changelog
+類型：`added`、`changed`、`deprecated`、`removed`、`fixed`、`security`。
+不要在 `message` 中包含主要的 Markdown 項目符號。
+
+
+
+
 
 ```json
 {
@@ -75,7 +79,12 @@ Do not include the leading Markdown bullet in `message`.
 }
 ```
 
-Scoped client-only example:
+
+僅限範圍用戶端的範例：
+
+
+
+
 
 ```json
 {
@@ -85,7 +94,8 @@ Scoped client-only example:
 }
 ```
 
-Do **not** edit `CHANGELOG.md` files for normal feature/fix PRs and do
-not invent a `## [X.Y.Z]` heading. Changelogs are updated by the release
-maintainer per [`RELEASING.md`](RELEASING.md). Run
-`npm run verify:change-fragments` to validate fragment JSON.
+
+**不要**編輯 `CHANGELOG.md` 檔案以取得正常功能/修復 PR 並執行
+不要發明 `## [X.Y.Z]` 標題。變更日誌由版本更新
+根據 [`RELEASING.md`](RELEASING.md) 的維護者。運行
+`npm run verify:change-fragments` 驗證片段 JSON。

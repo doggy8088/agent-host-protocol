@@ -1,20 +1,24 @@
-# Changesets
+# 變更集
 
-A **changeset** is a named, individually subscribable view of file changes
-associated with a session. Changesets generalise the v0.1.0
-`SessionSummary.diffs` field: a session can expose any number of
-changesets — uncommitted working-tree edits, the diff between two turns,
-the cumulative changes for the whole session, the staged index, etc. —
-each with its own URI, lifecycle, and update stream.
+**變更集**是一個命名的、可單獨訂閱的檔案變更視圖
+與工作階段關聯。變更集概括了 v0.1.0
+`SessionSummary.diffs` 欄位：工作階段可以公開任意數量的
+變更集 - 未提交的工作樹編輯，兩輪之間的差異，
+整個工作階段的累積變化、階段索引等——
+每個都有自己的 URI、生命週期和更新流。
 
-## Concepts
+## 概念
 
-### Changeset Catalogue
+### 變更集目錄
 
-Each session's `SessionState` advertises the set of changesets the
-server can produce. The catalogue entry is intentionally lightweight —
-just enough to render a chip or list row without subscribing — and
-references a full subscribable `ChangesetState` by URI.
+每個工作階段的 `SessionState` 通告一組變更集
+伺服器可以產生。目錄條目有意輕量化——
+足以渲染晶片或列表行而無需訂閱 - 並且
+透過 URI 引用完整的可訂閱 `ChangesetState`。
+
+
+
+
 
 ```typescript
 SessionState {
@@ -41,37 +45,42 @@ Changeset {
 }
 ```
 
-### URI Templates and Variables
 
-`uriTemplate` is an [RFC 6570](https://www.rfc-editor.org/rfc/rfc6570)
-URI template. Clients expand it with concrete values to obtain a
-subscribable changeset URI. Only the following variable names are
-defined by this protocol; clients SHOULD ignore templates containing
-unknown variables.
+### URI 模板和變數
 
-| Variables in template                     | Meaning                                                                      |
-| ----------------------------------------- | ---------------------------------------------------------------------------- |
-| _(none)_                                  | A static, session-wide changeset. The template is itself a subscribable URI. |
-| `{turnId}`                                | Per-turn slice. Expand with a `Turn.id` from one of the session's chats.     |
-| `{originalTurnId}` and `{modifiedTurnId}` | Diff between two turns. Both must be present.                                |
+`uriTemplate` 是 [RFC 6570](https://www.rfc-editor.org/rfc/rfc6570)
+URI 模板。用戶端用具體值展開它以獲得
+可訂閱變更集 URI。僅以下變數名
+本協定定義的；用戶端應忽略包含以下內容的模板
+未知的變數。
 
-### Multiroot Sessions
+|模板中的變數 |意義|
+|---------------------------------------------------------------- |-------------------------------------------------------------------------------- |
+| _（無）_ |靜態、工作階段范圍的變更集。模板本身就是一個可訂閱的 URI。 |
+| `{turnId}` |每轉切片。使用工作階段的聊天中的 `Turn.id` 展開。     |
+| `{originalTurnId}` 和 `{modifiedTurnId}` |兩圈之間的差異。兩者都必須在場。                                |
 
-A changeset is not scoped to a single working directory — a per-turn or
-session-wide changeset naturally spans every directory the agent touched. A
-client that wants to present changes grouped by directory does so itself, by
-matching each file's URI against the session's
-[`workingDirectories`](/guide/state-model#multiroot-sessions) (a list the
-client already has); a client that does not care simply renders one tree.
+### 多根工作階段
 
-A host MAY *also* advertise dedicated per-directory changesets — one catalogue
-entry per working directory — for clients that prefer server-scoped views. This
-needs no extra field: the `changesets` catalogue is already a list, so a host
-lists one entry per directory alongside the spanning ones.
+變更集的範圍不限於單一工作目錄－每輪或
+工作階段範圍的變更集會自然會跨越代理觸及的每個目錄。一個
+想要呈現按目錄分組的變更的用戶端會自行執行此操作，方法是
+將每個檔案的 URI 與工作階段的 URI 進行匹配
+[`workingDirectories`](/guide/state-model#multiroot-sessions)（列表
+用戶端已經有了）；不關心的用戶端只是渲染一棵樹。
 
-### Changeset State
+主機「還」可以廣告專用的每個目錄變更集－一個目錄
+每個工作目錄的項目 - 對於更喜歡伺服器範圍視圖的用戶端。這個
+不需要額外的欄位：`changesets`目錄已經是列表，因此主機
+將每個目錄的一個條目與跨目錄一起列出。
 
-Each concrete (expanded) changeset URI is its own subscribable resource.
+### 變更集狀態
+
+每個具體（擴展）變更集 URI 都是自己的可訂閱資源。
+
+
+
+
 
 ```typescript
 ChangesetState {
@@ -89,40 +98,44 @@ ChangesetFile {
 }
 ```
 
-Updates flow through changeset-scoped actions, broadcast to subscribers
-of the changeset URI:
 
-| Type                                | Client-dispatchable? | When                                                                         |
-| ----------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
-| `changeset/statusChanged`           | No                   | `status` transitioned (e.g. `computing → ready`).                            |
-| `changeset/fileSet`                 | No                   | Upsert a `ChangesetFile` (new or replacing existing by `id`).                |
-| `changeset/fileRemoved`             | No                   | A file is no longer in the changeset.                                        |
-| `changeset/filesReviewChanged`      | Yes                  | A reviewer toggled the `reviewed` flag on one or more files.                 |
-| `changeset/contentChanged`          | No                   | Full replacement of files, optionally with operations or error details.      |
-| `changeset/operationsChanged`       | No                   | The set of available `operations` changed.                                   |
-| `changeset/operationStatusChanged`  | No                   | A single operation's `status` transitioned (e.g. `idle → running → error`).  |
-| `changeset/cleared`                 | No                   | All files dropped (e.g. branch switched, or the owning session ended).       |
+更新串流透過變更集範圍內的操作，廣播給訂閱者
+變更集 URI 的：
 
-### File Review
+| 型別 | 用戶端-可調度？ |當 |
+| ----------------------------------- | -------------------- | ---------------------------------------------------------------------------------------- |
+| `changeset/statusChanged` |沒有 | `status` 已轉換（例如 `computing → ready`）。                            |
+| `changeset/fileSet` |沒有 |更新插入 `ChangesetFile`（新的或用 `id` 取代現有的）。                |
+| `changeset/fileRemoved` |沒有 |檔案不再位於變更集中。                                        |
+| `changeset/filesReviewChanged` |是的 |審閱者在一個或多個文件上切換了 `reviewed` 標誌。                 |
+| `changeset/contentChanged` |沒有 |完全取代文件，可選擇包含操作或錯誤詳細資料。      || `changeset/operationsChanged` |沒有 |可用的`operations`集合發生了變化。                                   |
+| `changeset/operationStatusChanged` |沒有 |單一運算的 `status` 已轉換（例如 `idle → running → error`）。  |
+| `changeset/cleared` |沒有 |所有檔案都已刪除（例如分支切換，或所屬的工作階段結束）。       |
 
-**Review is a capability of the changeset.** A changeset advertises support for
-the review workflow on its catalogue `Changeset` entry via
-`capabilities.review` (a presence-flag object). Clients see this up-front on the
-session's changeset list, so they can decide whether to surface review UI
-without first subscribing. When the capability is absent, the changeset is not
-reviewable.
+### 文件審查
 
-For a reviewable changeset, each `ChangesetFile` carries an optional `reviewed`
-flag — the equivalent of GitHub's per-file **"Viewed"** checkbox. A missing
-value is treated as **not reviewed**.
+**審查是變更集的功能。 **變更集宣傳對以下內容的支援：
+其目錄 `Changeset` 條目的審核工作流程透過
+`capabilities.review`（存在標記物件）。用戶端請預先在
+工作階段的變更集列表，以便他們可以決定是否顯示審核 UI
+無需先訂閱。當能力不存在時，變更集不存在
+可審查。
 
-Unlike the rest of the `changeset/*` family, the
-`changeset/filesReviewChanged` action is **client-dispatchable**: a reviewer
-toggles files' review state directly, applying it optimistically through the
-write-ahead reducer and letting the server echo it back on the normal `action`
-envelope stream. The server MAY also originate it (e.g. an agent marking its own
-output reviewed). The action is **batched** — it carries a list of file ids that
-all move to the same `reviewed` value.
+對於可審查的變更集，每個 `ChangesetFile` 都帶有一個可選的 `reviewed`
+flag — 相當於 GitHub 的每個檔案 **「已檢視」** 複選框。一個失蹤的
+值被視為**未審查**。
+
+與 `changeset/*` 家族的其他成員不同，
+`changeset/filesReviewChanged` 操作是 **用戶端-可分派**：審閱者
+直接切換檔案的審核狀態，透過樂觀地應用它
+預寫 reducer 並讓伺服器在正常的 `action` 上回顯它
+包絡流。伺服器也可以發起它（例如，代理標記自己的
+審查輸出）。該操作是**批次的** — 它帶有一個檔案 ID 列表，
+全部移到相同的 `reviewed` 值。
+
+
+
+
 
 ```typescript
 // dispatched by a client (or the server)
@@ -133,24 +146,29 @@ all move to the same `reviewed` value.
 }
 ```
 
-The reducer sets `reviewed` on every listed file that is present in the
-changeset, leaving each file's `edit` and `_meta` untouched. Ids that don't
-match a current file are ignored; the action is a no-op when none match.
 
-**Reset on edit.** The protocol has no per-file content version, so review is
-**not** reset automatically when a file's contents change under a stable id. The
-server, which is the authority on what changed, resets review explicitly —
-either by re-emitting the file (via `changeset/fileSet` or
-`changeset/contentChanged`) without `reviewed: true`, or by dispatching
-`changeset/filesReviewChanged` with `reviewed: false`.
+reducer 在每個列出的檔案上設定 `reviewed`
+更改集，保持每個檔案的 `edit` 和 `_meta` 不變。沒有的 ID
+匹配當前文件被忽略；當沒有匹配時，該操作是無操作。
 
-### Changeset Operations
+**編輯時重置。 ** 該協定沒有每個文件的內容版本，因此審核是
+當文件內容在穩定 ID 下發生變更時，**不**自動重設。的
+伺服器，即更改內容的權威，明確重置審核 -
+透過重新發出檔案（透過 `changeset/fileSet` 或
+`changeset/contentChanged`) 沒有 `reviewed: true`，或透過調度
+`changeset/filesReviewChanged` 與 `reviewed: false`。
 
-A **changeset operation** is a server-declared invokable verb the client
-can run against a changeset, a file, or a range — "revert", and similar
-file-level actions. Richer SCM workflows such as staging changes or
-creating pull requests are better expressed as dedicated commands or
-skill buttons rather than changeset operations.
+### 變更集操作
+
+**變更集操作**是一個伺服器宣告的可呼叫動詞用戶端
+可以針對變更集、檔案或範圍運作—「復原」和類似的
+文件級操作。更豐富的 SCM 工作流程，例如分段變更或
+建立拉取請求最好表達為專用命令或
+技能按鈕而不是變更集操作。
+
+
+
+
 
 ```typescript
 ChangesetOperation {
@@ -176,18 +194,23 @@ ChangesetOperation {
 }
 ```
 
-Because `invokeChangesetOperation` is a request/response command, an
-operation's progress and outcome are reflected back into changeset state
-via the `changeset/operationStatusChanged` action so that every subscriber
-observes a consistent view (e.g. a spinner on a "Create Pull Request"
-button, or an inline error after a failed "revert"). The action targets a
-single operation by `operationId` and is a no-op if no operation with that
-id is currently present.
 
-Operations are invoked via the `invokeChangesetOperation` JSON-RPC
-command (not via dispatched actions, because they return data and may
-fail per-call). State changes resulting from the operation flow back
-through the normal `changeset/*` action stream.
+因為 `invokeChangesetOperation` 是一個請求/回應命令，
+操作的進度和結果反映回變更集狀態
+透過 `changeset/operationStatusChanged` 操作，以便每個訂閱者
+觀察一致的視圖（例如「建立拉取請求」上的旋轉器
+按鈕，或「恢復」失敗後出現內聯錯誤）。該行動的目標是
+`operationId` 的單一操作，如果沒有操作，則為無操作
+id 當前存在。
+
+操作透過 `invokeChangesetOperation` JSON-RPC 呼叫
+命令（不是通過調度的操作，因為它們傳回資料並且可能
+每次呼叫都會失敗）。狀態操作流回所導致的變化
+透過正常的 `changeset/*` 操作流。
+
+
+
+
 
 ```typescript
 invokeChangesetOperation(params: {
@@ -206,35 +229,36 @@ invokeChangesetOperation(params: {
 }
 ```
 
-The server validates that `operationId` exists in the changeset's
-current `operations` list and that the requested target's `kind` is
-contained in the operation's `scopes`. Invalid combinations result in
-a JSON-RPC error.
 
-## Lifecycle
+伺服器驗證變更集中存在 `operationId`
+目前的 `operations` 列表，而請求的目標的 `kind` 是
+包含在操作的 `scopes` 中。無效組合會導致
+JSON-RPC 錯誤。
 
-1. The server publishes the catalogue on `SessionState.changesets`.
-   Updates ride on the `session/changesetsChanged` action.
-2. The client picks catalogue entries whose template variables it can
-   satisfy and subscribes to the resulting URIs.
-3. The server returns a `ChangesetState` snapshot (`status: 'computing'`
-   is allowed if scanning is async) and can push `changeset/contentChanged`
-   for an initial batched file snapshot, optionally including operations or
-   error details, followed by narrower `changeset/*` actions as files or
-   operations change.
-4. The user invokes a `ChangesetOperation`. The client calls
-   `invokeChangesetOperation`. The server applies the operation and
-   emits any resulting changeset updates.
-5. When a session ends, all of its changesets implicitly become
-   un-subscribable. Existing subscriptions receive `changeset/cleared`
-   and the server unsubscribes them.
+## 生命週期
 
-## Migration from v0.1.0
+1. 伺服器在 `SessionState.changesets` 上發佈目錄。
+   更新依賴於 `session/changesetsChanged` 操作。
+2. 用戶端選擇其範本變數可以的目錄項目
+   滿足並訂閱生成的 URI。
+3. 伺服器回傳一個 `ChangesetState` 快照 (`status: 'computing'`
+   如果掃描是非同步的，則允許）並且可以推送 `changeset/contentChanged`
+   對於初始批次檔快照，可選地包括操作或
+   錯誤詳細資訊，後跟更窄的 `changeset/*` 操作（如文件或
+   操作發生變化。
+4. 使用者呼叫`ChangesetOperation`。用戶端呼叫
+   `invokeChangesetOperation`。伺服器應用操作並
+   發出任何產生的變更集更新。
+5. 當工作階段結束時，其所有變更集隱式變為
+   不可訂閱。現有訂閱接收 `changeset/cleared`
+   伺服器取消訂閱它們。
 
-The `summary.diffs` field and the `session/diffsChanged` action were
-removed in v0.2.0. Servers that previously populated `summary.diffs`
-should expose an equivalent server-side changeset with a static
-`uriTemplate` ending in `/changeset/session` and surface its
-aggregate counts on the new `summary.changes` field. Clients that
-want a single "session-wide" diff view subscribe to that one
-changeset URI.
+## 從 v0.1.0 遷移
+
+`summary.diffs` 欄位和 `session/diffsChanged` 操作是
+在 v0.2.0 中刪除。先前填入 `summary.diffs` 的伺服器
+應該公開一個等效的帶有靜態的伺服器端變更集
+`uriTemplate` 以 `/changeset/session` 結尾並顯示其
+新的 `summary.changes` 欄位的聚合計數。用戶端那
+想要一個“工作階段-wide”差異視圖訂閱該視圖
+變更集 URI。

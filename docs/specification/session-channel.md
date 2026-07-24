@@ -1,22 +1,31 @@
-# Session Channel
+# 工作階段通道
 
-A session channel carries session-level state and acts as the coordination scope for one or more chats. The session tracks lifecycle, customizations, per-session configuration, changesets, and the catalog of chats that belong to the session. The per-conversation state — turns, streaming responses, tool calls, pending messages, and input requests — lives on the [chat channel](./chat-channel).
+工作階段通道承載工作階段級狀態，並充當一個或多個聊天的協調範圍。工作階段追蹤生命週期、自訂、每個工作階段配置、變更集以及屬於工作階段的聊天目錄。每個對話狀態 — 回合、串流回應、工具呼叫、待處理訊息和輸入請求 — 存在於 [聊天通道](./chat-channel) 上。
 
-## URI
+## 網址
+
+
+
+
 
 ```
 ahp-session:/<uuid>
 ```
 
-The path is a server-unique identifier (typically a UUID) chosen by the client at creation time. The session's provider (e.g. `"copilot"`) is **not** encoded in the URI scheme — it is carried on [`SessionSummary.provider`](/reference/session#sessionsummary). This decoupling lets the same scheme address sessions backed by any agent.
 
-Multiple session channels may be active simultaneously. Clients subscribe to each one whose state they want to track.
+該路徑是伺服器唯一識別碼（通常是 UUID），由用戶端在建立時選擇。工作階段的提供者（例如 `"copilot"`）並未在 URI 方案中編碼 — 它由 [`SessionSummary.provider`](/reference/session#sessionsummary) 承載。這種解耦允許任何代理支援相同的方案位址工作階段。
 
-## State
+多個工作階段通道可以同時處於活動狀態。用戶端訂閱他們想要追蹤其狀態的每個人。
 
-Subscribers receive a [`SessionState`](/reference/session#sessionstate) snapshot containing the session metadata (title, status, provider, activity, working directory, …) inlined directly, the lifecycle phase, the catalog of [`chats`](/reference/session#sessionstate) belonging to this session, the optional [`defaultChat`](/reference/session#sessionstate) routing hint, active-client state, customizations, changesets, the [`inputNeeded`](#aggregated-input-requests) aggregate, and per-session configuration. Per-conversation state (turns, streaming, tool calls, pending messages, input requests) lives on the [chat channel](./chat-channel). Refer to the [State Model guide](/guide/state-model) for a structural overview.
+## 狀態
 
-## Lifecycle
+訂閱者收到一個 [`SessionState`](/reference/session#sessionstate) 快照，其中包含直接內聯的工作階段元資料（標題、狀態、提供者、活動、工作目錄等）、生命週期階段、屬於此工作階段的 [`chats`](/reference/session#sessionstate) 目錄、可選的 [{c71}(/reference/session#sessionstate 狀態、自訂、變更集、 [`inputNeeded`](#aggregated-input-requests) 聚合和每個工作階段配置。每個對話狀態（回合、串流、工具呼叫、待處理訊息、輸入請求）位於 [聊天通道](./chat-channel) 上。請參閱[狀態模型指南](/guide/state-model)以了解結構概述。
+
+## 生命週期
+
+
+
+
 
 ```
 1. Client picks a session URI (e.g. ahp-session:/<new-uuid>)
@@ -29,67 +38,72 @@ Subscribers receive a [`SessionState`](/reference/session#sessionstate) snapshot
 8. Server broadcasts root/sessionAdded to clients subscribed to ahp-root://
 ```
 
-### Creation
 
-[`createSession`](/reference/session#createsession) is a JSON-RPC request. The client picks the URI; the server allocates session state and begins backend initialisation. If the URI is already in use the server returns `SessionAlreadyExists` (`-32003`).
+### 創造
 
-### Active session
+[`createSession`](/reference/session#createsession) 是 JSON-RPC 請求。用戶端選擇 URI；伺服器分配工作階段狀態並開始後端初始化。如果 URI 已被使用，則伺服器傳回 `SessionAlreadyExists` (`-32003`)。
 
-Once a session reaches `lifecycle: 'ready'`, clients may create chats on it with [`createChat`](/reference/chat#createchat). Each chat is independently subscribable at its own `ahp-chat:/<cid>` URI; see the [Chat Channel specification](./chat-channel) for the per-chat lifecycle, turn flow, tool calls, and input request handling.
+### 活躍工作階段
 
-Session-scoped actions dispatched on this channel are limited to:
+一旦工作階段到達 `lifecycle: 'ready'`，用戶端就可以在其上與 [`createChat`](/reference/chat#createchat) 建立聊天。每個聊天都可以透過自己的 `ahp-chat:/<cid>` URI 獨立訂閱；請參閱[聊天通道規格](./chat-channel)，了解每個聊天的生命週期、轉向流程、工具呼叫和輸入請求處理。
 
-- Catalog mutations — `session/chatAdded`, `session/chatRemoved`, `session/chatUpdated`, and `session/defaultChatChanged`.
-- Session-wide configuration — active-client tracking, customizations, changesets, lifecycle transitions.
+在此通道上調度的工作階段範圍的操作僅限於：
 
-All actions dispatched on this channel travel on `ActionEnvelope`s whose `channel` is the session URI. Action payloads do NOT carry their own session URI — the channel comes from the envelope.
+- 目錄突變 — `session/chatAdded`、`session/chatRemoved`、`session/chatUpdated` 和 `session/defaultChatChanged`。
+- 工作階段範圍的配置 — 主動 - 用戶端追蹤、自訂、變更集、生命週期轉換。
 
-### Chat catalog mutations
+在此通道上分派的所有操作都在 `ActionEnvelope` 上傳輸，其 `channel` 是工作階段 URI。操作有效負載不攜帶自己的工作階段 URI - 通道來自信封。
 
-Three discrete actions keep `SessionState.chats` in sync as chats come and go. Sessions with a single chat trivially round-trip a `session/chatAdded` once at creation; multi-chat sessions exercise all three:
+### 聊天目錄突變
 
-| Action | Payload | Reducer behavior |
+隨著聊天的進行，三個獨立的操作使 `SessionState.chats` 保持同步。工作階段與單一聊天在建立時簡單地往返 `session/chatAdded` 一次；多聊天工作階段練習所有三個：
+
+|行動|有效負載| reducer 行為 |
 |---|---|---|
-| `session/chatAdded` | `summary: ChatSummary` | Upsert by `summary.resource`. Appends when no entry has the same URI; otherwise replaces the existing entry. Mirrors `root/sessionAdded`. |
-| `session/chatRemoved` | `chat: URI` | Removes the matching entry. No-op when no entry matches. If `state.defaultChat` referenced the removed URI, the reducer clears it. Mirrors `root/sessionRemoved`. |
-| `session/chatUpdated` | `chat: URI, changes: Partial<ChatSummary>` | Merges the non-identity fields of `changes` onto the matching entry. No-op when no entry matches; clients SHOULD then wait for a `session/chatAdded`. Identity fields (`resource`) MUST NOT be carried in `changes`. Mirrors `root/sessionSummaryChanged`. |
+| `session/chatAdded` | `summary: ChatSummary` |由 `summary.resource` 更新插入。當沒有條目具有相同的 URI 時追加；否則替換現有條目。鏡子`root/sessionAdded`。 |
+| `session/chatRemoved` | `chat: URI` |刪除符合的條目。當沒有條目匹配時不執行任何操作。如果 `state.defaultChat` 引用了已刪除的 URI，則 reducer 會將其清除。鏡子`root/sessionRemoved`。 |
+| `session/chatUpdated` | `chat: URI, changes: Partial<ChatSummary>` |將 `changes` 的非身分欄位合併到符合項目上。當沒有條目匹配時無操作；用戶端然後應該等待 `session/chatAdded`。身分欄位 (`resource`) 不得在 `changes` 中攜帶。鏡子`root/sessionSummaryChanged`。 |
 
-The producer of the chat's own [`ChatState`](./chat-channel#state) is responsible for emitting matching `session/chatUpdated` actions so the catalog and the per-chat channel stay consistent.
+聊天自己的 [`ChatState`](./chat-channel#state) 的生成者負責發出匹配的 `session/chatUpdated` 操作，以便目錄和每個聊天通道保持一致。
 
-### Chat aggregation
+### 聊天聚合
 
-[`SessionSummary`](/reference/session#sessionsummary) carries session-wide identity (`resource`, `provider`, `createdAt`, `workingDirectory`) but several of its mutable fields are aggregates derived from the session's chats. Producers SHOULD apply these rules so clients that only consume the session summary (a session list, for example) still see meaningful state:
+[`SessionSummary`](/reference/session#sessionsummary) 攜帶工作階段範圍的身份（`resource`、`provider`、`createdAt`、`workingDirectory`），但其多個可變欄位是從工作階段的聊天中派生的聚合。生產者應該應用這些規則，以便僅使用工作階段摘要（例如工作階段列表）的用戶端仍然看到有意義的狀態：
 
-| Field | Derivation rule |
+|領域|推導規則|
 |---|---|
-| `status` | Take the activity bits (`Idle` / `InProgress` / `InputNeeded` / `Error`) from the [`defaultChat`](#defaultchat) when set, else from the most recently modified chat. Promote `InputNeeded` if **any** chat needs input. Promote `Error` if **any** chat is in an error state. The orthogonal `IsRead` / `IsArchived` flags remain session-scoped and pass through unchanged. |
-| `activity` | Mirror the activity string of the chat that contributes the activity bits — usually the default chat, but the chat that raised `InputNeeded` / `Error` when a non-default chat wins the promotion. |
-| `modifiedAt` | The maximum of every chat's `modifiedAt`. |
-| `workingDirectory` | The session-level **default**. Individual chats MAY override via [`ChatSummary.workingDirectory`](/reference/chat#chatsummary); aggregating per-chat overrides up is meaningless and SHOULD NOT be attempted. |
-| `changes` | Optional roll-up. Producers MAY sum per-chat changeset stats or report the most expensive chat's stats — whichever is cheaper to compute. |
+| `status` |設定後，從 [`defaultChat`](#defaultchat) 取得活動位元 (`Idle` / `InProgress` / `InputNeeded` / `Error`)，否則從最近修改的聊天中取得。如果**任何**聊天需要輸入，則升級 `InputNeeded`。如果**任何**聊天出現錯誤狀態，則升級 `Error`。正交的 `IsRead` / `IsArchived` 標誌保持工作階段範圍並不變地傳遞。 |
+| `activity` |鏡像提供活動位的聊天的活動字串 - 通常是預設聊天，但當非預設聊天贏得促銷時引發 `InputNeeded` / `Error` 的聊天。 |
+| `modifiedAt` |每個聊天的最大值為 `modifiedAt`。 |
+| `workingDirectory` | 工作階段等級**預設**。個人聊天可以透過 [`ChatSummary.workingDirectory`](/reference/chat#chatsummary) 覆蓋；聚合每個聊天覆蓋是沒有意義的，不應該嘗試。 |
+| `changes` |可選捲起。生產者可以匯總每個聊天的變更集統計資料或報告最昂貴的聊天統計資料 - 以計算成本較低者為準。 |
 
-Sessions with a single chat satisfy all of the above trivially (the chat's values pass through). The rules only matter once a session carries multiple chats.
+工作階段透過一次聊天即可輕鬆滿足上述所有條件（聊天的值會傳遞）。只有當工作階段承載多個聊天時，這些規則才有意義。
 
-### Aggregated input requests
+### 聚合輸入請求
 
-A chat blocks on user input (an [elicitation](/guide/elicitation)) or on a tool confirmation deep inside its turn state. Discovering those blocks would normally require subscribing to every chat channel — impractical for a mobile app or a tool-providing client that only watches the session.
+聊天會在使用者輸入（[引發](/guide/elicitation)）或輪次狀態深處的工具確認時阻塞。發現這些區塊通常需要訂閱每個聊天通道，這對於行動應用程式或提供僅觀看工作階段的工具用戶端來說是不切實際的。
 
-[`SessionState.inputNeeded`](/reference/session#sessionstate) is a session-level roll-up of every outstanding block across all chats. The host upserts entries with `session/inputNeededSet` and removes them with `session/inputNeededRemoved` as the underlying chat-level requests appear and resolve. Whenever the list is non-empty the session's [`status`](#chat-aggregation) carries the `InputNeeded` bit.
+[`SessionState.inputNeeded`](/reference/session#sessionstate) 是所有聊天中每個未完成區塊的工作階段層級總和。當底層聊天層級請求出現並解析時，主機使用 `session/inputNeededSet` 更新插入條目，並使用 `session/inputNeededRemoved` 刪除它們。每當清單非空時，工作階段的 [`status`](#chat-aggregation) 就會攜帶 `InputNeeded` 位元。
 
-Each entry is a [`SessionInputRequest`](/reference/session#sessioninputrequest) — a discriminated union over `kind`:
+每個條目都是一個 [`SessionInputRequest`](/reference/session#sessioninputrequest) — `kind` 上的判別聯集：
 
-| `kind` | Carries | Respond by dispatching… |
+| `kind` |攜帶|透過派遣來回應... |
 |---|---|---|
-| `chatInput` | the mirrored [`ChatInputRequest`](/reference/chat#chatinputrequest) | `chat/inputCompleted` (or `chat/inputAnswerChanged`) |
-| `toolConfirmation` | a [`ToolCallConfirmationState`](/reference/chat#toolcallconfirmationstate) plus `turnId` | `chat/toolCallConfirmed` or `chat/toolCallResultConfirmed` |
-| `toolClientExecution` | a [`ToolCallState`](/reference/chat#toolcallstate) in `running` status plus `turnId` and the owning `clientId` | `chat/toolCallComplete` (optionally `chat/toolCallContentChanged`) |
-| `toolAuthentication` | a [`ToolCallAuthRequiredState`](/reference/chat#toolcallauthrequiredstate) plus `turnId` | *(see below)* `authenticate` |
+| `chatInput` |鏡像的 [`ChatInputRequest`](/reference/chat#chatinputrequest) | `chat/inputCompleted`（或 `chat/inputAnswerChanged`）|
+| `toolConfirmation` | [`ToolCallConfirmationState`](/reference/chat#toolcallconfirmationstate) 加 `turnId` | `chat/toolCallConfirmed` 或 `chat/toolCallResultConfirmed` |
+| `toolClientExecution` |處於 `running` 狀態的 [`ToolCallState`](/reference/chat#toolcallstate) 加上 `turnId` 和擁有的 `clientId` | `chat/toolCallComplete`（可選`chat/toolCallContentChanged`）|
+| `toolAuthentication` | [`ToolCallAuthRequiredState`](/reference/chat#toolcallauthrequiredstate) 加 `turnId` | *（見下文）* `authenticate` |
 
-Every entry carries the owning `chat` URI plus the identifiers (`request.id`, or `turnId` + `toolCall.toolCallId`) needed to construct the response. A client therefore answers by dispatching the ordinary `chat/*` action **to that chat's channel** — it does **not** need to have subscribed to the chat first. `inputNeeded` is a read/respond convenience surface, not a separate response protocol: the chat channel remains the source of truth and the host removes the aggregate entry once the chat-level request resolves.
+每個條目都攜帶所屬的 `chat` URI 以及構造回應所需的識別碼（`request.id` 或 `turnId` + `toolCall.toolCallId`）。因此，用戶端透過將普通的 `chat/*` 操作**傳送到該聊天通道**來進行應答 - 它**不需要**需要先訂閱聊天。 `inputNeeded` 是一個讀取/回應便利介面，而不是一個單獨的回應協定：聊天通道仍然是事實來源，一旦聊天層級請求被解決，主機就會刪除聚合條目。
 
-`toolAuthentication` is the one exception to the "respond via `chat/*` action" pattern: the client resolves it by calling the connection-level `authenticate` command with the resource from `toolCall.auth.resource` (see [Authentication](/specification/authentication)), not by dispatching an action to the chat. The host dispatches `chat/toolCallAuthResolved` once the token is accepted and removes the `session/inputNeeded` entry at that point.
+`toolAuthentication` 是「透過 `chat/*` 操作回應」模式的例外：用戶端透過使用來自 `toolCall.auth.resource` 的資源呼叫連線級 `authenticate` 指令來解決這個問題（請參閱 [驗證](/specification/authentication)），而不是透過向聊天分派操作。一旦令牌被接受，主機就會調度 `chat/toolCallAuthResolved` 並刪除此時的 `session/inputNeeded` 條目。
 
-### Disposal
+### 處理
+
+
+
+
 
 ```jsonc
 // Client → Server (request)
@@ -101,47 +115,47 @@ Every entry carries the owning `chat` URI plus the identifiers (`request.id`, or
 }
 ```
 
-The server tears down the session backend, drops associated subscriptions, and broadcasts `root/sessionRemoved` to clients subscribed to `ahp-root://`.
 
-## Methods and events on this channel
+伺服器拆除工作階段後端，刪除關聯的訂閱，並向訂閱 `ahp-root://` 的用戶端廣播 `root/sessionRemoved`。
 
-This section lists wire methods that are interpreted in the context of a
-session URI (`ahp-session:/<uuid>`).
+## 該通道上的方法和事件
 
-### Commands (`params.channel = "ahp-session:/<uuid>"`)
+本節列出了在上下文中解釋的連線方法
+工作階段 URI (`ahp-session:/<uuid>`)。
 
-| Method | Kind | Purpose |
+### 指令 (`params.channel = "ahp-session:/<uuid>"`)
+
+|方法|親切 |目的|
 |---|---|---|
-| `createSession` | request | Create a session at the chosen URI. |
-| `disposeSession` | request | Dispose this session and its backend resources (cascades to every chat in the session's catalog). |
+| `createSession` |請求 |在所選 URI 處建立一個工作階段。 |
+| `disposeSession` |請求 |處置此工作階段及其後端資源（級聯到工作階段目錄中的每個聊天）。 |
 
-### Notifications (`params.channel = "ahp-session:/<uuid>"`)
+### 通知 (`params.channel = "ahp-session:/<uuid>"`)
 
-| Method | Kind | Meaning |
+|方法|親切 |意義|
 |---|---|---|
-| `action` | server → client notification | Session action envelope (`session/*` action payloads — catalog updates, lifecycle, customizations, changesets). |
-| `dispatchAction` | client → server notification | Dispatch client actions on this session (`session/titleChanged`, `session/defaultChatChanged`, ...). |
-| `unsubscribe` | client → server notification | Stop receiving messages for this session channel. |
+| `action` | 伺服器 → 用戶端通知 | 工作階段操作信封（`session/*` 操作有效負載 - 目錄更新、生命週期、自訂、變更集）。 |
+| `dispatchAction` | 用戶端 → 伺服器通知 |在此工作階段（`session/titleChanged`、`session/defaultChatChanged`、...）上調度用戶端操作。 |
+| `unsubscribe` | 用戶端 → 伺服器通知 |停止接收此工作階段通道的訊息。 |
 
-`auth/required` may also target a session URI when auth is required for an
-operation scoped to that session; see
-[Authentication](/specification/authentication).
+當需要驗證時，`auth/required` 也可以定位工作階段 URI
+操作範圍為工作階段；看到
+[驗證](/specification/authentication)。
 
-## Server Validation of Client Actions
+## 伺服器用戶端操作的驗證
 
-When the server receives a client-dispatched action on this channel, it MUST validate it before applying. Invalid actions MUST be echoed back with a `rejectionReason` on the `ActionEnvelope`. The following validation rules apply:
+當伺服器在此通道上收到用戶端分派的操作時，它必須在應用之前對其進行驗證。無效操作必須透過 `ActionEnvelope` 上的 `rejectionReason` 進行回顯。以下驗證規則適用：
 
-| Action                                        | Condition                                                                                                                  | Server Behavior                                                                                     |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Any action referencing a non-existent session | Channel URI not found                                                                                                      | Server MUST silently ignore the action (no echo)                                                    |
-| `session/defaultChatChanged`                  | `defaultChat` URI does not match an entry in the session's chat catalog                                                    | Server MUST reject the action                                                                       |
+|行動|狀況 | 伺服器行為 |
+|------------------------------------------------------------------------------------------------------------------------------------ ---------------------------------------------------------------------------------------------------------------- ------------------------------------------------ |
+|任何引用不存在的工作階段 | 的操作未找到通道 URI | 伺服器必須默默地忽略該操作（無回顯）|| `session/defaultChatChanged` | `defaultChat` URI 與工作階段的聊天目錄中的條目不符 | 伺服器必須拒絕該操作 |
 
-Turn-, tool-call-, input-request-, and pending-message-level validation lives on the [Chat Channel](./chat-channel#server-validation-of-client-actions).
+回合、工具呼叫、輸入請求和待處理訊息層級的驗證存在於 [聊天通道](./chat-channel#server-validation-of-client-actions) 上。
 
-## Actions
+## 行動
 
-Refer to the [Session Channel Reference](/reference/session#actions) for the full per-action reference. All session-scoped action envelopes carry `channel: "ahp-session:/<uuid>"`.
+請參閱 [工作階段通道參考](/reference/session#actions) 以了解完整的每個操作參考。所有工作階段範圍的操作信封都帶有 `channel: "ahp-session:/<uuid>"`。
 
-## Catalogue Notifications
+## 目錄通知
 
-Session catalogue events (creation, disposal, summary mutations) are emitted on the [Root Channel](/specification/root-channel#protocol-notifications), not on the session channel itself. This lets clients track the session list without subscribing to every session.
+工作階段目錄事件（建立、處置、摘要突變）在 [根通道](/specification/root-channel#protocol-notifications) 上發出，而不是在工作階段通道本身上發出。這讓用戶端可以追蹤工作階段列表，而無需訂閱每個工作階段。

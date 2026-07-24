@@ -2,6 +2,6 @@
 redirect: /guide/state-model
 ---
 
-# Agents
+# 代理
 
-This page has moved. See [State Model](/guide/state-model) for information about agents in the Agent Host Protocol.
+此頁面已移動。有關代理主機協定中代理程式的資訊，請參閱 [狀態模型](/guide/state-model)。

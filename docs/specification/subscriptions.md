@@ -1,42 +1,44 @@
-# Channels & Subscriptions
+# 通道和訂閱
 
-AHP organises all push-based communication into **channels**. A channel is a URI-identified resource that a client subscribes to in order to receive updates. Channels MAY have state (root, sessions, terminals, changesets) or be stateless (future: logging, MCP relay, LSP relay). The subscription mechanism — `subscribe`, `unsubscribe`, and per-channel notifications — is uniform across channel types.
+AHP 將所有基於推送的通訊組織到**通道**。通道是一種由 URI 標識的資源，用戶端訂閱該資源以接收更新。通道可以有狀態（根、工作階段、終端、變更集）或無狀態（未來：日誌記錄、MCP 中繼、LSP 中繼）。訂閱機制（`subscribe`、`unsubscribe` 和每通道通知）在不同通道類型中是統一的。
 
-## Every message carries `channel`
+## 每個訊息都帶有 `channel`
 
-The channel concept is woven into every wire message. **Every command and every notification has a top-level `channel: URI` field on its params.** This invariant lets servers, clients, and intermediate proxies dispatch any incoming message by inspecting `(method, params.channel)` without per-method knowledge of the rest of the payload.
+通道概念融入每個線路訊息中。 **每個指令和每個通知的參數上都有一個頂級 `channel: URI` 欄位。 ** 這個不變數允許伺服器、用戶端和中間代理程式透過檢查 `(method, params.channel)` 來分派任何傳入訊息，而無需了解其餘負載的每個方法。
 
-| Direction | Methods | `channel` value |
+|方向 |方法 | `channel` 值 |
 |---|---|---|
-| Client → Server commands (channel-scoped) | `subscribe`, `createSession`, `disposeSession`, `createTerminal`, `disposeTerminal`, `fetchTurns`, `completions`, `invokeChangesetOperation` | The target channel's URI (e.g. `ahp-session:/<uuid>`). |
-| Client → Server commands (connection-level) | `initialize`, `ping`, `reconnect`, `listSessions`, `authenticate`, `resolveSessionConfig`, `sessionConfigCompletions`, `resourceRead`, `resourceWrite`, `resourceList`, `resourceCopy`, `resourceDelete`, `resourceMove`, `resourceResolve`, `resourceMkdir`, `resourceRequest`, `createResourceWatch` | Literal `'ahp-root://'`. |
-| Server → Client commands (bidirectional `resource*` family) | The same nine `resource*` request methods plus `createResourceWatch` may also be initiated by the server. Used for host-driven per-session filesystem providers and for fetching client-published URIs (e.g. `virtual://my-client/...` plugins). | Literal `'ahp-root://'`. |
-| Client → Server `dispatchAction` | The channel the action targets. |
-| Client → Server `unsubscribe` | The channel being unsubscribed. |
-| Server → Client `action` | The channel that owns the action envelope. |
-| Server → Client protocol notifications | `root/sessionAdded`, `root/sessionRemoved`, `root/sessionSummaryChanged`, `auth/required`, `otlp/exportLogs`, `otlp/exportTraces`, `otlp/exportMetrics` | The channel the notification scopes to (the root channel for `root/*`; the channel the auth requirement targets for `auth/required`; the host-defined `ahp-otlp:` channel URI for `otlp/*`). |
+| 用戶端 → 伺服器指令（通道範圍）| `subscribe`、`createSession`、`disposeSession`、`createTerminal`、`disposeTerminal`、`fetchTurns`、`completions`、`invokeChangesetOperation`|目標通道的 URI（例如 `ahp-session:/<uuid>`）。 |
+| 用戶端 → 伺服器指令（連線級）| | `initialize`, `ping`, `reconnect`, `listSessions`, `authenticate`, `resolveSessionConfig`, `sessionConfigCompletions`, `resourceRead`, `resourceWrite`, `resourceList`, `resourceCopy`, `resourceDelete`, `resourceWrite`, `resourceList`, {c29, {c3c7}, {c `resourceRequest`, `createResourceWatch` |字面意思`'ahp-root://'`。 |
+| 伺服器 → 用戶端指令（雙向 `resource*` 系列）|同樣的九個`resource*`請求方法加上`createResourceWatch`也可以由伺服器發起。用於主機驅動的每工作階段檔案系統提供者並用於取得用戶端發布的 URI（例如 `virtual://my-client/...` 外掛程式）。 |字面意思`'ahp-root://'`。 |
+| 用戶端 → 伺服器 `dispatchAction` |操作目標的通道。 |
+| 用戶端 → 伺服器 `unsubscribe` |該通道正在取消訂閱。 |
+| 伺服器 → 用戶端 `action` |擁有操作信封的通道。 || 伺服器 → 用戶端協定通知 | `root/sessionAdded`、`root/sessionRemoved`、`root/sessionSummaryChanged`、`auth/required`、`otlp/exportLogs`、`otlp/exportTraces`、`otlp/exportMetrics`|通知範圍的通道（`root/*` 的根通道；`auth/required` 的驗證主機要求訊號範圍的通道（`root/*` 的根通道；`auth/required` 的驗證主機要求訊號範圍的主機（`root/*` 的根通道；`auth/required` 的驗證主機要求。 |
 
-The constraint is encoded in the TypeScript types: every entry in `CommandMap` and the notification maps has params assignable to `BaseParams` (or, for notifications, structurally `{ channel: URI }`). The compile-time check in `types/version/message-checks.ts` fails if any new method omits the field.
+此限制以 TypeScript 類型進行編碼：`CommandMap` 中的每個條目和通知映射都具有可指派給 `BaseParams` 的參數（或者，對於通知，結構上為 `{ channel: URI }`）。如果任何新方法省略該欄位，則 `types/version/message-checks.ts` 中的編譯時檢查將會失敗。
 
-The rest of this page details the URI scheme and the lifecycle of a subscription. The mechanics of action delivery and protocol notifications are described under each channel page ([Root](/specification/root-channel), [Session](/specification/session-channel), [Terminal](/specification/terminal-channel)).
+本頁的其餘部分詳細介紹了 URI 方案和訂閱的生命週期。每個通道頁面（[Root](/specification/root-channel)、[工作階段](/specification/session-channel)、[終端機](/specification/terminal-channel)）下描述了操作傳遞和協定通知的機制。
 
-## URI Scheme
+## URI 方案
 
-| URI | State type | Description |
+|統一資源定位符 | 狀態型別 |描述 |
 |---|---|---|
-| `ahp-root://` | `RootState` | Global state (agents, terminals, host config). Always present. |
-| `ahp-session:/<uuid>` | `SessionState` | Per-session state (metadata plus the `chats` catalog). The session's provider is carried on `SessionSummary.provider`, not in the URI scheme. |
-| `ahp-chat:/<cid>` | `ChatState` | Per-chat conversation state (turns, streaming, tool calls, pending messages, input requests). A session starts with a default chat; multi-chat hosts add more via `createChat`. See [Chat Channel](/specification/chat-channel). |
-| `ahp-terminal:/<id>` | `TerminalState` | Per-terminal state. Server-defined id. |
-| `ahp-changeset:/<id>` | `ChangesetState` | Per-changeset state. URI is obtained by expanding a `Changeset.uriTemplate` advertised on a session; the id is server-defined. |
-| `ahp-otlp:` _(authority/path host-defined)_ | _stateless_ | OpenTelemetry signal channels (logs, traces, metrics). Concrete URIs are advertised on `InitializeResult.telemetry`; clients MUST treat them as opaque. See [Telemetry Channel](/specification/telemetry-channel). |
-| `ahp-resource-watch:/<id>` | `ResourceWatchState` | Per-watch channel returned by `createResourceWatch`. Delivers `resourceWatch/changed` actions for file/directory changes under the watched URI. The id is receiver-assigned. |
+| `ahp-root://` | `RootState` |全域狀態（代理程式、終端機、主機配置）。始終存在。 |
+| `ahp-session:/<uuid>` | `SessionState` | Per-工作階段狀態（元資料加上 `chats` 目錄）。工作階段的提供者在 `SessionSummary.provider` 上承載，而不是在 URI 方案中。 |
+| `ahp-chat:/<cid>` | `ChatState` |每次聊天對話狀態（回合、串流、工具呼叫、待處理訊息、輸入請求）。工作階段以預設聊天開始；多聊天主機透過 `createChat` 新增更多內容。請參閱[聊天通道](/specification/chat-channel)。 |
+| `ahp-terminal:/<id>` | `TerminalState` |每-終端機狀態。伺服器-定義的 id。 |
+| `ahp-changeset:/<id>` | `ChangesetState` |每個變更集狀態。 URI是透過擴展在工作階段上廣告的`Changeset.uriTemplate`而獲得的； id 是由伺服器定義的。 |
+| `ahp-otlp:` _（主機定義的權限/路徑）_ | _無狀態_ | OpenTelemetry 訊號通道（日誌、追蹤、指標）。具體 URI 在 `InitializeResult.telemetry` 上公佈；用戶端必須將它們視為不透明。請參閱[遙測通道](/specification/telemetry-channel)。 || `ahp-resource-watch:/<id>` | `ResourceWatchState` | `createResourceWatch` 傳回的每個觀看通道。為監視的 URI 下的檔案/目錄變更提供 `resourceWatch/changed` 操作。該id是接收者分配的。 |
 
-Future channel types (LSP relay, MCP relay, …) introduce their own URI schemes. Clients MUST NOT subscribe to a scheme they do not understand.
+未來的通道類型（LSP 中繼、MCP 中繼等）會引入自己的 URI 方案。用戶端不得訂閱他們不理解的方案。
 
-## Subscribe (Request)
+## 訂閱（請求）
 
-`subscribe` is a JSON-RPC **request**. The result includes a snapshot for state-bearing channels and omits it for stateless ones.
+`subscribe` 是一個 JSON-RPC **請求**。結果包括包含狀態的通道的快照，並忽略無狀態通道的快照。
+
+
+
+
 
 ```jsonc
 // Client → Server
@@ -78,35 +80,40 @@ Future channel types (LSP relay, MCP relay, …) introduce their own URI schemes
 }
 ```
 
-After subscribing, the client receives all messages scoped to that channel — both action envelopes (for state channels) and any channel-specific notifications.
 
-### Delivery preferences
+訂閱後，用戶端會收到該通道範圍內的所有訊息 — 包含操作信封（針對狀態通道）和任何特定於通道的通知。
 
-Clients MAY include `delivery.maxLatencyMs` on `subscribe` to request an upper
-bound, in milliseconds, on intentional server-side buffering for that
-subscription. Servers MAY use that budget to coalesce high-frequency updates
-while preserving the same reduced state a client would observe from immediate
-delivery. A value of `0` requests immediate delivery with no intentional
-coalescing. Omitting `delivery` uses the server's default delivery behavior.
+### 交付偏好
 
-### Snapshot views
+用戶端可以在 `subscribe` 上包含 `delivery.maxLatencyMs` 以請求上限
+綁定在有意的伺服器端緩衝上（以毫秒為單位）
+訂閱。伺服器可以使用該預算來合併高頻更新
+同時保留相同的簡化的狀態，用戶端會立即觀察到
+交貨。 `0` 值無意識地請求立即交付
+合併。省略 `delivery` 將使用伺服器的預設傳遞行為。
 
-Clients MAY include `view` on `subscribe` to ask the server to shape the
-returned snapshot. View preferences are advisory and additive: a server that
-does not understand a requested view ignores it and returns its default
-snapshot, and clients MUST tolerate receiving more state than requested.
+### 快照視圖
 
-For chat channels, `view.turns` asks the server to expose approximately that
-many most-recent completed turns in the snapshot. The value is advisory: the
-server MAY return more or fewer turns than requested. If `view.turns` is
-omitted, the server MUST return all retained turns. If older retained turns
-remain available, the returned `ChatState` includes `turnsNextCursor`; the
-client can pass that cursor to `fetchTurns` to ask the host to page older turns
-into the same reduced state.
+用戶端可以在 `subscribe` 上包含 `view`，以要求伺服器塑造
+傳回快照。視圖首選項是建議性和附加性的：伺服器
+不理解請求的視圖，忽略它並傳回其預設值
+快照，且用戶端必須容忍接收多於請求的狀態。
 
-## Unsubscribe (Notification)
+對於聊天通道，`view.turns` 要求伺服器公開約
+快照中許多最近完成的回合。該值是建議性的：
+伺服器可能會傳回比請求更多或更少的匝數。如果 `view.turns` 是
+省略，伺服器必須傳回所有保留的回合。如果較舊的保留回合
+保持可用，傳回的`ChatState`包含`turnsNextCursor`；的
+用戶端可以將此遊標傳遞給 `fetchTurns` 以要求主機尋呼較早的輪次
+進入相同的減少的狀態。
 
-`unsubscribe` is a fire-and-forget client → server notification. Like every wire message, its params carry the channel URI being released.
+## 取消訂閱（通知）
+
+`unsubscribe` 是一勞永逸的用戶端 → 伺服器通知。與每個線路訊息一樣，它的參數攜帶要釋放的通道 URI。
+
+
+
+
 
 ```json
 {
@@ -116,11 +123,16 @@ into the same reduced state.
 }
 ```
 
-After unsubscribing, the client stops receiving messages for that channel.
 
-## Action Delivery (`action`)
+取消訂閱後，用戶端將停止接收該通道的訊息。
 
-State channels deliver mutations via the `action` server notification. The params are an `ActionEnvelope` — flat, with `channel` identifying the channel and a single `action` payload:
+## 行動交付 (`action`)
+
+狀態通道透過 `action` 伺服器通知傳遞突變。參數是一個 `ActionEnvelope` — 平坦的，其中 `channel` 標識通道和單一 `action` 負載：
+
+
+
+
 
 ```json
 {
@@ -135,14 +147,19 @@ State channels deliver mutations via the `action` server notification. The param
 }
 ```
 
-- Root actions go to all clients subscribed to `ahp-root://`.
-- Session actions go to all clients subscribed to that session's URI.
-- Chat actions go to all clients subscribed to that chat's URI.
-- Terminal actions go to all clients subscribed to that terminal's URI.
 
-Action payloads (the inner `action` object) carry only fields intrinsic to the action — the channel comes from the envelope. Individual actions do NOT carry a `session: URI` or `terminal: URI` field of their own.
+- 根操作轉到訂閱 `ahp-root://` 的所有用戶端。
+- 工作階段操作將會轉到訂閱該工作階段 URI 的所有用戶端。
+- 聊天操作會轉到訂閱該聊天 URI 的所有用戶端。
+- 終端機操作將會轉到訂閱該終端機 URI 的所有用戶端。
 
-The client → server dispatch path uses a different method, `dispatchAction`, with params `{ channel, clientSeq, action }`:
+操作有效負載（內部 `action` 物件）僅攜帶操作固有的欄位 - 通道來自信封。各個操作不攜帶自己的 `session: URI` 或 `terminal: URI` 欄位。
+
+用戶端 → 伺服器調度路徑使用不同的方法 `dispatchAction`，參數為 `{ channel, clientSeq, action }`：
+
+
+
+
 
 ```json
 {
@@ -156,11 +173,16 @@ The client → server dispatch path uses a different method, `dispatchAction`, w
 }
 ```
 
-See [Actions](/guide/actions) for the full list of client-dispatchable actions.
 
-## Initial Subscriptions
+請參閱 [操作](/guide/actions) 以取得用戶端可分派運算的完整清單。
 
-During the handshake, clients MAY include `initialSubscriptions` in `initialize` to subscribe to channels in the same round-trip:
+## 初始訂閱
+
+在握手期間，用戶端可以在 `initialize` 中包含 `initialSubscriptions`，以在同一往返中訂閱通道：
+
+
+
+
 
 ```json
 {
@@ -176,11 +198,16 @@ During the handshake, clients MAY include `initialSubscriptions` in `initialize`
 }
 ```
 
-The server includes a snapshot for each state-bearing channel in the `initialize` response.
 
-## Protocol Notifications
+伺服器包含 `initialize` 回應中每個包含狀態的通道的快照。
 
-Beyond `action`, the server pushes per-channel **protocol notifications** for ephemeral events. Each one is its own top-level JSON-RPC method (e.g. `root/sessionAdded`, `auth/required`) — there is no `notification` wrapper.
+## 協定通知
+
+除了 `action` 之外，伺服器還會針對臨時事件推送每個通道的**協定通知**。每個方法都有自己的頂層 JSON-RPC 方法（例如 `root/sessionAdded`、`auth/required`）—沒有 `notification` 包裝器。
+
+
+
+
 
 ```json
 {
@@ -193,7 +220,12 @@ Beyond `action`, the server pushes per-channel **protocol notifications** for ep
 }
 ```
 
-For partial updates to an existing session's summary, the server broadcasts `root/sessionSummaryChanged`:
+
+對於現有工作階段摘要的部分更新，伺服器會廣播 `root/sessionSummaryChanged`：
+
+
+
+
 
 ```json
 {
@@ -207,8 +239,9 @@ For partial updates to an existing session's summary, the server broadcasts `roo
 }
 ```
 
-Protocol notifications go only to clients subscribed to the channel they target. They are not stored in state and are not replayed on reconnection.
 
-## Stateless Channels
+協定通知僅發送至訂閱其目標通道的用戶端。它們不會儲存在狀態中，並且在重新連線時不會重播。
 
-A channel MAY be stateless — i.e. carry no `Snapshot`. Subscribing returns an empty result `{}`, and subsequent traffic flows via channel-specific methods rather than `action` envelopes. The subscription/unsubscription mechanism is identical to state channels. Stateless channels are not replayed across reconnection — clients re-subscribe and resume from the live edge.
+## 無狀態通道
+
+通道可以是無狀態的－即不攜帶 `Snapshot`。訂閱傳回空結果 `{}`，後續流量通過特定於通道的方法而不是 `action` 信封流動。訂閱/取消訂閱機制與狀態通道相同。無狀態通道不會在重新連線時重播 - 用戶端從即時邊緣重新訂閱和恢復。

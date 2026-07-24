@@ -1,37 +1,47 @@
-## Skills layout
+## 技能佈局
 
-- Source of truth for repo-scoped skills: `skills/`.
-- Adapter paths: `.claude/skills`, `.codex/skills`, `.github/skills`.
-- Adapter paths must stay symlinks to `../skills`.
-- Do not add real files under adapter paths — add skills under `skills/` only.
+- 儲存庫範圍技能的真實來源：`skills/`。
+- 適配器路徑：`.claude/skills`、`.codex/skills`、`.github/skills`。
+- 適配器路徑必須保留到 `../skills` 的符號連結。
+- 不要在適配器路徑下新增真實檔案 - 僅在 `skills/` 下新增技能。
 
-Each skill is a directory under `skills/` containing a `SKILL.md` (plus any supporting files the skill references). The adapter symlinks let the Claude, Codex, and Copilot/GitHub agents all discover the same skills without duplicating them.
+每個技能都是 `skills/` 下的一個目錄，其中包含 `SKILL.md`（以及技能引用的任何支援文件）。適配器符號連結讓 Claude、Codex 和 Copilot/GitHub 代理程式都可以發現相同的技能，而無需重複它們。
 
-## SKILL.md format
+## 技能.md 格式
 
-Every skill must be authored as a `SKILL.md` file with YAML frontmatter at the top.
-Do not create skills without frontmatter.
+每個技能都必須編寫為 `SKILL.md` 文件，YAML frontmatter 位於頂部。
+不要在沒有前台內容的情況下創造技能。
 
-Use this Copilot-compatible template:
+使用此 Copilot 相容模板：
+
+
+
+
 
 ```md
 ---
 name: your-skill-name
-description: Short description of when to use the skill.
+description: 何時使用該技能的簡短說明。
 ---
 ```
 
-Notes:
 
-- `name` and `description` are required for discovery.
-- Both must be single-line scalar values. YAML block scalars and multiline values are not supported by skill discovery and will not be parsed correctly, which may produce incorrect `name` or `description` values.
-- Do not add extra frontmatter keys such as `metadata:`; they are ignored by discovery.
-- Keep the frontmatter at the very top of the file.
+筆記：
 
-Smoke check:
+- 發現需要 `name` 和 `description`。
+- 兩者都必須是單行標量值。技能發現不支援 YAML 區塊標量和多行值，並且不會正確解析，這可能會產生不正確的 `name` 或 `description` 值。
+- 不要新增額外的 frontmatter 鍵，例如 `metadata:`；它們被發現所忽略。
+- 將 frontmatter 放在文件的最上方。
+
+煙霧檢查：
+
+
+
+
 
 ```bash
 ls -ld .claude/skills .codex/skills .github/skills
 ```
 
-If any agent fails to resolve symlinks, switch that client to generated mirror files as fallback.
+
+如果任何代理無法解析符號連結，請將該用戶端切換為生成的鏡像檔案作為後備。

@@ -1,19 +1,23 @@
-# ahp
+#啊啊
 
-Async Rust client for the [Agent Host Protocol (AHP)](https://github.com/microsoft/agent-host-protocol).
+[代理主機協定 (AHP)](https://github.com/microsoft/agent-host-protocol) 的非同步 Rust 用戶端。
 
 [![crates.io](https://img.shields.io/crates/v/ahp.svg)](https://crates.io/crates/ahp)
 [![docs.rs](https://img.shields.io/docsrs/ahp)](https://docs.rs/ahp)
 
-Transport-agnostic SDK that builds on [`ahp-types`](https://crates.io/crates/ahp-types). Bring your own transport — WebSocket, stdio, TCP, or an in-memory channel pair for tests.
+建構於 [`ahp-types`](https://crates.io/crates/ahp-types) 之上的與傳輸無關的 SDK。帶上您自己的傳輸 - WebSocket、stdio、TCP 或記憶體中通道對進行測試。
 
-## Features
+## 特徵
 
-- **[`Client`](https://docs.rs/ahp/latest/ahp/client/struct.Client.html)** — async JSON-RPC client with action subscription, write-ahead dispatch, and background I/O task
-- **[`reducers`](https://docs.rs/ahp/latest/ahp/reducers/)** — pure state reducers; apply `StateAction`s to `RootState` / `SessionState` / terminal state
-- **[`Transport`](https://docs.rs/ahp/latest/ahp/transport/trait.Transport.html)** — pluggable trait for any framed message stream
+- **[`Client`](https://docs.rs/ahp/latest/ahp/client/struct.Client.html)** — 具有操作訂閱、預寫調度和後台 I/O 任務的非同步 JSON-RPC 用戶端
+- **[`reducers`](https://docs.rs/ahp/latest/ahp/reducers/)** — 純狀態 reducer；將 `StateAction` 應用於 `RootState` / `SessionState` / 終端機狀態
+- **[`Transport`](https://docs.rs/ahp/latest/ahp/transport/trait.Transport.html)** — 任何框架訊息流的可插入特徵
 
-## Usage
+## 用法
+
+
+
+
 
 ```toml
 [dependencies]
@@ -21,6 +25,12 @@ ahp = "0.1"
 ahp-ws = "0.1"   # or bring your own transport
 tokio = { version = "1", features = ["full"] }
 ```
+
+
+
+
+
+
 
 ```rust
 use ahp::{Client, ClientConfig, SubscriptionEvent};
@@ -42,9 +52,14 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-## Custom transport
 
-Implement `ahp::Transport` for any framed byte stream:
+## 自訂運輸
+
+為任何幀位元組流實作 `ahp::Transport`：
+
+
+
+
 
 ```rust
 use ahp::{Transport, TransportError, TransportMessage};
@@ -63,11 +78,12 @@ impl Transport for MyTransport {
 }
 ```
 
-See `tests/client_roundtrip.rs` for a complete in-memory example.
 
-## See also
+有關完整的記憶體中範例，請參閱 `tests/client_roundtrip.rs`。
 
-- [`ahp-types`](https://crates.io/crates/ahp-types) — wire types only (no I/O)
-- [`ahp-ws`](https://crates.io/crates/ahp-ws) — WebSocket transport
-- [Connecting to multiple hosts](https://github.com/microsoft/agent-host-protocol/blob/main/clients/rust/MULTI_HOST.md) — the [`hosts`](https://docs.rs/ahp/latest/ahp/hosts/) module wraps multi-host registry, reconnect, fan-in, and aggregated views; single-host consumers use `MultiHostClient::single`
-- [Protocol documentation](https://microsoft.github.io/agent-host-protocol/)
+## 另請參閱
+
+- [`ahp-types`](https://crates.io/crates/ahp-types) — 僅線路類型（無 I/O）
+- [`ahp-ws`](https://crates.io/crates/ahp-ws) — WebSocket 傳輸
+- [連線到多個主機](https://github.com/microsoft/agent-host-protocol/blob/main/clients/rust/MULTI_HOST.md) — [`hosts`](https://docs.rs/ahp/latest/ahp/hosts/) 模組包裝多主機註冊表、重新連線、扇入和聚合視圖；單主機消費者使用 `MultiHostClient::single`
+- [協定文件](https://microsoft.github.io/agent-host-protocol/)

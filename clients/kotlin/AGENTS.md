@@ -1,118 +1,129 @@
-# Kotlin Client — Agent Guide
+# Kotlin 用戶端 — 代理指南
 
-## Overview
+## 概述
 
-This directory contains the **Kotlin/JVM** client library for the Agent Host Protocol (AHP), distributed via Maven Central as `com.microsoft.agenthostprotocol:agent-host-protocol`.
+此目錄包含代理主機協定 (AHP) 的 **Kotlin/JVM** 用戶端函式庫，透過 Maven Central 作為 `com.microsoft.agenthostprotocol:agent-host-protocol` 分發。
 
-The library targets pure Kotlin/JVM (Java 8 bytecode, JDK 17 toolchain) so it works for Android consumers, server-side JVM consumers, and KMP/JVM target consumers without any Android-specific dependencies. Only `kotlinx-serialization-json` is on the classpath at runtime.
+本函式庫以純 Kotlin/JVM（Java 8 位元組碼、JDK 17 工具鏈）為目標，因此適用於 Android 使用者、伺服器端 JVM 使用者和 KMP/JVM 目標使用者，無需任何 Android 特定的依賴項。運行時只有 `kotlinx-serialization-json` 位於類別路徑中。
 
-## Code Generation
+## 程式碼生成
 
-Types in `src/main/kotlin/com/microsoft/agenthostprotocol/generated/` are **auto-generated** from the TypeScript definitions in `types/`. Do not edit these files directly. Generated files are committed to source control so the package is consumable via Maven Central without a code-generation toolchain.
+`src/main/kotlin/com/microsoft/agenthostprotocol/generated/` 中的類型是根據 `types/` 中的 TypeScript 定義**自動產生**的。不要直接編輯這些文件。生成的檔案提交給原始程式碼管理，因此可以透過 Maven Central 使用該套件，而無需程式碼生成工具鏈。
 
-To regenerate after protocol changes:
+協定更改後重新生成：
+
+
+
+
 
 ```bash
 npm run generate:kotlin    # runs: tsx scripts/generate.ts --kotlin
 ```
 
-Generated files: `State`, `Commands`, `Actions`, `Errors`, `Messages`, `Notifications` — all suffixed `.generated.kt`.
 
-CI verifies the committed generated files match the output of `npm run generate:kotlin` and fails on drift.
+產生的檔案：`State`、`Commands`、`Actions`、`Errors`、`Messages`、`Notifications` — 全部後綴為 `.generated.kt`。
 
-## Library structure
+CI 驗證提交的產生檔案是否與 `npm run generate:kotlin` 的輸出匹配，但在漂移時失敗。
 
-- `src/main/kotlin/com/microsoft/agenthostprotocol/Ahp.kt` — Hand-maintained entry point. Exposes the configured `kotlinx.serialization.json.Json` instance (`Ahp.json`) that consumers MUST use to encode/decode protocol messages. The custom `KSerializer`s for discriminated unions require a JSON-aware encoder/decoder, so generic `Json` instances may not work.
-- `src/main/kotlin/com/microsoft/agenthostprotocol/Reducers.kt` — Hand-written pure reducers (`rootReducer`, `sessionReducer`, `chatReducer`, `terminalReducer`, `changesetReducer`, `annotationsReducer`, `resourceWatchReducer`) ported from `types/channels-*/reducer.ts`, plus a small `Reducer<S, A>` fun-interface and per-channel `object` wrappers. See [Reducers](#reducers) below.
-- `src/main/kotlin/com/microsoft/agenthostprotocol/generated/` — Auto-generated wire types.
-- `build.gradle.kts` — Gradle build config. Sets `jvmTarget = JVM_1_8` (Android-friendly) with a JDK 17 toolchain. Configures the Vanniktech `maven-publish` plugin for Sonatype Central Portal publishing. Also wires the absolute path of `types/test-cases/reducers/` into the test JVM as the `ahp.reducerFixturesDir` system property so `FixtureDrivenReducerTest` can load fixtures regardless of cwd.
-- `gradle.properties` — Source of truth for the artifact's Maven coordinates (`GROUP`, `VERSION_NAME`) and POM metadata.
-- `gradle/libs.versions.toml` — Version catalog (Kotlin, kotlinx.serialization, JUnit, Vanniktech plugin).
+## 庫結構
 
-## Type mapping (TS → Kotlin)
+- `src/main/kotlin/com/microsoft/agenthostprotocol/Ahp.kt` — 手動維護的入口點。公開消費者必須用來編碼/解碼協定訊息的配置的 `kotlinx.serialization.json.Json` 實例 (`Ahp.json`)。判別聯集的自訂 `KSerializer` 需要 JSON 感知的編碼器/解碼器，因此通用 `Json` 實例可能不起作用。
+- `src/main/kotlin/com/microsoft/agenthostprotocol/Reducers.kt` - 從 `types/channels-*/reducer.ts` 移植的手寫純reducer（`rootReducer`、`sessionReducer`、`chatReducer`、`terminalReducer`、`changesetReducer`、`annotationsReducer`、`resourceWatchReducer`），加上一個小的 `Reducer<S, A>` 介面和每個通道 `object` 包裝器。請參閱下面的[Reducers](#reducers)。
+- `src/main/kotlin/com/microsoft/agenthostprotocol/generated/` — 自動產生的線路類型。
+- `build.gradle.kts` — Gradle 建置配置。使用 JDK 17 工具鏈設定 `jvmTarget = JVM_1_8`（Android 友善）。配置 Vanniktech `maven-publish` 插件以進行 Sonatype Central Portal 發布。也將 `types/test-cases/reducers/` 的絕對路徑作為 `ahp.reducerFixturesDir` 系統屬性連線到測試 JVM，以便 `FixtureDrivenReducerTest` 可以載入夾具，而不管 cwd。
+- `gradle.properties` — 工件的 Maven 座標（`GROUP`、`VERSION_NAME`）和 POM 元資料的真實來源。- `gradle/libs.versions.toml` — 版本目錄（Kotlin、kotlinx.serialization、JUnit、Vanniktech 外掛程式）。
 
-| TypeScript                    | Kotlin                                                            |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `string`                      | `String`                                                          |
-| `number`                      | `Long` (TS contract: 64-bit ints)                                 |
-| `number` w/ `@format float`   | `Double`                                                          |
-| `boolean`                     | `Boolean`                                                         |
-| `unknown` / `object`          | `kotlinx.serialization.json.JsonElement`                          |
-| `T \| null`                   | `T?`                                                              |
-| `T?` field / `T \| undefined` | `T? = null`                                                       |
-| `T[]` / `Array<T>`            | `List<T>`                                                         |
-| `Record<string, T>`           | `Map<String, T>`                                                  |
-| `Partial<T>`                  | `PartialT` data class with all fields nullable                    |
-| `enum E { A = "a" }`          | `@Serializable enum class E { @SerialName("a") A }`               |
-| Bitset enum (JSDoc "Bitset")  | `@JvmInline value class` over `Int` w/ companion-object constants |
-| Interface struct              | `@Serializable data class`                                        |
-| Discriminated union           | sealed interface + custom `KSerializer` (mirrors Swift)           |
-| `URI`                         | `typealias URI = String`                                          |
-| `StringOrMarkdown`            | sealed interface w/ custom serializer                             |
-| Recursive struct              | data class (heap-allocated by default)                            |
-| `_meta` field                 | Kotlin `meta` + `@SerialName("_meta")`                            |
-| `snake_case` wire field       | camelCase + `@SerialName("snake_case")`                           |
+## 型別映射（TS → Kotlin）
 
-### Why custom union serializers (and not `@JsonClassDiscriminator`)
+| TypeScript | Kotlin |
+| -------------------------------------- |---------------------------------------------------------------- |
+| `string` | `String` |
+| `number` | `Long`（TS 合約：64 位元整數）|
+| `number` 與 `@format float` | `Double` |
+| `boolean` | `Boolean` |
+| `unknown` / `object` | `kotlinx.serialization.json.JsonElement` |
+| `T \| null` | `T?` |
+| `T?` 欄位 / `T \| undefined` | `T? = null` || `T[]` / `Array<T>` | `List<T>` |
+| `Record<string, T>` | `Map<String, T>` |
+| `Partial<T>` | `PartialT` 所有欄位都可為空的資料類別 |
+| `enum E { A = "a" }` | `@Serializable enum class E { @SerialName("a") A }` |
+| Bitset 列舉（JSDoc“Bitset”）| `@JvmInline value class` 優於 `Int`，帶伴生物件常數 |
+|介面結構| `@Serializable data class` |
+|判別聯集|密封介面+自訂`KSerializer`（鏡子Swift）|
+| `URI` | `typealias URI = String` |
+| `StringOrMarkdown` |具有自訂序列化器的密封介面|
+|遞歸結構|資料類別（預設是堆分配的）|| `_meta` 欄位 | Kotlin `meta` + `@SerialName("_meta")` |
+| `snake_case` 線路欄位 |駝峰式命名法 + `@SerialName("snake_case")` |
 
-`@JsonClassDiscriminator` is the idiomatic kotlinx-serialization way to model discriminated unions, but it forbids the discriminator field from existing on the variant data class. Since our TS variant interfaces include their discriminator (e.g. `MarkdownResponsePart.kind = 'markdown'`), generating `@JsonClassDiscriminator`-based unions would require cross-cutting field filtering everywhere those interfaces appear. Mirroring Swift's manual sealed-union serializer keeps the variant data classes 1:1 with their TS counterparts.
+### 為什麼要使用自訂聯集序列化器（而不是 `@JsonClassDiscriminator`）
 
-A consequence: **always use `Ahp.json` (or a `Json` instance with `classDiscriminator` set to a sentinel value)** when encoding/decoding. The default kotlinx `"type"` discriminator collides with real `type` fields in our schema.
+`@JsonClassDiscriminator` 是對判別聯集進行建模的慣用 kotlinx 序列化方法，但它禁止判別器欄位存在於變體資料類別上。由於我們的 TS 變體介面包括其鑑別器（例如 `MarkdownResponsePart.kind = 'markdown'`），因此產生基於 `@JsonClassDiscriminator` 的聯集將需要在這些介面出現的所有地方進行橫切欄位過濾。鏡像 Swift 的手動密封聯集序列化器可使變體資料類別與其 TS 對應項保持 1:1 的關係。
 
-### Notifications are routed by JSON-RPC method, not by an embedded discriminator
+結果：**在編碼/解碼時始終使用 `Ahp.json`（或將 `classDiscriminator` 設定為哨兵值的 `Json` 實例）**。預設的 kotlinx `"type"` 鑑別器與我們模式中真實的 `type` 欄位發生衝突。
 
-Since the v0.2 channels reorg, server → client notifications are dispatched on the JSON-RPC `method` name (e.g. `root/sessionAdded`, `auth/required`, `otlp/exportLogs`) rather than on a `type` discriminator field. The generator therefore emits each notification payload as a plain `*Params` data class (no sealed-union wrapper). Consumers extract `method` from the JSON-RPC envelope themselves and decode the matching params type. The `action` notification is special-cased: its params are always `ActionEnvelope`.
+### 通知透過 JSON-RPC 方法路由，而不是透過嵌入式鑑別器路由
 
-### Multi-value discriminators
+自 v0.2 通道重組以來，伺服器 → 用戶端通知將在 JSON-RPC `method` 名稱（例如 `root/sessionAdded`、`auth/required`、`otlp/exportLogs`）上調度，而不是在 `type` 鑑別器欄位上調度。因此，生成器將每個通知有效負載作為普通的 `*Params` 資料類別（無密封聯集包裝器）發出。消費者自己從 JSON-RPC 信封中提取 `method` 並解碼匹配的參數型別。 `action` 通知是特殊情況：它的參數總是 `ActionEnvelope`。
 
-`SessionInputQuestion` is the one union where two wire `kind` values map to the same Kotlin data class:
+### 多值判別器
+
+`SessionInputQuestion` 是一個並集，其中兩條線 `kind` 值對應到同一 Kotlin 資料類：
 
 - `kind: "number"` → `SessionInputQuestionNumber(SessionInputNumberQuestion(kind = NUMBER, ...))`
 - `kind: "integer"` → `SessionInputQuestionNumber(SessionInputNumberQuestion(kind = INTEGER, ...))`
 
-The custom serializer handles both wire values during decode; encode preserves whichever discriminator was set on the data class. Tests in `DiscriminatedUnionTest.kt` cover this case.
+自訂序列化器在解碼期間處理兩個連線值；編碼保留在資料類別上設定的任何鑑別器。 `DiscriminatedUnionTest.kt` 中的測試涵蓋了這種情況。
 
-### Hand-rolled `ChangesetOperationTarget` union
+###手捲`ChangesetOperationTarget`聯集
 
-The TS source models `ChangesetOperationTarget` as a discriminated union over two inline variant shapes that aren't exported as their own interfaces. The generator emits the whole subgraph — the sealed `ChangesetOperationTarget`, the two variant data classes (`ChangesetOperationResourceTarget` and `ChangesetOperationRangeTarget`), the `ChangesetOperationTargetRange` helper, and the custom serializer — by hand from `generateChangesetOperationTargetKotlin()` so the Kotlin wire surface stays aligned with the Swift and Rust clients.
+TS 源將 `ChangesetOperationTarget` 建模為兩個內聯變體形狀的可辨別聯集，這兩個內聯變體形狀不會導出為其自己的接口。生成器從 `generateChangesetOperationTargetKotlin()` 手動發出整個子圖 - 密封的 `ChangesetOperationTarget`、兩個變體資料類別（`ChangesetOperationResourceTarget` 和 `ChangesetOperationRangeTarget`）、`ChangesetOperationTargetRange` 幫助器和自訂序列化器，以便 Kotlin 線路介面與 Swift 和 Rust 用戶端保持對齊。
 
-### Bitset enums
+### 位元集列舉
 
-`SessionStatus` is currently the only bitset enum in the protocol. It's emitted as a `@JvmInline value class` over `Int` so that **unknown future flags survive a decode/encode round-trip** without being silently dropped. Use `or`/`and`/`in` for combinator/containment ops:
+`SessionStatus` 是目前協定中唯一的位元集列舉。它作為 `@JvmInline value class` over `Int` 發出，以便**未知的未來標誌在解碼/編碼往返中倖存下來**而不會被默默丟棄。使用 `or`/`and`/`in` 進行組合器/包含操作：
+
+
+
+
 
 ```kotlin
 val combined = SessionStatus.IDLE or SessionStatus.IS_READ
 SessionStatus.IDLE in combined   // true
 ```
 
-## Distribution
 
-Artifacts are published to Maven Central (Sonatype Central Portal) via Microsoft's ESRP-backed `vscode-engineering` `maven-package` pipeline template on `kotlin/v*` git tags. The [`gradle-maven-publish-plugin`](https://github.com/vanniktech/gradle-maven-publish-plugin) (v0.36+) is used to stage and GPG-sign the artifacts into a local Maven repository layout that ESRP then uploads.
+## 分配
 
-The release pipeline ([`clients/kotlin/pipeline.yml`](pipeline.yml)) is an Azure DevOps pipeline (GitHub Actions cannot trigger ADO in this repo — PATs are not permitted). Its repo-specific `buildSteps` cover validation and build; **staging + GPG signing are owned by the `maven-package` template** (common infrastructure — Maven Central always requires PGP signatures):
+工件透過 `kotlin/v*` git 標籤上的 Microsoft ESRP 支援的 `vscode-engineering` `maven-package` 管道範本發佈到 Maven Central（Sonatype Central Portal）。 [`gradle-maven-publish-plugin`](https://github.com/vanniktech/gradle-maven-publish-plugin) (v0.36+) 用於將工件暫存並進行 GPG 簽章到本機 Maven 儲存庫佈局中，然後由 ESRP 上傳。
 
-1. **Tag validation** (buildStep) — verifies the `kotlin/vX.Y.Z` tag matches `gradle.properties` `VERSION_NAME`, that the version is not `-SNAPSHOT`, and that `CHANGELOG.md` has a matching `## [X.Y.Z]` heading.
-2. **Generator + Gradle check** (buildSteps) — re-runs `npm run generate:kotlin` (fails on diff) and `./gradlew check`.
-3. **Fetch GPG key** (template) — `AzureKeyVault@2` pulls `maven-gpg-private-key` and `maven-gpg-passphrase` from the `vscode` Key Vault (the template's `signingKeyVault*` / `gpg*SecretName` defaults).
-4. **Stage & sign** (template) — the default `mavenStagingCommand` (`./gradlew publishAllPublicationsToStagingRepository …`) writes a Maven layout to `build/maven-staging/`, signing every artifact (`.asc`) with the in-memory GPG key (`ORG_GRADLE_PROJECT_signingInMemoryKey*`) and emitting `.md5`/`.sha1` checksums. `build.gradle.kts` signs by default (`ahp.signPublications` defaults to true). Maven Central requires these PGP signatures, and the ESRP Release `maven` content type does **not** generate them — so the template signs here.
-5. **ESRP publish** (template) — the signed staging folder is handed to ESRP (`contenttype: maven`), which uploads it to Maven Central via the Sonatype Central Portal.
+發布管道 ([`clients/kotlin/pipeline.yml`](pipeline.yml)) 是一個 Azure DevOps 管道（GitHub Actions 無法在此儲存庫中觸發 ADO — 不允許使用 PAT）。其特定於儲存庫的 `buildSteps` 涵蓋驗證和建置； **暫存 + GPG 簽章由 `maven-package` 範本擁有**（通用基礎架構 - Maven Central 始終需要 PGP 簽章）：
 
-No GitHub-side secrets are required — both the ESRP credentials and the GPG signing key live inside the Microsoft ADO tenant (the latter in the `vscode` Key Vault). The matching GPG **public** key must be published to a keyserver so Maven Central can validate the signatures.
+1. **標籤驗證** (buildStep) — 驗證 `kotlin/vX.Y.Z` 標籤與 `gradle.properties` `VERSION_NAME` 匹配，版本不是 `-SNAPSHOT`，並且 `CHANGELOG.md` 具有匹配的 `## [X.Y.Z]` 標題。
+2. **生成器 + Gradle 檢查** (buildSteps) — 重新運行 `npm run generate:kotlin`（差異失敗）和 `./gradlew check`。
+3. **取得 GPG 金鑰**（範本）— `AzureKeyVault@2` 從 `vscode` Key Vault 擷取 `maven-gpg-private-key` 和 `maven-gpg-passphrase`（範本的 `signingKeyVault*` / `gpg*SecretName` 預設值）。
+4. **階段與簽章**（範本）- 預設的 `mavenStagingCommand` (`./gradlew publishAllPublicationsToStagingRepository …`) 將 Maven 佈局寫入 `build/maven-staging/`，使用記憶體中的 GPG 金鑰 (`ORG_GRADLE_PROJECT_signingInMemoryKey*`) 對每個工件 (`.asc`) 進行簽章並發出 `.md5`/`.sha1` 校驗和。 `build.gradle.kts` 預設符號（`ahp.signPublications` 預設為 true）。 Maven Central 需要這些 PGP 簽名，而 ESRP 版本 `maven` 內容型別不會**生成它們 - 因此模板在此處簽名。
+5.**ESRP 發佈**（範本）— 已簽署的暫存資料夾將交給 ESRP (`contenttype: maven`)，ESRP 透過 Sonatype Central Portal 將其上傳到 Maven Central。
 
-### Cutting a release
+不需要 GitHub 端的機密 - ESRP 憑證和 GPG 簽章金鑰都位於 Microsoft ADO 租用戶內（後者位於 `vscode` Key Vault 中）。相符的 GPG **公鑰** 金鑰必須發佈到金鑰伺服器，以便 Maven Central 可以驗證簽章。
 
-See [`RELEASING.md`](../../RELEASING.md) for the full release flow.
-Summary, scoped to Kotlin:
+### 刪減版本
 
-1. Bump `VERSION_NAME` in `clients/kotlin/gradle.properties` (drop `-SNAPSHOT` for a public release; the version should match the `PROTOCOL_VERSION` in `types/version/registry.ts` when shipping a protocol-aligned drop, e.g. `0.2.0`).
-2. Run `npm run generate:metadata` and commit the regenerated `clients/kotlin/release-metadata.json`.
-3. Rotate the `## [Unreleased]` section of `clients/kotlin/CHANGELOG.md` to `## [X.Y.Z] — YYYY-MM-DD` with an `Implements AHP <version>` line. The publish workflow fails if no `## [X.Y.Z]` heading exists for the tag version.
-4. Commit, merge to `main`.
-5. Tag the merge commit using `kotlin/v` + the same version (e.g. `git tag kotlin/v0.2.0 && git push origin kotlin/v0.2.0`). The ADO publish pipeline rejects any mismatch between the tag and `VERSION_NAME`, and refuses `*-SNAPSHOT` tags outright.
-6. The ADO pipeline runs, stages the Maven artifacts, and hands them to ESRP for signing and upload to Maven Central. With `automaticRelease = true` set in `mavenPublishing { ... }` and ESRP handling the publish, no manual Sonatype UI interaction is required.
-7. Bump `VERSION_NAME` back to the next `-SNAPSHOT` for ongoing development.
+請參閱 [`RELEASING.md`](../../RELEASING.md) 以了解完整的發布流程。
+摘要，範圍為 Kotlin：
 
-## Building and testing locally
+1. 在 `clients/kotlin/gradle.properties` 中提升 `VERSION_NAME`（公開發佈時刪除 `-SNAPSHOT`；當發布協定一致的 drop 時，該版本應與 `types/version/registry.ts` 中的 `PROTOCOL_VERSION` 匹配，例如 `0.2.0`）。
+2. 執行`npm run generate:metadata`並提交重新產生的`clients/kotlin/release-metadata.json`。
+3. 使用 `Implements AHP <version>` 線將 `clients/kotlin/CHANGELOG.md` 的 `## [Unreleased]` 部分旋轉到 `## [X.Y.Z] — YYYY-MM-DD`。如果標籤版本不存在 `## [X.Y.Z]` 標題，則發佈工作流程將會失敗。
+4. 提交，合併到`main`。
+5. 使用 `kotlin/v` + 相同版本（例如 `git tag kotlin/v0.2.0 && git push origin kotlin/v0.2.0`）標記合併提交。 ADO 發布管道拒絕標記與 `VERSION_NAME` 之間的任何不匹配，並完全拒絕 `*-SNAPSHOT` 標記。
+6. ADO 管線運作、暫存 Maven 工件，並將它們交給 ESRP 進行簽署並上傳到 Maven Central。透過在 `mavenPublishing { ... }` 中設定 `automaticRelease = true` 並且 ESRP 處理發布，不需要手動 Sonatype UI 互動。
+7. 將 `VERSION_NAME` 傳回下一個 `-SNAPSHOT` 以進行持續開發。
+
+## 本機建置與測試
+
+
+
+
 
 ```bash
 cd clients/kotlin
@@ -121,19 +132,24 @@ cd clients/kotlin
 ./gradlew publishToMavenLocal   # smoke-test publishing (skips signing if no key configured)
 ```
 
-Requires a JDK 17+ on `JAVA_HOME`. Gradle wrapper handles everything else.
 
-## Out of scope (intentional)
+`JAVA_HOME` 需要 JDK 17+。 Gradle 包裝器處理其他所有事情。
 
-This package currently ships **wire types and pure reducers**. The following are deferred to follow-up PRs:
+## 超出範圍（故意）
 
-- Example Android app (analog of Swift's `AHPClient`)
-- WebSocket transport / async client
-- Kotlin Multiplatform (KMP) build — JVM target is sufficient for current Android consumers
+該套件目前提供**線路類型和純 reducer**。以下內容延後到後續 PR：
 
-## Reducers
+- Android 應用程式範例（類似 Swift 的 `AHPClient`）
+- WebSocket 傳輸/非同步用戶端
+- Kotlin 多平台 (KMP) 建置 — JVM 目標足以滿足當前 Android 消費者的需求
 
-`Reducers.kt` exposes pure reducer functions and their `object`-wrapped equivalents that conform to the `Reducer<S, A>` fun-interface:
+## reducer
+
+`Reducers.kt` 公開純 reducer 函式及其符合 `Reducer<S, A>` fun 介面的 `object` 包裝的等效項：
+
+
+
+
 
 ```kotlin
 public fun rootReducer(state: RootState, action: StateAction): RootState
@@ -154,47 +170,53 @@ public object AnnotationsReducer : Reducer<AnnotationsState, StateAction>
 public object ResourceWatchReducer : Reducer<ResourceWatchState, StateAction>
 ```
 
-Each reducer dispatches on the [`StateAction`] sealed interface and handles the action variants that belong to its channel. Actions belonging to other channels (or unknown `StateActionUnknown` variants returned by the wire-types decoder when the server sends a newer action type than this version of the client knows about) fall through to an `else -> state` no-op — this matches the forward-compatibility semantics of the canonical TypeScript and Swift reducers.
 
-State-channel unions decoded inside actions follow the same principle: when the server emits a discriminator this client doesn't recognise (e.g. a future `ResponsePart` kind, `ToolCallState`, `Customization` type, etc.) the decoder lifts the raw JSON into an `XUnknown` variant rather than throwing. `StateActionUnknown` uses the same shape for unknown action types. Reducers treat these variants conservatively — `customizationId` returns `null` so an unknown container can't false-match a real id, `SessionCustomizationUpdated` short-circuits to NoOp when the payload is Unknown, and cancellation collapses unknown tool calls to empty cancelled state. These behaviours mirror the Rust reducer exactly.
+每個 reducer 在 [`StateAction`] 密封介面上分派並處理屬於其通道的操作變體。屬於其他通道的操作（或當伺服器發送比該版本的用戶端所知的更新的操作型別時，線路類型解碼器傳回的未知 `StateActionUnknown` 變體）會陷入 `else -> state` 無操作 — 這與規範的 TypeScript 和 Swift reducer相匹配。
 
-### Hand-port from TypeScript
+在動作內部解碼的狀態通道聯集遵循相同的原則：當伺服器發出此用戶端無法識別的鑑別器時（例如未來的 `ResponsePart` 類型、`ToolCallState`、`Customization` 型別等），解碼器會將原始 JSON 變體，而不是原始。 `StateActionUnknown` 對未知的操作類型使用相同的形狀。reducer保守地對待這些變體 - `customizationId` 傳回 `null`，因此未知容器不能錯誤匹配真實的 id，當有效負載未知時，`SessionCustomizationUpdated` 會短路到 NoOp，取消會將未知工具呼叫折疊為空已取消的狀態。這些行為完全反映了 Rust reducer。
 
-Each reducer is a direct hand-port of the corresponding file in `types/channels-*/reducer.ts`. Notable mechanical translations:
+### 從 TypeScript 手動移植
 
-| TypeScript                                                  | Kotlin                                                                              |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `{ ...state, foo: bar }`                                    | `state.copy(foo = bar)`                                                             |
-| `delete next.inputRequests`                                 | `next.copy(inputRequests = null)` (collapses to absent on the wire via `explicitNulls = false`) |
-| `arr.findIndex(...)` + splice in place                      | `arr.indexOfFirst { ... }` + `toMutableList().also { it[idx] = ... }`               |
-| spread of conditional object: `...(opt ? { selectedOption: opt } : {})` | nullable field assignment: `selectedOption = opt`                       |
-| `status & ~STATUS_ACTIVITY_MASK | activity`                 | `SessionStatus((status.rawValue and STATUS_ACTIVITY_MASK.inv()) or activity.rawValue)` |
-| `if (action.confirmed)` (truthy check on optional enum)     | `if (action.confirmed != null)`                                                     |
+每個 reducer 都是 `types/channels-*/reducer.ts` 中對應檔案的直接移植。值得注意的機械翻譯：
 
-The Kotlin port preserves Swift parity caveats already documented in PR #115:
+| TypeScript | Kotlin |
+|------------------------------------------------------------------------------------- |------------------------------------------------------------------------------------------------ |
+| `{ ...state, foo: bar }` | `state.copy(foo = bar)`|
+| `delete next.inputRequests` | `next.copy(inputRequests = null)`（經由 `explicitNulls = false` 折疊到線路消失）|
+| `arr.findIndex(...)` + 拼接到位 | `arr.indexOfFirst { ... }` + `toMutableList().also { it[idx] = ... }` |
+|條件物件的傳播：`...(opt ? { selectedOption: opt } : {})` |可空白欄位賦值：`selectedOption = opt` |
+| `status & ~STATUS_ACTIVITY_MASK | activity` | `SessionStatus((status.rawValue and STATUS_ACTIVITY_MASK.inv()) or activity.rawValue)`|
+| `if (action.confirmed)`（對可選列舉進行真實檢查）| `if (action.confirmed != null)` |
 
-1. **`T | null` vs `T?`** — both collapse to nullable Kotlin fields. With `explicitNulls = false`, both encode as absent.
-2. **Discriminator validation** — no runtime check that, e.g., a `MarkdownResponsePart`'s `kind` matches `MARKDOWN`. Mirrors Swift. For forward-compat unions, an *unrecognised* discriminator decodes to the `XUnknown(val raw: JsonObject)` variant (mirrors Rust's `Unknown(serde_json::Value)`) and round-trips its raw payload on re-encode.
-3. **`StateActionUnknown`** — captures the full raw JSON object of an unknown action (same shape as the state-channel `XUnknown` variants). The reducer treats it as a no-op. Re-encoding round-trips the original payload back to the wire.
+Kotlin 連接埠保留了 PR #115 中已記錄的 Swift 奇偶校驗警告：
 
-### Injectable timestamp
+1. **`T | null` 與 `T?`** — 都折疊為可為空的 Kotlin 欄位。對於 `explicitNulls = false`，兩者都編碼為不存在。
+2. **鑑別器驗證** — 沒有執行時間檢查，例如 `MarkdownResponsePart` 的 `kind` 是否符合 `MARKDOWN`。鏡子Swift。對於前向相容聯集，*無法識別的*鑑別器解碼為 `XUnknown(val raw: JsonObject)` 變體（鏡像 Rust 的 `Unknown(serde_json::Value)`）並在重新編碼時往返其原始負載。
+3. **`StateActionUnknown`** — 捕捉未知操作的完整原始 JSON 物件（與狀態通道 `XUnknown` 變體的形狀相同）。 reducer 將其視為無操作。重新編碼將原始有效負載往返傳回線路。
 
-The session reducer stamps `summary.modifiedAt` whenever it mutates fields that semantically advance the session's modification time (turn lifecycle, title change, agent change, customization update, input request changes, etc.). The stamp comes from a top-level `var`:
+### 可注入時間戳
+
+每當工作階段 reducer 改變在語意上提前工作階段修改時間的欄位（回合生命週期、標題變更、代理程式變更、自訂更新、輸入請求變更等）時，它就會標記 `summary.modifiedAt`。這張郵票來自頂`var`：
+
+
+
+
 
 ```kotlin
 public var currentTimestampProvider: () -> Long = { System.currentTimeMillis() }
 ```
 
-Tests override this with a constant to produce deterministic output, then restore the default in `@AfterEach`. The provider is global mutable state; if you parallelize tests across JVM threads, snap a value into a `ThreadLocal` first.
 
-### Cross-language parity tests
+測試用常數覆蓋它以產生確定性輸出，然後恢復 `@AfterEach` 中的預設值。提供者是全域可變的狀態；如果您跨 JVM 執行緒並行化測試，請先將一個值插入到 `ThreadLocal` 中。
 
-`FixtureDrivenReducerTest` loads every fixture under `types/test-cases/reducers/*.json` and verifies that the Kotlin reducer's output matches the fixture's `expected` state. Fixtures are shared with the TypeScript, Swift, and Rust reducer impls, so this test is the primary cross-language parity gate.
+### 跨語言奇偶校驗測試
 
-The fixture path is wired into the test JVM via the `ahp.reducerFixturesDir` system property in `build.gradle.kts`, so the test works under `./gradlew test`, IDE runs that delegate to Gradle (the IntelliJ default), or CI without depending on the current working directory. When neither Gradle nor a delegating runner sets the property, the test falls back to walking upward from `user.dir` looking for `types/test-cases/reducers/`, so direct IDE JUnit runs from inside the repo still work.
+`FixtureDrivenReducerTest` 載入 `types/test-cases/reducers/*.json` 下的每個夾具，並驗證 Kotlin reducer 的輸出是否與夾具的 `expected` 狀態相符。夾具與 TypeScript、Swift 和 Rust reducer 實作共享，因此此測試是主要的跨語言奇偶校驗門。
 
-A small `SKIPPED_FIXTURES` set carries any fixtures intentionally skipped because they exercise wire-type decoding behaviour this package doesn't yet support. The `coverageReport().decodable-fixture-budget` assertion bounds the skip set size so regressions surface in CI. The full reducer fixture corpus is currently covered (`SKIPPED_FIXTURES` is empty and `MAX_SKIPPED_FIXTURES = 0`). Forward-compat coverage for unknown discriminators on state-channel unions (`ResponsePart`, `ToolCallState`, `Customization`, …) is exercised by `103-delta-skips-parts-without-id.json` and the dedicated round-trip tests in `DiscriminatedUnionTest`.
+夾具路徑透過 `build.gradle.kts` 中的 `ahp.reducerFixturesDir` 系統屬性連線到測試 JVM，因此測試在 `./gradlew test` 下工作，IDE 執行該委託給 Gradle（IntelliJ 預設值）或 CI，而不依賴目前工作目錄。當 Gradle 和委託執行程式都沒有設定該屬性時，測試會回退到從 `user.dir` 向上尋找 `types/test-cases/reducers/`，因此直接從儲存庫內部執行 IDE JUnit 仍然有效。
+
+一個小的 `SKIPPED_FIXTURES` 集合包含有意跳過的任何裝置，因為它們執行此包尚不支援的線型別解碼行為。 `coverageReport().decodable-fixture-budget` 斷言限制了跳過集合大小，因此迴歸出現在 CI 中。目前覆蓋了完整的 reducer 固定語料庫（`SKIPPED_FIXTURES` 為空，`MAX_SKIPPED_FIXTURES = 0`）。狀態通道聯集（`ResponsePart`、`ToolCallState`、`Customization`、...）上未知判別器的前向相容覆蓋由 `103-delta-skips-parts-without-id.json` 和 `DiscriminatedUnionTest` 中的專用往返測試執行。
 
 ### `ReducersTest`
 
-`ReducersTest` covers a handful of behaviors that benefit from explicit local coverage: the `Reducer<S, A>` `object` wrappers delegating to the free functions, `terminal/input` being a no-op (returns the same instance), the queued message reorder algorithm (preserves messages not mentioned in `order`; ignores duplicates and unknown ids), pending steering vs. queued message upsert semantics, and the `currentTimestampProvider` override flowing through.
+`ReducersTest` 涵蓋了一些受益於明確本地覆蓋的行為：委託給自由函式的 `Reducer<S, A>` `object` 包裝器、`terminal/input` 為無操作（傳回相同實例）、排隊訊息重新排序演算法（保留 `order` 中未提及的訊息；忽略重複項和未知 id）、掛起義、透過排隊人插入更新444} 字詞通過。

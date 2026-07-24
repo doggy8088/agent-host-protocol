@@ -1,20 +1,24 @@
-# Rust SDK for the Agent Host Protocol
+# Rust SDK 用於代理主機協定
 
-Transport-agnostic Rust client for [AHP](../../README.md).
+[AHP](../../README.md) 與傳輸無關的 Rust 用戶端。
 
-## Crates
+## crate
 
-- **`ahp-types`** — Wire types generated from the TypeScript source of
-  truth in `types/`. Regenerate with `npm run generate:rust` from the
-  repo root.
-- **`ahp`** — Async client, pure reducers, a pluggable `Transport`
-  trait, and an [`ahp::hosts`](https://docs.rs/ahp/latest/ahp/hosts/)
-  module for multi-host registry / reconnect / fan-in. No network
-  dependencies — bring your own transport.
-- **`ahp-ws`** — WebSocket transport adapter built on
-  `tokio-tungstenite`.
+- **`ahp-types`** — 從 TypeScript 來源產生的線路類型
+  `types/` 中的真相。使用 `npm run generate:rust` 重新生成
+  儲存庫根。
+- **`ahp`** — 非同步用戶端，純 reducer，可插入 `Transport`
+  特徵和 [`ahp::hosts`](https://docs.rs/ahp/latest/ahp/hosts/)
+  用於多主機註冊/重新連線/扇入的模組。無網路
+  依賴項－帶上你自己的交通工具。
+- **`ahp-ws`** — WebSocket 傳輸適配器建構於
+  `tokio-tungstenite`。
 
-## Quick start
+## 快速開始
+
+
+
+
 
 ```rust
 use ahp::{Client, ClientConfig, SubscriptionEvent};
@@ -32,11 +36,16 @@ while let Some(SubscriptionEvent::Action(a)) = sub.recv().await {
 }
 ```
 
-## Using a custom transport
 
-Implement `ahp::Transport` for any framed bytes stream — stdio, a Unix
-socket, an in-memory channel pair, a TCP connection with your own
-framing, etc. The trait surface is three async methods:
+## 使用自訂傳輸
+
+為任何幀位元組流實作 `ahp::Transport` — stdio，一個 Unix
+套接字，記憶體中的通道對，與您自己的 TCP 連線
+框架等。特徵表面是三個非同步方法：
+
+
+
+
 
 ```rust
 pub trait Transport: Send + 'static {
@@ -49,39 +58,50 @@ pub trait Transport: Send + 'static {
 }
 ```
 
-See `crates/ahp/tests/client_roundtrip.rs` for a working in-memory
-transport used by the integration test.
 
-## Protocol version mapping
+請參閱 `crates/ahp/tests/client_roundtrip.rs` 以了解記憶體中工作
+整合測試使用的傳輸。
 
-This crate exposes two protocol-version constants:
+## 協定版本映射
 
-- `ahp_types::PROTOCOL_VERSION` — the SemVer string for the version the
-  crate's `0.x.y` source tree implements.
-- `ahp_types::SUPPORTED_PROTOCOL_VERSIONS` — every version this crate is
-  willing to negotiate, most-preferred-first. Pass the slice (or a
-  derived `Vec<String>`) as `InitializeParams.protocol_versions`.
+該crate公開了兩個協定版本常數：
 
-The same information is mirrored, in machine-readable form, in
-[`clients/rust/release-metadata.json`](release-metadata.json) and, in
-human-readable form, in [`CHANGELOG.md`](CHANGELOG.md).
+- `ahp_types::PROTOCOL_VERSION` — 版本的 SemVer 字串
+  crate 的 `0.x.y` 原始碼樹實作。
+- `ahp_types::SUPPORTED_PROTOCOL_VERSIONS` — 此crate的每個版本
+  願意洽談，首選優先。傳遞切片（或
+  導出 `Vec<String>`) 作為 `InitializeParams.protocol_versions`。
 
-## Regenerating types
+相同的訊息以機器可讀的形式鏡像在
+[`clients/rust/release-metadata.json`](release-metadata.json) 並且，在
+人類可讀的形式，在 [`CHANGELOG.md`](CHANGELOG.md) 中。
+
+## 再生類型
+
+
+
+
 
 ```sh
 npm run generate:rust
 ```
 
-The generator (`scripts/generate-rust.ts`) parses `types/*.ts` with
-`ts-morph` and emits Rust modules under `crates/ahp-types/src/`. Do not
-edit the generated files by hand.
 
-## Running tests
+生成器 (`scripts/generate-rust.ts`) 將 `types/*.ts` 解析為
+`ts-morph` 並在 `crates/ahp-types/src/` 下發出 Rust 模組。不
+手動編輯產生的文件。
+
+## 運行測試
+
+
+
+
 
 ```sh
 cargo test --workspace
 ```
 
-## Multi-host clients
 
-See [MULTI_HOST.md](MULTI_HOST.md) for the Rust SDK's multi-host registry, reconnect supervision, fan-in events, aggregated views, and single-host convenience API.
+## 多主機用戶端
+
+請參閱 [MULTI_HOST.md](MULTI_HOST.md)，以了解 Rust SDK 的多主機註冊表、重新連線監管、扇入事件、聚合視圖和單主機便捷 API。

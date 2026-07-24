@@ -1,38 +1,38 @@
-# Transport
+# 運輸
 
-Similarly to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) and the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/), AHP does not currently prescribe a specific transport. Any mechanism that provides a reliable, ordered, bidirectional message stream can carry AHP messages.
+與[語言伺服器協定](https://microsoft.github.io/language-server-protocol/) 和[偵錯適配器協定](https://microsoft.github.io/debug-adapter-protocol/) 類似，AHP 目前沒有規定特定的傳輸。任何提供可靠、有序、雙向訊息流的機制都可以承載 AHP 訊息。
 
-The transport is chosen **before** the AHP protocol begins; it is not negotiated within the protocol itself. Client and server agree on a transport out-of-band, and the server is responsible for accepting connections on that transport.
+**在** AHP 協定開始之前選擇傳輸；它不是在協定本身內協商的。用戶端和伺服器就帶外傳輸達成一致，並且伺服器負責接受該傳輸上的連線。
 
-## Requirements
+## 要求
 
-A compliant transport MUST:
+合規的運輸必須：
 
-1. Deliver messages **in order**.
-2. Deliver messages **reliably** (no silent drops).
-3. Support **bidirectional** communication.
-4. Deliver **complete** messages (no partial delivery).
+1. **按順序**傳遞訊息。
+2. **可靠**地傳遞訊息（無靜默丟棄）。
+3.支援**雙向**通信。
+4. 傳遞**完整**訊息（無部分傳遞）。
 
-Any mechanism that meets these requirements is acceptable — WebSocket, TCP with a framing layer, an in-process message channel, or anything else.
+任何滿足這些要求的機制都是可以接受的——WebSocket、帶有幀層的 TCP、行程內訊息通道或其他任何機制。
 
-## Common Transports
+## 常見交通
 
-While AHP does not mandate a transport, **WebSocket** is the most common choice for remote and cross-process connections, and is what the VS Code implementation uses.
+雖然 AHP 不強制要求傳輸，但 **WebSocket** 是遠端和跨行程連線的最常見選擇，也是 VS Code 實作所使用的。
 
-When WebSocket is used:
+使用WebSocket時：
 
-- The server acts as the WebSocket server.
-- Messages are sent as WebSocket **text** frames.
-- Each text frame contains exactly one complete JSON-RPC message.
+- 伺服器充當 WebSocket 伺服器。
+- 訊息作為 WebSocket **文字** 訊框發送。
+- 每個文字框架僅包含一個完整的 JSON-RPC 訊息。
 
-## Keep-Alive
+## 保持活動狀態
 
-AHP defines a protocol-level [`ping`](/reference/common#ping) command that clients MAY use to verify the connection is alive and to keep it from being closed by idle-timeout intermediaries (proxies, load balancers, etc.). `ping` carries no payload in either direction; the response itself is the signal, and the server MUST respond regardless of whether the client has completed `initialize` or holds any subscriptions.
+AHP 定義了一個協定級 [`ping`](/reference/common#ping) 指令，用戶端可使用該指令來驗證連線是否處於活動狀態並防止其被空閒逾時中介（代理程式、負載平衡器等）關閉。 `ping` 在任一方向上均不攜帶有效負載；回應本身就是訊號，無論用戶端是否已完成 `initialize` 或持有任何訂閱，伺服器都必須回應。
 
-Implementations MAY additionally rely on transport-level liveness mechanisms where available (for example, WebSocket ping/pong frames). The ping interval and timeout are implementation-specific.
+實作還可以依賴可用的傳輸級活躍機制（例如，WebSocket ping/pong 幀）。 ping 間隔和逾時是特定於實作的。
 
-## Authentication
+## 驗證
 
-Access to the AHP endpoint itself is a transport-layer concern and is outside the scope of the AHP wire protocol. Implementations that need to gate the connection SHOULD do so during the transport handshake — for example, for WebSocket via query parameters, headers, or the HTTP upgrade request — before the AHP `initialize` request is sent.
+對 AHP 端點的存取本身就是傳輸層的問題，並且超出了 AHP 線路協定的範圍。需要控制連線的實作應該在傳輸握手期間執行此操作（例如，對於透過查詢參數、標頭或 HTTP 升級請求的 WebSocket），在發送 AHP `initialize` 請求之前。
 
-Once the connection is established, AHP also provides a protocol-level [`authenticate`](/reference/common#authenticate) command. Implementors can use it to manage entitlements to individual agents and to other protected resources they expose (such as MCP servers or other backing services), independently of the transport. Agents advertise their requirements via the `protectedResources` field on [`AgentInfo`](/reference/root#agentinfo), and clients push Bearer tokens for each resource as needed. See [Authentication](/specification/authentication) for the full flow.
+連線建立後，AHP 也會提供協定級 [`authenticate`](/reference/common#authenticate) 指令。實作者可以使用它來管理對各個代理人及其公開的其他受保護資源（例如 MCP 伺服器或其他支援服務）的權利，而與傳輸無關。代理程式透過 [`AgentInfo`](/reference/root#agentinfo) 上的 `protectedResources` 欄位公佈其要求，並根據需要為每個資源推送承載代幣。請參閱[身份驗證](/specification/authentication) 以了解完整流程。

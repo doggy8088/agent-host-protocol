@@ -2,6 +2,6 @@
 redirect: /guide/what-is-ahp
 ---
 
-# Hosts
+# 主機
 
-This page has moved. See [What is AHP?](/guide/what-is-ahp) for an overview of hosts in the Agent Host Protocol.
+此頁面已移動。有關代理主機協定中主機的概述，請參閱[什麼是 AHP？ ](/guide/what-is-ahp)。

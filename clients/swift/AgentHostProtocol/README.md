@@ -1,27 +1,36 @@
-# AgentHostProtocol Swift Package
+# AgentHostProtocol Swift 包
 
-This package contains the Swift libraries for the Agent Host Protocol (AHP). The package manifest lives at the repository root because Swift Package Manager resolves remote packages from the root `Package.swift`, while the Swift sources live under `clients/swift/AgentHostProtocol/`.
+此軟體包包含代理主機協定 (AHP) 的 Swift 庫。程式包清單位於儲存庫根目錄，因為 Swift 程式包管理器從根目錄 `Package.swift` 解析遠端程式包，而 Swift 來源位於 `clients/swift/AgentHostProtocol/` 下。
 
-## Products
+## 產品
 
-- `AgentHostProtocol` provides generated protocol types, commands, notifications, actions, and reducers. Use this product when you only need to decode protocol data or apply state reducers yourself.
-- `AgentHostProtocolClient` provides reusable client helpers on top of `AgentHostProtocol`:
-  - The single-host `AHPClient` for JSON-RPC request correlation, subscription fan-out, transport integration, and typed helpers for `initialize`, `reconnect`, `subscribe`, `unsubscribe`, `dispatch`, and arbitrary requests.
-  - `MultiHostClient` for apps that need supervised connections to more than one host. Provides per-host supervisor tasks with backoff, generation-checked client handles, a per-host session-summary cache, aggregated views, and runtime-owned per-resource event streams that survive reconnects.
-  - State mirror helpers: `AHPStateMirror` (single-host) and `MultiHostStateMirror` (multi-host, keyed by `(hostId, uri)`).
-  - `ClientIdStore` implementations: `InMemoryClientIdStore` (default) and `FileClientIdStore` (filesystem-backed, atomic writes).
+- `AgentHostProtocol` 提供產生的協定類型、命令、通知、操作和reducer。當您只需要解碼協定資料或自行套用狀態 reducer時，請使用此產品。
+- `AgentHostProtocolClient` 在 `AgentHostProtocol` 之上提供可重複使用的用戶端幫助程式：
+  - 用於 JSON-RPC 請求關聯、訂閱扇出、傳輸整合的單主機 `AHPClient`，以及用於 `initialize`、`reconnect`、`subscribe`、`unsubscribe`、`dispatch` 和任意請求的類型化幫助程式。
+  - `MultiHostClient` 適用於需要與多個主機建立受監督連線的應用程式。為每主機主管任務提供退避、產生檢查的用戶端句柄、每主機工作階段摘要快取、聚合檢視以及執行時擁有的每資源事件流，這些事件流在重新連線後仍然存在。
+  - 狀態鏡像助手：`AHPStateMirror`（單主機）和 `MultiHostStateMirror`（多主機，由 `(hostId, uri)` 鍵控）。
+  - `ClientIdStore` 實作：`InMemoryClientIdStore`（預設）和 `FileClientIdStore`（檔案系統支援，原子寫入）。
 
-The client product is intentionally a protocol/client layer, not a full app store. App-specific policy such as server selection, authentication, reconnect UX, durable session caches, and optimistic outbound action replay should live in the app. `MultiHostClient` owns per-host supervisor policy, backoff, fan-in, and aggregated host views; it does not replace an app's product state model.
+用戶端產品有意成為協定/用戶端層，而不是完整的應用程式商店。應用程式特定的策略，例如伺服器選擇、驗證、重新連線 UX、持久的工作階段快取和樂觀的出站操作重播應存在於應用程式中。 `MultiHostClient` 擁有每個主機的主管策略、退避、扇入和聚合主機視圖；它不會取代已套用的產品狀態型號。
 
-## Installation
+## 安裝
 
-Add this repository as a SwiftPM dependency:
+新增此儲存庫作為 SwiftPM 依賴項：
+
+
+
+
 
 ```swift
 .package(url: "https://github.com/microsoft/agent-host-protocol.git", from: "0.1.0")
 ```
 
-Then depend on one or both products:
+
+然後取決於一種或兩種產品：
+
+
+
+
 
 ```swift
 .target(
@@ -33,9 +42,14 @@ Then depend on one or both products:
 )
 ```
 
-## Minimal Single-Host Client
 
-This example opens one WebSocket connection, subscribes to the root channel during `initialize`, applies the returned snapshots, and then applies subsequent action events.
+## 最小單主機用戶端
+
+此範例開啟一個 WebSocket 連線，在 `initialize` 期間訂閱根通道，套用傳回的快照，然後套用後續操作事件。
+
+
+
+
 
 ```swift
 import AgentHostProtocol
@@ -76,11 +90,16 @@ for snapshot in initialized.snapshots {
 }
 ```
 
-`AHPStateMirror` is a convenience for simple consumers. Larger apps can keep their own state store and route snapshots/actions through the generated reducers directly.
 
-## Multi-Host Client
+`AHPStateMirror` 為簡單消費者提供便利。較大的應用程式可以保留自己的狀態儲存，並直接透過產生的reducer路由快照/操作。
 
-Use `MultiHostClient` when one app talks to more than one AHP host, or when you want the same supervisor model for a single host. It owns per-host transport creation, reconnect backoff, stable `clientId` lookup, event fan-in, session-summary caches, generation-checked client handles, and deterministic aggregated views.
+## 多主機用戶端
+
+當一個應用程式與多個 AHP 主機通訊時，或當您希望單一主機使用相同的 Supervisor 模型時，請使用 `MultiHostClient`。它擁有每主機傳輸建立、重新連線退避、穩定的 `clientId` 查找、事件扇入、工作階段-摘要緩存、生成檢查的用戶端句柄和確定性聚合視圖。
+
+
+
+
 
 ```swift
 import AgentHostProtocolClient
@@ -111,46 +130,51 @@ for hosted in sessions {
 }
 ```
 
-Single-host consumers can use the same shape with `MultiHostClient.single(...)` and never manage a registry directly.
 
-## Protocol version mapping
+單主機使用者可以使用與 `MultiHostClient.single(...)` 相同的形狀，並且從不直接管理登錄。
 
-The `AgentHostProtocol` module exposes two protocol-version constants:
+## 協定版本映射
 
-- `PROTOCOL_VERSION` — SemVer string for the version this package's
-  source tree implements.
-- `SUPPORTED_PROTOCOL_VERSIONS` — every version this package is willing
-  to negotiate (most-preferred-first). Pass it as `protocolVersions` on
-  `InitializeParams`.
+`AgentHostProtocol` 模組公開兩個協定版本常數：
 
-The same information is mirrored, in machine-readable form, in
-[`clients/swift/release-metadata.json`](../release-metadata.json) and,
-in human-readable form, in [`clients/swift/CHANGELOG.md`](../CHANGELOG.md).
-CI verifies all three sources agree on every PR.
+- `PROTOCOL_VERSION` — SemVer 此軟體包版本的字串
+  源樹實作。
+- `SUPPORTED_PROTOCOL_VERSIONS` — 該軟體包願意的每個版本
+  進行談判（最優先優先）。將其作為 `protocolVersions` 傳遞
+  `InitializeParams`。
 
-## Reconnect Layering
+相同的訊息以機器可讀的形式鏡像在
+[`clients/swift/release-metadata.json`](../release-metadata.json) 並且，
+以人類可讀的形式，在 [`clients/swift/CHANGELOG.md`](../CHANGELOG.md) 中。
+CI 驗證所有三個來源在每個 PR 上都一致。
 
-`AHPClient.reconnect(...)` sends the typed AHP `reconnect` request on an already-open transport. It does not decide when to reconnect, how often to retry, whether to fall back to `initialize`, whether authentication errors are terminal, or how to update UI while reconnecting.
+## 重新連線分層
 
-A typical app-level reconnect flow is:
+`AHPClient.reconnect(...)` 在已開啟的傳輸上傳送類型化的 AHP `reconnect` 請求。它不會決定何時重新連線、重試頻率、是否回退到 `initialize`、驗證錯誤是否為終端機，或如何在重新連線時更新 UI。
 
-1. Open a fresh transport and `AHPClient`.
-2. Attach event streams before the handshake.
-3. Call `connect()`.
-4. Call `reconnect(clientId:lastSeenServerSeq:subscriptions:)`.
-5. Apply the returned replay actions or snapshots to the app store.
-6. Re-fetch `listSessions` or other ephemeral data because protocol notifications are not replayed.
-7. Resume any app-owned pending outbound actions that were not acknowledged.
+典型的應用程式層級重新連線流程是：
 
-`MultiHostClient` owns this supervisor policy per host. The lower-level `AHPClient` keeps reconnect orchestration explicit for callers that want full control.
+1. 打開新鮮運輸和`AHPClient`。
+2. 在握手之前附加事件流。
+3. 呼叫`connect()`。
+4. 呼叫`reconnect(clientId:lastSeenServerSeq:subscriptions:)`。
+5. 將傳回的重播操作或快照套用到應用程式商店。
+6. 重新取得 `listSessions` 或其他臨時資料，因為不會重播協定通知。
+7. 恢復任何應用程式擁有的未確認的待處理出站操作。
 
-## Dispatch And App-Owned Outboxes
+`MultiHostClient` 擁有每個主機的此主管策略。較低層級的 `AHPClient` 為想要完全控制的呼叫者保持明確的重新連線編排。
 
-`dispatchAction` is a fire-and-forget notification. The server acknowledgement comes later when a live or replayed `ActionEnvelope` includes the same `origin.clientId` and `origin.clientSeq`.
+## 調度和應用程式擁有的寄件箱
 
-`AHPClient.dispatch(_:channel:)` is a convenience for simple clients; it assigns `clientSeq` internally and returns a `DispatchHandle` with the sequence that was sent. `AHPClient.dispatch(_:channel:clientSeq:)`, `MultiHostClient.dispatch(host:action:channel:clientSeq:)`, and `HostClientHandle.dispatch(_:channel:clientSeq:)` let higher layers supply stable sequence numbers directly.
+`dispatchAction` 是一勞永逸的通知。當直播或重播的 `ActionEnvelope` 包含相同的 `origin.clientId` 和 `origin.clientSeq` 時，伺服器確認會稍後出現。
 
-Apps that need to replay unacknowledged local actions after reconnect should own their outbound queue and send explicit `clientSeq` values:
+`AHPClient.dispatch(_:channel:)` 是簡單用戶端的便利性；它在內部分配 `clientSeq` 並傳回帶有發送序列的 `DispatchHandle`。 `AHPClient.dispatch(_:channel:clientSeq:)`、`MultiHostClient.dispatch(host:action:channel:clientSeq:)`和`HostClientHandle.dispatch(_:channel:clientSeq:)`讓更高層直接提供穩定的序號。
+
+重新連線後需要重播未確認的本機操作的應用程式應擁有其出站佇列並傳送明確的 `clientSeq` 值：
+
+
+
+
 
 ```swift
 struct PendingOutboundAction {
@@ -178,21 +202,26 @@ func acknowledge(_ envelope: ActionEnvelope, clientId: String) {
 }
 ```
 
-This stays outside the low-level client because replay policy is app-specific. A chat message, terminal resize, terminal input, and transient UI toggle may all have different replay/coalescing behavior.
 
-## Subscription Ownership
+這位於低階用戶端之外，因為重播策略是特定於應用程式的。聊天訊息、終端機調整大小、終端機輸入和瞬態 UI 切換都可能有不同的重播/合併行為。
 
-`subscribe(uri)` returns the server snapshot plus a stream of subsequent events for that resource URI.
+## 訂閱所有權
 
-`unsubscribe(uri)` is resource-wide: it sends `unsubscribe` to the server and finishes all local streams for that URI. It is not a per-view cancellation handle and it does not maintain listener reference counts.
+`subscribe(uri)` 傳回伺服器快照以及該資源 URI 的後續事件流。
 
-Apps should normally centralize protocol subscriptions in one owner, such as an app store or host supervisor, and let views observe state from that owner. A future higher-level API can add refcounted subscription handles if multiple independent components need to subscribe to the same URI directly.
+`unsubscribe(uri)` 是資源範圍的：它將 `unsubscribe` 發送到伺服器並完成該 URI 的所有本地流。它不是每個視圖的取消句柄，並且不維護偵聽器引用計數。
 
-## Transport Choice
+應用程式通常應將協定訂閱集中在一個擁有者（例如應用程式商店或主機管理程式）中，並讓視圖從該擁有者觀察狀態。如果多個獨立元件需要直接訂閱相同 URI，未來的更高等級 API 可以新增引用計數訂閱句柄。
 
-`AHPTransport` is the transport abstraction. The default `URLSessionWebSocketTransport` is suitable for many `wss://` deployments and simple clients.
+## 交通選擇
 
-For iOS/macOS local development, LAN, and Tailscale-style `ws://` targets, `NWConnectionWebSocketTransport` uses Network.framework directly. It avoids `URLSession` ATS behavior for local `ws://` development, performs the WebSocket upgrade explicitly, and exposes WebSocket ping support through `AHPKeepAliveTransport`.
+`AHPTransport` 是傳輸抽象。預設的 `URLSessionWebSocketTransport` 適用於許多 `wss://` 部署和簡單的用戶端。
+
+對於 iOS/macOS 本地開發、LAN 和 Tailscale 樣式的 `ws://` 目標，`NWConnectionWebSocketTransport` 直接使用 Network.framework。它避免了本地 `ws://` 開發的 `URLSession` ATS 行為，明確執行 WebSocket 升級，並透過 `AHPKeepAliveTransport` 公開 WebSocket ping 支援。
+
+
+
+
 
 ```swift
 let transport = NWConnectionWebSocketTransport(
@@ -201,7 +230,12 @@ let transport = NWConnectionWebSocketTransport(
 )
 ```
 
-Keepalive is opt-in on `AHPClientConfig`. When enabled and the transport conforms to `AHPKeepAliveTransport`, ping failure is treated as a transport failure so the app or `MultiHostClient` reconnect policy can recover:
+
+Keepalive 已在 `AHPClientConfig` 上選擇加入。啟用且傳輸符合 `AHPKeepAliveTransport` 時，ping 失敗將被視為傳輸失敗，以便應用程式或 `MultiHostClient` 重新連線策略可以恢復：
+
+
+
+
 
 ```swift
 let config = AHPClientConfig(
@@ -209,9 +243,10 @@ let config = AHPClientConfig(
 )
 ```
 
-Prefer inbound `.text` or `.binary` frames from transports. Inbound `.parsed` frames may bypass the client's raw JSON parsing path that preserves Apple `NSNumber` Bool/Int distinctions.
 
-## Next Steps For This Client
+首選來自傳輸的入站 `.text` 或 `.binary` 訊框。入站 `.parsed` 訊框可能會繞過用戶端的原始 JSON 解析路徑，該路徑保留 Apple `NSNumber` Bool/Int 差異。
 
-- Add protocol transcript fixtures, similar in spirit to the reducer fixture tests, to validate client/server flows across languages.
-- Migrate the example iOS app through an adapter around `MultiHostClient`/`AHPClient` while keeping app policy in `AppStore`.
+## 此用戶端的後續步驟
+
+- 增加協定轉錄夾具，其本質與 reducer 夾具測試類似，以驗證跨語言的用戶端/伺服器流。
+- 透過 `MultiHostClient`/`AHPClient` 周圍的適配器遷移範例 iOS 應用程式，同時將應用程式政策保留在 `AppStore` 中。

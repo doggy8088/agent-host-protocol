@@ -1,34 +1,38 @@
-# What is the Agent Host Protocol?
+# 什麼是代理主機協定？
 
-::: warning UNDER ACTIVE DEVELOPMENT
-This protocol is under active development and is not yet stabilized. Breaking changes to wire types, actions, and state shapes are expected.
+::: 警告正在積極開發中
+該協定正在積極開發中，尚未穩定。預計線路類型、操作和狀態形狀將發生重大變化。
 :::
 
-The **Agent Host Protocol (AHP)** defines how a portable, standalone sessions server communicates with its clients. Multiple clients can connect to the server and see a synchronized view of AI agent sessions. Clients send commands that are reflected back as state-changing actions.
+**代理主機協定 (AHP)** 定義便攜式獨立工作階段伺服器如何與其用戶端通訊。多個用戶端可以連線到伺服器並查看 AI 代理工作階段的同步視圖。用戶端發送命令，這些命令會作為狀態更改操作反射回來。
 
-AHP stays agent-agnostic: it describes client-facing session state and display-ready metadata without binding clients to a specific agent runtime or backend-specific tool vocabulary.
+AHP 保持與代理無關：它描述面向用戶端的工作階段狀態和顯示就緒元資料，而無需將用戶端綁定到特定代理運行時或特定於後端的工具詞彙表。
 
-## Channels: the core abstraction
+## 通道：核心抽象
 
-Every push-style interaction in AHP lives on a **channel** — a URI-identified subscribable resource. The root catalogue (`ahp-root://`), each session (`ahp-session:/<uuid>`), each chat (`ahp-chat:/<uuid>`), each terminal (`ahp-terminal:/<id>`), and each changeset (`ahp-changeset:/<id>`) is its own channel. A channel MAY hold an immutable state tree, or it MAY be a stateless pub/sub topic (planned: logging, MCP relay, LSP relay).
+AHP 中的每個推送式互動都存在於**通道** — URI 標識的可訂閱資源。根目錄 (`ahp-root://`)、每個工作階段 (`ahp-session:/<uuid>`)、每個聊天 (`ahp-chat:/<uuid>`)、每個終端機 (`ahp-terminal:/<id>`) 和每個變更集 (`ahp-changeset:/<id>`) 都是自己的通道。通道可以持有不可變的狀態樹，或者它可以是無狀態的發布/訂閱主題（計劃：日誌記錄、MCP 中繼、LSP 中繼）。
 
-Channels are also the routing key for the wire protocol. **Every command's params and every notification's params carry a top-level `channel: URI`** — so a server, a client, or an intermediate proxy can dispatch any incoming message just by inspecting `(method, params.channel)`, without per-method deserialisation. Connection-level commands (`initialize`, `ping`, `listSessions`, the `resource*` filesystem commands, `authenticate`) use the literal `'ahp-root://'`.
+通道也是線路協定的路由關鍵。 **每個命令的參數和每個通知的參數都帶有頂級 `channel: URI`** - 因此伺服器、用戶端或中間代理只需檢查 `(method, params.channel)` 即可分派任何傳入訊息，而無需按方法反序列化。連線級指令（`initialize`、`ping`、`listSessions`、`resource*` 檔案系統指令、`authenticate`）使用文字 `'ahp-root://'`。
 
-See [Channels & Subscriptions](/specification/subscriptions) for the full model.
+請參閱[通道和訂閱](/specification/subscriptions) 以了解完整模型。
 
-## Design Requirements
+## 設計要求
 
-The protocol is built around four core requirements:
+該協定圍繞著四個核心要求構建：
 
-1. **Synchronized multi-client state** — An immutable, Redux-like state tree mutated exclusively by actions flowing through pure reducers. Each state-bearing channel has its own tree.
+1. **同步多用戶端狀態** — 不可變的、類似 Redux 的狀態樹，僅由流經純 reducer的操作進行突變。每個包含狀態的通道都有自己的樹。
 
-2. **Lazy loading** — Clients subscribe to channels by URI and load data on demand. The session list is fetched imperatively. Large content (images, long tool outputs) is stored by reference and fetched separately.
+2. **延遲載入** — 用戶端透過 URI 訂閱通道並按需載入資料。強制取得工作階段列表。大型內容（影像、長工具輸出）透過引用儲存並單獨取得。
 
-3. **Write-ahead with reconciliation** — Clients optimistically apply their own actions locally, then reconcile when the server echoes them back alongside any concurrent actions from other clients or the server itself.
+3. **預寫式協調** — 用戶端在本地樂觀地應用自己的操作，然後在伺服器與其他用戶端或伺服器本身的任何並發操作一起回顯它們時進行協調。
 
-4. **Forward-compatible versioning** — Newer clients can connect to older servers. A single protocol version number maps to a capabilities object; clients check capabilities before using features.
+4. **向前相容版本控制** — 較新的用戶端可以連線到較舊的伺服器。單一協定版本號對應到一個功能物件；用戶端在使用功能之前檢查功能。
 
-## How It Works
+## 它是如何工作的
+
+
+
+
 
 ```
 ┌──────────────┐                          ┌──────────────┐
@@ -44,34 +48,34 @@ The protocol is built around four core requirements:
 └──────────────┘                          └──────────────┘
 ```
 
-The server holds an **authoritative state tree** per state-bearing channel. State changes are represented as ordered protocol actions, which lets every subscribed client converge on the same view of the session.
 
-Clients subscribe to channels by URI and receive:
+伺服器為每個包含狀態的通道保留一棵**權威的狀態樹**。狀態變更表示為有序協定操作，這使得每個訂閱的用戶端匯聚到工作階段的相同視圖上。
 
-1. An initial **snapshot** of the current state (for state-bearing channels; stateless channels return `{}`).
-2. Subsequent **action envelopes** that incrementally update the state, plus any channel-specific protocol notifications.
+用戶端透過 URI 訂閱通道並接收：
 
-Because updates arrive as ordered actions against shared snapshots, clients can reconcile optimistic local changes with the authoritative server stream.
+1. 目前狀態的初始**快照**（對於承載狀態的通道；無狀態通道傳回 `{}`）。
+2. 增量更新狀態的後續**操作信封**，以及任何特定於通道的協定通知。
 
-## Key Concepts
+由於更新是作為針對共享快照的有序操作到達的，因此用戶端可以將樂觀的本地更改與權威的伺服器流進行協調。
 
-| Concept | Description |
+## 關鍵概念
+
+|概念 |描述 |
 |---|---|
-| **Channels** | URI-identified subscribable resources. State channels (root, sessions, chats, terminals, changesets) hold an immutable state tree; stateless channels exist for streaming data. Every message carries `channel: URI` for routing. |
-| **State** | Immutable tree per state channel — root state, per-session state, per-chat state, per-terminal state, per-changeset state. |
-| **Actions** | Discriminated union of typed mutations. The sole mechanism for state change. Delivered inside `ActionEnvelope`s whose `channel` field identifies the target channel. |
-| **Reducers** | Pure functions: `(state, action) → newState`. Run identically on server and client. |
-| **Subscriptions** | Clients subscribe to channels to receive snapshots and action streams. |
-| **Commands** | Imperative RPCs. Every command's params include `channel: URI`; connection-level commands use `'ahp-root://'`. |
-| **Notifications** | Ephemeral broadcasts scoped to a channel (e.g. `root/sessionAdded`, `auth/required`, `action`). |
+| **通道** | URI 識別的可訂閱資源。狀態通道（根、工作階段、聊天、終端、變更集）儲存一棵不可變的狀態樹；存在用於流資料的無狀態通道。每個訊息都攜帶`channel: URI`用於路由。 |
+| **狀態** |每個狀態通道的不可變樹 - 根狀態、每個工作階段狀態、每個聊天狀態、每個終端機狀態、每個變更集狀態。 |
+| **行動** |分型突變的判別聯集。狀態更改的唯一機制。在 `ActionEnvelope` 內傳遞，其 `channel` 欄位標識目標通道。 |
+| **reducer** |純函式：`(state, action) → newState`。在伺服器和用戶端上運行相同。 |
+| **訂閱** | 用戶端訂閱通道以接收快照和操作流。 |
+| **命令** |命令式 RPC。每個指令的參數包括`channel: URI`；連線級指令使用 `'ahp-root://'`。 || **通知** |僅限於某個通道的臨時廣播（例如 `root/sessionAdded`、`auth/required`、`action`）。 |
 
-## Who is AHP For?
+## AHP 適合誰？
 
-- **Client developers** building UIs that connect to agent sessions (IDEs, web apps, CLIs).
-- **Host developers** running agent backends and managing session state.
-- **Platform teams** building multi-client infrastructure for AI agent systems.
+- **用戶端開發人員** 建置連線到代理程式工作階段的 UI（IDE、Web 應用程式、CLI）。
+- **主機開發人員**運行代理後端並管理工作階段狀態。
+- **平台團隊**為 AI 代理系統建立多用戶端基礎設施。
 
-## Next Steps
+## 後續步驟
 
-- [Getting Started](/guide/getting-started) — Walk through a basic client-server interaction.
-- [State Model](/guide/state-model) — Learn about root state, session state, and content references.
+- [入門](/guide/getting-started) — 逐步完成基本的用戶端-伺服器交互作用。
+- [狀態模型](/guide/state-model) — 了解根狀態、工作階段狀態和內容參考。

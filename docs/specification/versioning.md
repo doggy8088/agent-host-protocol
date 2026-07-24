@@ -1,100 +1,100 @@
-# Versioning
+# 版本控制
 
-AI is an evolving space. Unlike LSP or DAP — which largely guarantee backwards compatibility in perpetuity — the design space for agent hosts is open-ended and moving quickly. Backwards-incompatible changes to AHP are inevitable. Versioning gives clients and hosts a shared vocabulary for negotiating which behaviors are safe to use on a given connection.
+人工智慧是一個不斷發展的空間。與 LSP 或 DAP（在很大程度上保證永久向後相容性）不同，代理主機的設計空間是開放式的，並且變化很快。對 AHP 的向後不相容的變更是不可避免的。版本控制提供用戶端並託管共享詞彙表，用於協商在給定連線上可以安全使用哪些行為。
 
-## Version Format
+## 版本格式
 
-Protocol versions are [SemVer](https://semver.org) `MAJOR.MINOR.PATCH` strings (e.g. `"0.1.0"`). Pre-release and build metadata are not used.
+協定版本是 [SemVer](https://semver.org) `MAJOR.MINOR.PATCH` 字串（例如 `"0.1.0"`）。不使用預發布和建立元資料。
 
-## Negotiation
+## 談判
 
-Version selection happens once, during the [`initialize`](/specification/lifecycle) handshake — modelled after WebSocket subprotocol negotiation:
+版本選擇在 [`initialize`](/specification/lifecycle) 握手期間發生一次 — 模仿 WebSocket 子協定協商：
 
-1. The client sends `InitializeParams.protocolVersions`: an array of every protocol version it is willing to speak, ordered from most preferred to least preferred.
-2. The server picks one entry it can speak and returns it as `InitializeResult.protocolVersion`. Servers SHOULD honor the client's preference order when multiple offered versions are acceptable.
-3. If the server cannot speak any of the offered versions, it MUST respond with [`UnsupportedProtocolVersion`](/reference/error-codes) (`-32005`) instead of a result, and close the connection.
+1. 用戶端發送 `InitializeParams.protocolVersions`：它願意使用的每個協定版本的陣列，依照從最優選到最不優選的順序排列。
+2. 伺服器選擇一個它可以說出的條目並將其傳回為 `InitializeResult.protocolVersion`。當多個提供的版本可接受時，伺服器應該尊重用戶端的優先順序。
+3. 如果伺服器無法說出任何提供的版本，則它必須以 [`UnsupportedProtocolVersion`](/reference/error-codes) (`-32005`) 而非結果回應，並關閉連線。
 
-Both peers MUST use the selected version for the rest of the connection. There is no per-message renegotiation.
+兩個對等方必須在連線的其餘部分使用所選版本。沒有針對每條訊息的重新協商。
 
-## Compatibility Guarantee
+## 相容性保證
 
-AHP follows standard SemVer compatibility:
+AHP 遵循標準 SemVer 相容性：
 
-- Two peers speaking versions `X.y.z` and `X.y'.z'` (same `MAJOR ≥ 1`) are compatible.
-- Two peers speaking versions `0.X.y` and `0.X.y'` (same pre-1.0 `MINOR`) are compatible.
-- Any other combination is **not** guaranteed to be compatible.
+- 兩個對等方的語言版本 `X.y.z` 和 `X.y'.z'`（相同的 `MAJOR ≥ 1`）是相容的。
+- 兩個對等版本 `0.X.y` 和 `0.X.y'`（與 1.0 之前的 `MINOR` 相同）相容。
+- **不**保證任何其他組合相容。
 
-Within a compatible range, additive changes — new optional fields on existing types, new action types, new commands — are introduced in `PATCH` (or `MINOR`, while `MAJOR` is `0`) bumps and MUST be ignored by older peers that do not understand them.
+在相容範圍內，附加變更（現有類型上的新可選欄位、新操作類型、新指令）在 `PATCH`（或 `MINOR`，而 `MAJOR` 是 `0`）顛簸中引入，並且必須被不理解它們的舊同儕忽略。
 
-## Capabilities First, Then Required
+## 首先是能力，然後是需求
 
-New behavior generally lands in two stages:
+新行為通常分為兩個階段：
 
-1. **Capability-gated.** A new feature is introduced as an opt-in capability advertised by a host or clients. Implementors check for the capability before exercising the feature. This lets hosts and clients adopt the feature on independent schedules without a version bump.
-2. **Required.** Once a capability has matured, a future protocol version may promote it to baseline behavior and remove the capability flag. This reduces long-term implementation complexity.
+1. **功能門控。 ** 引入了一項新功能，作為主機或用戶端宣傳的選擇加入功能。實作者在使用該功能之前檢查該功能。這使得主機和用戶端可以按照獨立的時間表採用該功能，而無需進行版本升級。
+2. **必需。 ** 一旦功能成熟，未來的協定版本可能會將其提升為基線行為並刪除功能標誌。這降低了長期實作的複雜性。
 
-## Client and Host Update Cadence
+## 用戶端和主機更新節奏
 
-Agent hosts may be remote machines, cloud services, or other external APIs that the user does not control. Clients (IDEs, CLI tools, embedded UIs) are typically easier for a user to update than hosts.
+代理主機可能是遠端電腦、雲端服務或其他使用者無法控制的外部 API。用戶端（IDE、CLI 工具、嵌入式 UI）通常比主機更容易讓使用者更新。
 
-As a result:
+因此：
 
-- **Clients SHOULD offer a wide range of protocol versions** when feasible so that older hosts can still pick a version they understand. Clients then degrade features gracefully when the negotiated version lacks a capability they would otherwise use.
-- **Hosts SHOULD pick the highest offered version they implement.** Lower entries in the client's array are fallbacks for older hosts.
-- **Hosts MUST refuse incompatible clients** by returning [`UnsupportedProtocolVersion`](/reference/error-codes) (`-32005`) when no offered version is acceptable.
+- **用戶端應在可行的情況下提供廣泛的協定版本**，以便較舊的主機仍然可以選擇他們理解的版本。用戶端然後，當協商的版本缺乏他們原本會使用的功能時，就會優雅地降級功能。
+- **主機應該選擇他們實作的最高版本。 ** 用戶端陣列中較低的項目是舊主機的後備。
+- **當沒有提供的版本可接受時，主機必須透過傳回 [`UnsupportedProtocolVersion`](/reference/error-codes) (`-32005`) 來拒絕不相容的用戶端**。
 
-## Forward Compatibility
+## 向前相容性
 
-When a newer client connects to an older host:
+當較新的用戶端連線到較舊的主機：
 
-1. The client offers its full version list, including older versions it can fall back to.
-2. The host picks the newest entry it understands and returns it.
-3. The client checks the capability set advertised by the host before using newer features.
-4. If a feature is unavailable, the client degrades gracefully — disabling UI affordances, falling back to older code paths, or surfacing a clear message to the user.
-5. The host only sends action types known to the negotiated version. As a safety net, clients SHOULD silently ignore actions with unrecognized `type` values.
+1. 用戶端提供完整版本列表，包括可以回退的舊版本。
+2. 主機選擇它所理解的最新條目並將其傳回。
+3. 用戶端在使用新功能之前檢查主機通告的功能集。
+4. 如果某項功能無法使用，用戶端會正常降級 — 停用 UI 功能、回退到較舊的程式碼路徑或向使用者顯示清晰的訊息。
+5. 主機僅傳送協商版本已知的操作類型。作為安全網，用戶端應默默地忽略具有無法辨識的 `type` 值的操作。
 
-## Backward Compatibility
+## 向後相容性
 
-When an older client connects to a newer host:
+當較舊的用戶端連線到較新的主機：
 
-1. The client offers only the versions it knows.
-2. The host picks one of those (typically the newest the client offered) or returns `UnsupportedProtocolVersion` if it can no longer speak any of them.
-3. On a successful negotiation the host MUST NOT use newer-version-only behaviors on that connection unless gated behind a capability the client has acknowledged.
+1. 用戶端僅提供它所知道的版本。
+2. 主機選擇其中之一（通常是提供的最新的用戶端），或者如果無法再說出其中任何一個，則傳回 `UnsupportedProtocolVersion`。
+3. 成功協商後，主機不得在該連線上使用僅限較新版本的行為，除非在用戶端已確認的功能後面進行門控。
 
-## Release Model
+## 發布模型
 
-The protocol specification and the per-language client libraries are released independently. The spec moves on its own SemVer track; each client moves on its own native SemVer track in its native package ecosystem.
+協定規格和每種語言的用戶端函式庫是獨立發佈的。規格在其自己的 SemVer 軌道上移動；每個用戶端在其本機包生態系中的自己的本機 SemVer 軌道上移動。
 
-### Why not a single shared version
+### 為什麼不是單一共享版本
 
-Coupling client versions to the spec version was considered and rejected:
+考慮並拒絕將用戶端版本與規格版本耦合：
 
-- Three of the four target ecosystems (npm, Cargo, SwiftPM) reject anything other than a strict three-number SemVer core, so a four-part "spec-major.spec-minor.spec-patch.client-iter" scheme is not portable.
-- A client-only bug fix is, from the consumer's perspective, a SemVer patch. Encoding "spec patch" as the third digit would mean consumers' `^0.2.0` dependency ranges miss client-only fixes.
-- Forcing lock-step would require shipping "dead" releases of unchanged clients every time the spec patches, just to keep version strings aligned.
-- The spec already permits independent client and host cadence via "capabilities first, then required" — this section codifies that release-side as well.
+- 四個目標生態系中的三個（npm、Cargo、SwiftPM）拒絕除嚴格的三數 SemVer 核心之外的任何內容，因此由四部分組成的「規格-major.規格-minor.規格-patch.用戶端-iter」方案不可移植。
+- 從消費者的角度來看，僅限用戶端的錯誤修復是一個 SemVer 補丁。將「規格 patch」編碼為第三個數字意味著消費者的 `^0.2.0` 依賴範圍會錯過僅針對用戶端的修復。
+- 強制鎖定步驟需要在每次規格補丁時發布未更改的用戶端的「死」版本，只是為了保持版本字串對齊。
+- 規格已經允許透過「首先是功能，然後是必需的」來實作獨立的用戶端和主機節奏 - 本節也對該發布方進行了編碼。
 
-### Tag conventions
+### 標籤約定
 
-| Artifact   | Tag pattern   | Registry / discovery                                              |
-| ---------- | ------------- | ----------------------------------------------------------------- |
-| Spec       | `spec/vX.Y.Z` | GitHub Release with schema assets and a `registry-snapshot.json`. |
-| Rust       | `rust/vX.Y.Z` | crates.io (`ahp-types`, `ahp`, `ahp-ws`).                         |
-| Kotlin     | `kotlin/vX.Y.Z` | Maven Central (`com.microsoft.agenthostprotocol:agent-host-protocol`). |
-| TypeScript | `typescript/vX.Y.Z` | npm (`@microsoft/agent-host-protocol`) — tag triggers a GHA workflow that calls an Azure DevOps publish pipeline. |
-| Swift      | `vX.Y.Z` (bare) | SwiftPM (resolved by tag at the repo root).                     |
+|神器|標籤圖案|註冊/發現 |
+| ---------- | ------------- | ------------------------------------------------------------------ |
+| 規格 | `spec/vX.Y.Z` |有架構資產和 `registry-snapshot.json` 的 GitHub 版本。 |
+| Rust | `rust/vX.Y.Z` | crates.io（`ahp-types`、`ahp`、`ahp-ws`）。                         |
+| Kotlin | `kotlin/vX.Y.Z` | Maven 中心 (`com.microsoft.agenthostprotocol:agent-host-protocol`)。 |
+| TypeScript | `typescript/vX.Y.Z` | npm (`@microsoft/agent-host-protocol`) — 標記觸發呼叫 Azure DevOps 發佈管道的 GHA 工作流程。 |
+| Swift | `vX.Y.Z`（裸）| SwiftPM（由儲存庫根目錄下的標籤解析）。                     |
 
-Bare `vX.Y.Z` tags at the repository root are reserved for the Swift release pipeline because SwiftPM only resolves bare semver tags at the manifest's repo root; path-prefixed tags like `swift/v0.2.0` are invisible to it.
+儲存庫根目錄中的裸 `vX.Y.Z` 標籤是為 Swift 發布管道保留的，因為 SwiftPM 僅解析清單儲存庫根目錄中的裸 semver 標籤；像 `swift/v0.2.0` 這樣的路徑前綴標籤對它來說是不可見的。
 
-The TypeScript client publishes via an Azure DevOps pipeline (`clients/typescript/pipeline.yml`) that picks up `typescript/vX.Y.Z` tags directly — the validation and npm publish both run in ADO.
+TypeScript 用戶端透過 Azure DevOps 管道 (`clients/typescript/pipeline.yml`) 進行發布，該管道直接選取 `typescript/vX.Y.Z` 標籤 - 驗證和 npm 發布都在 ADO 中運行。
 
-### Mapping client releases to spec versions
+### 將用戶端版本對應到規格版本
 
-Every client release advertises which protocol version(s) it supports in two places:
+每個用戶端版本都會在兩個地方宣傳它支援的協定版本：
 
-- An exported **`SUPPORTED_PROTOCOL_VERSIONS`** constant (an array of SemVer strings, most-preferred-first), generated from `types/version/registry.ts`. Consumers pass this list (or a derived copy) to `initialize` so the same client binary can fall back to older protocol versions if the host doesn't accept the newest one.
-- A checked-in **`clients/<lang>/release-metadata.json`** file (machine-readable: `{ packageVersion, supportedProtocolVersions }`) and a matching **`clients/<lang>/CHANGELOG.md`** entry (human-readable).
+- 導出的 **`SUPPORTED_PROTOCOL_VERSIONS`** 常數（由 SemVer 字串組成的陣列，最優先優先），從 `types/version/registry.ts` 產生。消費者將此清單（或衍生副本）傳遞給 `initialize`，因此如果主機不接受最新協定，則相同的用戶端二進位檔案可以回退到舊協定版本。
+- 簽入的 **`clients/<lang>/release-metadata.json`** 檔案（機器可讀：`{ packageVersion, supportedProtocolVersions }`）和符合的 **`clients/<lang>/CHANGELOG.md`** 條目（人類可讀）。
 
-CI verifies the constants, the metadata file, and the native package manifest are all consistent on every PR (`npm run verify:release-metadata`).
+CI 驗證每個 PR (`npm run verify:release-metadata`) 上的常數、元資料檔案和本機包清單是否一致。
 
-Full how-to for cutting a release of each artifact lives in [`RELEASING.md`](https://github.com/microsoft/agent-host-protocol/blob/main/RELEASING.md) at the repo root.
+削減每個工件版本的完整操作方法位於儲存庫根目錄的 [`RELEASING.md`](https://github.com/microsoft/agent-host-protocol/blob/main/RELEASING.md) 中。

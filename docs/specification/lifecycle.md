@@ -1,19 +1,28 @@
-# Connection Lifecycle
+# 連結生命週期
 
-The connection lifecycle defines how an AHP client and server establish, resume, and tear down a transport connection. Per-channel lifecycles (session creation, terminal creation, etc.) live in the respective channel pages — see [Root Channel](/specification/root-channel), [Session Channel](/specification/session-channel), and [Terminal Channel](/specification/terminal-channel).
+連結生命週期定義了 AHP、用戶端和伺服器如何建立、復原和拆除傳輸連線。每個通道的生命週期（工作階段建立、終端機建立等）位於各自的通道頁面中 - 請參閱[根通道](/specification/root-channel)、[工作階段通道](/specification/session-channel) 和 [終端機通道](/specification/terminal-channel)。
 
-## Connection Handshake
+## 連線握手
 
-The client initiates the connection with an `initialize` **request**. The client offers a list of protocol versions it can speak; the server picks one and responds with the negotiated version and initial state snapshots:
+用戶端透過 `initialize` **請求** 啟動連線。用戶端提供了它可以使用的協定版本清單；伺服器選擇一個並以協商版本和初始狀態快照進行回應：
+
+
+
+
 
 ```
 1. Client → Server:  initialize(protocolVersions[], clientId, clientInfo?, initialSubscriptions?, locale?)
 2. Server → Client:  { protocolVersion, serverSeq, serverInfo?, snapshots[], defaultDirectory? }
 ```
 
-### Initialize (Client → Server)
 
-`initialize` is a JSON-RPC **request** — the server MUST respond with a result or error.
+### 初始化 (用戶端 → 伺服器)
+
+`initialize` 是一個 JSON-RPC **請求** — 伺服器必須回應結果或錯誤。
+
+
+
+
 
 ```json
 {
@@ -31,15 +40,20 @@ The client initiates the connection with an `initialize` **request**. The client
 }
 ```
 
-`protocolVersions` is ordered from most preferred to least preferred. The server picks one entry and returns it as `InitializeResult.protocolVersion`. If the server cannot speak any of the offered versions it MUST return [`UnsupportedProtocolVersion`](/reference/error-codes) (`-32005`) instead of a result. See [Versioning](/specification/versioning) for the negotiation rules.
 
-`initialSubscriptions` allows the client to subscribe to channels in the same round-trip as the handshake — typically `ahp-root://` plus any previously-open session URIs.
+`protocolVersions` 依照從最優選到最不優選的順序排列。伺服器選擇一個專案並將其傳回為 `InitializeResult.protocolVersion`。如果伺服器不能說出任何提供的版本，它必須傳回 [`UnsupportedProtocolVersion`](/reference/error-codes) (`-32005`) 而不是結果。有關協商規則，請參閱[版本控制](/specification/versioning)。
 
-`locale` is an optional IETF BCP 47 language tag (e.g. `"en-US"`, `"ja"`) indicating the client's preferred language. The server SHOULD use this to localise user-facing strings such as confirmation option labels.
+`initialSubscriptions` 允許用戶端在與握手相同的往返中訂閱通道 - 通常是 `ahp-root://` 加上任何先前打開的工作階段 URI。
 
-`clientInfo` optionally identifies the client *implementation* — its `name` and, optionally, `version` and display `title`. It is distinct from `clientId`, which is an opaque per-connection identifier used for reconnection. See [Implementation identity](#implementation-identity) below.
+`locale` 是可選的 IETF BCP 47 語言標記（例如 `"en-US"`、`"ja"`），指示用戶端的首選語言。伺服器應該使用它來本地化面向使用者的字串，例如確認選項標籤。
 
-### Initialize Response (Server → Client)
+`clientInfo` 可選地識別用戶端 *實作* — 其 `name` 以及可選的 `version` 並顯示 `title`。它與 `clientId` 不同，後者是用於重新連線的不透明每個連線標識符。請參閱下面的[實作標識](#implementation-identity)。
+
+### 初始化回應 (伺服器 → 用戶端)
+
+
+
+
 
 ```json
 {
@@ -61,31 +75,36 @@ The client initiates the connection with an `initialize` **request**. The client
 }
 ```
 
-`protocolVersion` is the version the server selected from the client's `protocolVersions` list. Both peers MUST use this version for the rest of the connection.
 
-If present, `defaultDirectory` provides a server-local starting location for remote filesystem browsing.
+`protocolVersion` 是伺服器從用戶端的 `protocolVersions` 清單中選取的版本。兩個對等方必須在連線的其餘部分使用此版本。
 
-If the server cannot accept the connection for any other reason, it MUST return a JSON-RPC error. See [Error Codes](/reference/error-codes) for defined codes.
+如果存在，`defaultDirectory` 將為遠端檔案系統瀏覽提供一個伺服器本機起始位置。
 
-### Implementation identity
+如果伺服器由於任何其他原因無法接受連線，則它必須傳回 JSON-RPC 錯誤。請參閱[錯誤代碼](/reference/error-codes) 以了解已定義的代碼。
 
-Both sides of the handshake MAY advertise the *implementation* behind them: the client via `InitializeParams.clientInfo` and the server via `InitializeResult.serverInfo`. Each is an `Implementation` (see the [`initialize`](/reference/common#initialize) reference) carrying a required `name` plus optional `version` and display `title`. This mirrors LSP's `clientInfo`/`serverInfo` and MCP's `Implementation`.
+### 實作身份
 
-Implementation identity is **informational only** — for logging, telemetry, an about/status affordance, and, as a last resort, a known-issue workaround for a specific buggy build. It answers "what software, and which build, is on the other end," which is distinct from both the negotiated `protocolVersion` and the [`AgentInfo`](/reference/root#agentinfo) that names the agent persona.
+握手雙方可以宣傳其背後的*實作*：透過 `InitializeParams.clientInfo` 的用戶端和透過 `InitializeResult.serverInfo` 的伺服器。每個都是一個 `Implementation`（請參閱 [`initialize`](/reference/common#initialize) 參考），攜帶必需的 `name` 以及可選的 `version` 和顯示 `title`。這鏡像了 LSP 的 `clientInfo`/`serverInfo` 和 MCP 的 `Implementation`。
 
-It is **not** a feature-detection mechanism. Feature availability stays with the capability model (`ClientCapabilities` and the various `*.capabilities` declarations); clients and servers SHOULD NOT gate protocol behaviour on parsing `version`. Both fields are optional and purely additive: a peer that omits its own info, or ignores the other side's, stays fully interoperable.
+實作標識**僅供參考** - 用於日誌記錄、遙測、關於/狀態可供性，以及作為最後手段的針對特定錯誤構建的已知問題解決方法。它回答“另一端是什麼軟體以及哪個版本”，這與協商的 `protocolVersion` 和命名代理角色的 [`AgentInfo`](/reference/root#agentinfo) 不同。
 
-## Authentication
+它**不是**一種特徵檢測機制。功能可用性取決於功能模型（`ClientCapabilities` 和各種 `*.capabilities` 宣告）；用戶端和伺服器不應在解析 `version` 時控制協定行為。這兩個欄位都是可選的並且純粹是附加的：省略自己資訊或忽略另一方資訊的對等方保持完全可互通。
 
-Agents MAY declare `protectedResources` in their [`AgentInfo`](/reference/root#agentinfo). Before interacting with a session backed by such an agent, the client SHOULD authenticate by obtaining a Bearer token from the declared authorization server(s) and pushing it via the [`authenticate`](/reference/common#authenticate) command.
+## 驗證
 
-If a client attempts to create or use a session with an agent that requires authentication and has not yet provided a token, the server SHOULD return error code `-32007` (`AuthRequired`) with the required resource metadata in the error's `data` field.
+代理人可以在其 [`AgentInfo`](/reference/root#agentinfo) 中宣告 `protectedResources`。在與此類代理程式支援的工作階段互動之前，用戶端應透過從聲明的授權伺服器取得承載令牌並透過 [`authenticate`](/reference/common#authenticate) 指令推送它來進行驗證。
 
-See [Authentication](/specification/authentication) for the full specification.
+如果用戶端嘗試透過需要驗證且尚未提供令牌的代理程式建立或使用工作階段，則伺服器應傳回錯誤代碼 `-32007` (`AuthRequired`)，並在錯誤的 `data` 欄位中傳回所需的資源元資料。
 
-## Reconnection
+有關完整的規格，請參閱[驗證](/specification/authentication)。
 
-If the transport connection drops, the client reconnects and sends a `reconnect` **request**:
+## 重新連線
+
+如果傳輸連線斷開，用戶端會重新連線並傳送 `reconnect` **請求**：
+
+
+
+
 
 ```json
 {
@@ -101,7 +120,12 @@ If the transport connection drops, the client reconnects and sends a `reconnect`
 }
 ```
 
-The server MUST include all replayed data in the response before returning. If the server can replay from the requested sequence, it returns the missed action envelopes:
+
+在傳回之前，伺服器必須在回應中包含所有重播的資料。如果伺服器可以從請求的序列重播，它將傳回錯過的動作信封：
+
+
+
+
 
 ```json
 {
@@ -118,9 +142,14 @@ The server MUST include all replayed data in the response before returning. If t
 }
 ```
 
-The `missing` array lists subscriptions from the request that the server cannot resume — for example, sessions or terminals that have been disposed, or resources the client is no longer permitted to observe. Clients SHOULD drop these from their local subscription set.
 
-If the gap exceeds the replay buffer, the server sends fresh snapshots instead:
+`missing` 陣列列出了伺服器無法恢復的請求中的訂閱 - 例如，工作階段或已處置的終端，或不再允許用戶端觀察的資源。用戶端應將它們從本機訂閱集中刪除。
+
+如果間隙超出重播緩衝區，則伺服器會傳送新快照：
+
+
+
+
 
 ```json
 {
@@ -136,13 +165,14 @@ If the gap exceeds the replay buffer, the server sends fresh snapshots instead:
 }
 ```
 
-Protocol notifications are **not** replayed — the client SHOULD re-fetch the session list via [`listSessions`](/reference/root#listsessions). Stateless channels are simply re-subscribed; missed messages are dropped.
 
-## Unexpected Disconnection
+協定通知**不**重播 - 用戶端應透過 [`listSessions`](/reference/root#listsessions) 重新取得工作階段清單。無狀態通道只需重新訂閱即可；錯過的訊息將被丟棄。
 
-If the server process terminates unexpectedly:
+## 意外斷開
 
-- The host environment SHOULD treat the server as terminated.
-- The host MAY attempt to restart the server (e.g. crash recovery with automatic restart).
-- In-progress turns SHOULD be considered failed.
-- On restart, clients reconnect using the reconnection flow above.
+如果伺服器程序意外終止：
+
+- 主機環境應該將伺服器視為已終止。
+- 主機可以嘗試重新啟動伺服器（例如，透過自動重新啟動進行崩潰復原）。
+- 正在進行的輪次應被視為失敗。
+- 重新啟動時，用戶端使用上面的重新連線流程重新連線。

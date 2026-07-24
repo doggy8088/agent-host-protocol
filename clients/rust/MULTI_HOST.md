@@ -1,55 +1,59 @@
-# Connecting to Multiple Hosts
+# 連線到多個主機
 
-The Agent Host Protocol describes a single _client -> host_ connection. A real product often needs to talk to **two or more hosts at once**: a local sessions server and a tunnel-attached remote, a personal host and a teammate's, multiple project hosts in a desktop sidebar, and so on. The protocol itself does not say how to wire that up; it is a client SDK concern.
+代理主機協定描述單一_client -> host_連線。真正的產品通常需要同時與 **兩個或多個主機通訊**：本地工作階段伺服器和隧道連線的遠端主機、個人主機和隊友的主機、桌面側邊欄中的多個專案主機等等。協定本身並沒有說明如何連線它；這是一個用戶端 SDK問題。
 
-This page covers the Rust SDK's multi-host layer.
+本頁涵蓋了 Rust SDK 的多主機層。
 
-## Why a built-in abstraction?
+## 為什麼需要內建抽象？
 
-Without one, every consumer ends up writing the same things:
+如果沒有一個，每個消費者最終都會寫同樣的東西：
 
-- N independent `Client` instances and their lifetimes
-- N transports plus reconnect supervisors with backoff and cancellation
-- A registry that keys per-host metadata (label, URL, connection state, last error, agents, `serverSeq`, subscriptions, default directory) for UX
-- A fan-in of inbound events tagged with which host produced them
-- Per-host scoping of resource URIs (`ahp-session:/s1` on Host A != `ahp-session:/s1` on Host B)
-- Persistence of `clientId` per host so reconnect identity survives restarts
-- A per-host root state mirror plus session summary cache so sidebars and inboxes do not degrade to "subscribe to everything"
+- N個獨立的`Client`實例及其生命週期
+- N 個傳輸加上帶有退避和取消功能的重新連線主管
+- 一個註冊表，用於為 UX 鍵入每個主機元資料（標籤、URL、連線狀態、最後一個錯誤、代理、`serverSeq`、訂閱、預設目錄）
+- 入站事件的扇入，標記有產生事件的主機
+- 資源 URI 的每個主機範圍（主機 A 上的 `ahp-session:/s1`！= 主機 B 上的 `ahp-session:/s1`）
+- 每個主機保留 `clientId`，以便重新連線身分可以在重新啟動後繼續存在
+- 每個主機根狀態鏡像加上工作階段摘要緩存，因此側邊欄和收件匣不會降級為“訂閱所有內容”
 
-The Rust SDK ships a `MultiHostClient` that wraps all of this. **Single-host = N=1 of multi-host**, so the same API works either way.
+Rust SDK 附帶了一個包含所有這些的 `MultiHostClient`。 **單主機 = N=1 多主機**，因此相同的 API 可以以任何方式運作。
 
-## Per-host UX surface
+## 每主機 UX 介面
 
-Every registered host appears as a `HostHandle` snapshot:
+每個註冊的主機都顯示為 `HostHandle` 快照：
 
-| Field | Notes |
+|領域|筆記|
 |---|---|
-| `id`, `label` | Stable identifier and human-readable display name |
-| `state` | `Disconnected`, `Connecting`, `Connected`, `Reconnecting { attempt }`, `Failed { reason }` |
-| `last_error`, `last_connected_at` | Surface in your status bar / debug panel |
-| `protocol_version`, `default_directory`, `completion_trigger_characters` | From `InitializeResult` |
-| `client_id` | The id actually sent on `initialize`/`reconnect` |
-| `server_seq` | Highest `serverSeq` seen for this host |
-| `agents`, `active_sessions`, `terminals` | Mirrored from the host's `RootState` |
-| `subscriptions` | URIs the supervisor will re-subscribe to across reconnects |
-| `session_summaries` | Cached `SessionSummary[]` kept fresh by `listSessions` plus root session notifications |
-| `generation` | Bumped on every reconnect; used to invalidate stale client handles |
+| `id`，`label` |穩定的識別碼和人類可讀的顯示名稱 |
+| `state` | `Disconnected`、`Connecting`、`Connected`、`Reconnecting { attempt }`、`Failed { reason }` |
+| `last_error`，`last_connected_at` |狀態列/調試面板中的表面 |
+| `protocol_version`，`default_directory`，`completion_trigger_characters` |來自 `InitializeResult` |
+| `client_id` |實際在 `initialize`/`reconnect` 上傳送的 ID |
+| `server_seq` |此主機的最高 `serverSeq` |
+| `agents`，`active_sessions`，`terminals` |從主機的 `RootState` | 鏡像
+| `subscriptions` |主管將在重新連線後重新訂閱的 URI |
+| `session_summaries` |快取的 `SessionSummary[]` 透過 `listSessions` 加上根工作階段通知保持最新 |
+| `generation` |每次重新連線時都會發生碰撞；用於使過時的用戶端句柄失效 |
 
-Snapshots are immutable. To observe changes, listen to the connection-event stream (`host_events`) or take fresh snapshots when you need them.
+快照是不可變的。若要觀察更改，請偵聽連線事件流 (`host_events`) 或在需要時拍攝新快照。
 
-## Reconnect, generation, and ownership
+## 重新連線、產生和所有權
 
-Each host runs in its own internal task, a `HostRuntime`, that owns the current `Client`, retries the configured `ReconnectPolicy`, and re-subscribes to known URIs across reconnects.
+每個主機都在自己的內部任務 `HostRuntime` 中運行，該任務擁有當前的 `Client`，重試配置的 `ReconnectPolicy`，並在重新連線時重新訂閱已知的 URI。
 
-Every successful reconnect bumps a per-host **generation** counter. Any `HostClientHandle` you obtained from a previous connection refuses to dispatch on the new one and returns `HostError::HostReconnected`; request a fresh handle in that case. This prevents subtle bugs where a handle held across a reconnect silently writes to a different connection.
+每次成功的重新連線都會增加每個主機**代**計數器。您從上一連線獲得的任何 `HostClientHandle` 都拒絕在新連線上分派並傳回 `HostError::HostReconnected`；在這種情況下請求新的句柄。這可以防止出現微妙的錯誤，即重新連線時持有的句柄會默默地寫入不同的連線。
 
-## Stable `clientId` per host
+## 每個主機穩定的 `clientId`
 
-The protocol uses `clientId` to identify a logical client across reconnects. Each host gets its own `clientId`. `HostConfig::new` generates a session-stable id by default; production apps should persist one and pass it back through `HostConfig::with_client_id` so reconnect identity survives launches.
+該協定使用 `clientId` 來跨重新連線識別邏輯用戶端。每個主機都有自己的 `clientId`。 `HostConfig::new`預設產生一個工作階段穩定的id；生產應用程式應該保留一個並透過 `HostConfig::with_client_id` 傳回，以便在啟動後重新連線身分。
 
 ## Rust API
 
-Single-host first:
+單主機優先：
+
+
+
+
 
 ```rust
 use std::sync::Arc;
@@ -69,7 +73,12 @@ println!("connected to {}: {:?}", handle.label, handle.state);
 # let _ = multi; Ok(()) }
 ```
 
-Multi-host shape. The consumer never sees registry boilerplate beyond the call to `add_host`:
+
+多主機形狀。除了呼叫 `add_host` 之外，消費者永遠不會看到註冊表樣板：
+
+
+
+
 
 ```rust
 use ahp::hosts::{HostConfig, MultiHostClient};
@@ -95,7 +104,12 @@ while let Some(event) = events.recv().await {
 # Ok(()) }
 ```
 
-Aggregated views are first-class. The multi-host layer maintains the per-host session-summary cache, so this is a snapshot read, not a fan-out subscription:
+
+綜合觀點是一流的。多主機層維護每主機工作階段-summary 緩存，因此這是快照讀取，而不是扇出訂閱：
+
+
+
+
 
 ```rust
 # async fn run(multi: ahp::hosts::MultiHostClient) {
@@ -109,7 +123,12 @@ for hosted in inbox {
 # }
 ```
 
-Advanced consumers can drop down to the underlying `Client` through a generation-checked `HostClientHandle`:
+
+高級消費者可以透過一代檢查的 `HostClientHandle` 下降到底層的 `Client`：
+
+
+
+
 
 ```rust
 # async fn run(multi: ahp::hosts::MultiHostClient) -> Result<(), ahp::hosts::HostError> {
@@ -122,17 +141,22 @@ handle.check_alive().await?;
 # Ok(()) }
 ```
 
-Configuration knobs live on `HostConfig` (`with_client_id`, `with_initial_subscriptions`, `with_client_config`, `with_reconnect_policy`) and on `ReconnectPolicy::{disabled, immediate_forever, exponential}`. For persistent identity across launches, plug in a persistent `ClientIdStore` via `MultiHostClient::with_client_id_store(...)` (see below) or load the `clientId` yourself and pass it through `HostConfig::with_client_id`.
 
-## Persistent `clientId`s — `ClientIdStore`
+配置旋鈕位於 `HostConfig`（`with_client_id`、`with_initial_subscriptions`、`with_client_config`、`with_reconnect_policy`）和 `ReconnectPolicy::{disabled, immediate_forever, exponential}` 上。對於跨啟動的持久身份，請透過 `MultiHostClient::with_client_id_store(...)` 插入持久的 `ClientIdStore`（見下文）或自行載入 `clientId` 並透過 `HostConfig::with_client_id` 傳遞。
 
-`HostConfig::client_id` is `Option<String>`. When you don't set it explicitly, the multi-host client resolves the id at `add_host` time:
+## 持久的 `clientId` — `ClientIdStore`
 
-1. `Some(explicit)` from `HostConfig::with_client_id(...)` always wins, and the value is also persisted into the store so subsequent launches transparently reuse it.
-2. Otherwise, the configured `ClientIdStore` is consulted; a stored value is reused as-is.
-3. Otherwise, a fresh UUID-shaped id is generated and persisted.
+`HostConfig::client_id` 是 `Option<String>`。當您未明確設定時，多主機用戶端將在 `add_host` 時間解析 id：
 
-`MultiHostClient::new()` uses an in-process `InMemoryClientIdStore` — fine for tests and short-lived CLIs, but ids reset on restart. For cross-launch identity (the AHP `reconnect` flow needs a stable `clientId` to work across processes), build the client with a persistent store:
+1. `HostConfig::with_client_id(...)` 中的 `Some(explicit)` 始終獲勝，並且該值也會持久化到儲存中，以便後續啟動透明地重複使用它。
+2. 否則，參考配置的`ClientIdStore`；儲存的值按原樣重複使用。
+3. 否則，將產生並保留新的 UUID 形狀的 id。
+
+`MultiHostClient::new()` 使用行程內的 `InMemoryClientIdStore` - 適合測試和短期 CLI，但 id 在重新啟動時會重設。對於交叉啟動身分（AHP `reconnect` 流程需要穩定的 `clientId` 才能跨行程工作），請使用持久性儲存建置用戶端：
+
+
+
+
 
 ```rust
 use std::path::PathBuf;
@@ -151,13 +175,18 @@ multi.add_host(HostConfig::new("local", "Local", open)).await?;
 # Ok(()) }
 ```
 
-`FileClientIdStore` writes one file per host id (atomic temp-file + rename, `0o600` mode on Unix from the start, percent-encoded filenames for URL-unsafe ids). Within a process, concurrent writes are serialized by an internal mutex; cross-process writes are last-writer-wins (matching the Swift SDK's `FileClientIdStore`). On Apple platforms that want Keychain semantics, wrap your own implementation of the `ClientIdStore` trait.
 
-Persistence failures bubble up as `HostError::ClientIdStore { host, error }` from `add_host` — they aren't silently swallowed.
+`FileClientIdStore` 為每個主機 ID 寫入一個檔案（原子暫存檔案 + 重新命名、Unix 上從一開始的 `0o600` 模式、URL 不安全 ID 的百分比編碼檔案名稱）。在行程內，並發寫入由內部互斥體序列化；跨行程寫入是最後寫入者獲勝（與 Swift SDK 的 `FileClientIdStore` 相符）。在需要 Keychain 語意的 Apple 平台上，包裝您自己的 `ClientIdStore` 特徵的實作。
 
-## Waking every host at once — `reconnect_all_unavailable`
+持久性失敗會從 `add_host` 中以 `HostError::ClientIdStore { host, error }` 的形式出現－它們不會被默默地吞沒。
 
-Mobile-style consumers can call `MultiHostClient::reconnect_all_unavailable().await` to manually reconnect every host that isn't already `Connected` or `Connecting` (so: `Disconnected`, `Reconnecting`, and exhausted-policy `Failed` hosts all wake at the same time). The call dispatches reconnects concurrently, never throws, and returns a `HashMap<HostId, HostError>` of per-host failures.
+## 立即喚醒每個主機 — `reconnect_all_unavailable`
+
+移動式使用者可以呼叫 `MultiHostClient::reconnect_all_unavailable().await` 手動重新連線尚未連線到 `Connected` 或 `Connecting` 的每個主機（因此：`Disconnected`、`Reconnecting` 和耗盡策略 `Failed` 主機都會同時喚醒）。此呼叫同時分派重新連線，從不拋出異常，並傳回每個主機失敗的 `HashMap<HostId, HostError>`。
+
+
+
+
 
 ```rust
 # async fn run(multi: ahp::hosts::MultiHostClient) {
@@ -170,9 +199,14 @@ for (host_id, err) in failures {
 # }
 ```
 
-## Host-aware reducer mirror — `MultiHostStateMirror`
 
-For UIs that need to track reducer state across multiple hosts (e.g. a sidebar that surfaces sessions from N hosts at once), the SDK ships `MultiHostStateMirror`. It wraps the existing per-state reducers but keys session/terminal/changeset state by `(host_id, uri)` so the common case of two hosts advertising the same session URI doesn't clobber.
+## 主機感知 reducer 鏡像 — `MultiHostStateMirror`
+
+對於需要跨多個主機追蹤 reducer 狀態的 UI（例如，一次從 N 個主機顯示工作階段的側邊欄），SDK 附帶 `MultiHostStateMirror`。它包裝了現有的 per-狀態 reducer，但透過 `(host_id, uri)` 封裝了鍵工作階段/終端機/changeset 狀態，因此兩個主機通告相同工作階段 URI 的常見情況不會出現問題。
+
+
+
+
 
 ```rust
 use ahp::{HostedResourceKey, MultiHostStateMirror};
@@ -187,8 +221,9 @@ let session = mirror
 # }
 ```
 
-⚠ Both event sources in the Rust SDK today are `tokio::sync::broadcast`-backed and **drop envelopes on slow consumers** once their buffer fills — `MultiHostClient::events()` and the per-channel `SessionSubscription` from `Client::subscribe` / `attach_subscription`. Neither survives a reconnect's replayed envelopes the way the Swift SDK's per-channel `events(host:uri:)` does. A dropped (or missed-because-reconnected) envelope permanently desyncs the mirror for that `(host, channel)` until it's re-seeded from a fresh snapshot via `apply_snapshot`. Consume with that in mind — the mirror is the right shape for multi-host UI state, but the Rust SDK doesn't yet ship a lossless feeder.
 
-## Choosing single-host vs multi-host
+⚠ 今天，Rust SDK 中的兩個事件來源均由 `tokio::sync::broadcast` 支援，一旦緩衝區填滿，**就會向慢速消費者發送信封** — `MultiHostClient::events()` 和來自 `Client::subscribe` / `attach_subscription` 的每個通道 `SessionSubscription`。兩者都不會像 Swift SDK 的每個通道 `events(host:uri:)` 那樣在重新連線的重播包絡中倖存下來。遺失（或因重新連線而遺失）的信封會永久取消該 `(host, channel)` 的鏡像同步，直到透過 `apply_snapshot` 從新快照重新播種。請記住這一點 - 鏡子是多主機 UI 狀態的正確形狀，但 Rust SDK 尚未提供無損饋線。
 
-You do not choose. Single-host consumers use `MultiHostClient::single(...)` and never see registry concepts. The SDK imposes no per-host overhead beyond a single supervisor task, and there is no separate single-host API to learn.
+## 選擇單主機還是多主機
+
+你不選擇。單主機使用者使用 `MultiHostClient::single(...)` 並且永遠不會看到註冊表概念。除了單一管理程式任務之外，SDK 不會對每主機施加任何開銷，並且無需學習單獨的單主機 API。

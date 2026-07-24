@@ -1,126 +1,124 @@
 ---
 name: groom-backlog
-description: Audits recently closed PRs in agent-host-protocol (AHP) to make sure any future work they promised has a tracking issue (filing new ones or linking PRs to existing ones), then triages every open issue into implementable-now / no-longer-relevant / blocked-on-a-dependency, closing or annotating each accordingly, and finally prioritizes and implements the ready issues. Validates every follow-up and issue against the current state of this repo — the canonical `types/`, the generated client mirrors, the conformance fixtures, and the published versioned artifacts — before acting. Use when asked to triage or groom the issue backlog, file follow-up issues from merged PRs, audit closed PRs for un-tracked work, or work through the open issues.
+description: 審核近期已關閉的 PR，確認其承諾的後續工作是否已有追蹤議題（建立新議題或關聯既有議題）；將每一個未關閉議題分類為現在可實作／不再相關／等待依賴，並依分類關閉或註解。最後列出並實作可執行清單。處理前先對照本儲存庫目前狀態（`types/`、產生的用戶端鏡像、相容性固定件、已發佈版本工件）確認每個後續與議題。當收到整批排程、未追蹤後續、或要清理 issue 候選時請使用。
 ---
 
-# Triage the backlog: file follow-ups, triage open issues, implement the ready ones
+# 將積壓的工作分類：文件跟進、對未解決的問題進行分類、實作準備好的問題
 
-`microsoft/agent-host-protocol` (AHP) is the canonical wire spec plus the five clients generated and hand-maintained against it (Rust, Kotlin, Swift, TypeScript, Go). It accumulates two kinds of latent work that drift out of sync with reality if nobody tends them:
+`microsoft/agent-host-protocol` (AHP) 是規範線規格加上五個針對它產生並手動維護的用戶端 (Rust、Kotlin、Swift、TypeScript、Go)。它累積了兩種潛在的工作，如果無人照顧，它們就會與現實脫節：
 
-- **Promised-but-untracked follow-ups.** Merged PRs routinely defer work — an "out of scope" section, a "follow-up in a future PR" note, a deferred review thread, a `TODO` / "Known … gap" left in `types/`, a client whose hand-written surface wasn't updated to match a spec change. Some of that becomes a tracking issue; some silently doesn't.
-- **Stale or blocked open issues.** Issues filed weeks ago may already be done, may have been obsoleted by a later spec change, or may be waiting on a dependency that hasn't landed (a versioning decision, an unresolved design question, or an open proposal under `docs/proposals/`).
+- **承諾但未追蹤的後續工作。 ** 合併的 PR 經常推遲工作 — “超出範圍”部分、“未來 PR 中的後續工作”註釋、推遲的審核執行緒、`types/` 中留下的 `TODO` /“已知…空白”、手寫表面未更新以匹配規格更改的用戶端。其中一些成為跟蹤問題；另一些則成為跟蹤問題。有些人默默地不這樣做。
+- **陳舊或受阻的開放問題。 ** 幾週前提交的問題可能已經完成，可能已被後來的規格更改所廢棄，或者可能正在等待尚未解決的依賴項（版本控制決策、未解決的設計問題或 `docs/proposals/` 下的開放提案）。
 
-This skill is a **backlog-grooming pass** with three phases:
+此技能為**積壓整理過程**，分為三個階段：
 
-1. **Audit recently closed PRs** and make sure every still-relevant follow-up they called out has a tracking issue — filing new ones, or linking the PR to an existing one.
-2. **Triage every open issue** into *implementable now*, *no longer relevant*, or *blocked on a dependency* — closing the obsolete ones with an explanation, annotating the blocked ones with the specific blocker, and shortlisting the ready ones.
-3. **Prioritize and implement** the ready issues in order, grouping closely-related ones into a single PR where it makes sense.
+1. **審計最近結束了 PR**，並確保他們提出的每一項仍然相關的後續行動都存在跟蹤問題 - 提交新的後續行動，或將 PR 連結到現有的後續行動。
+2. **將每個未解決的問題**分類為*現在可實作*、*不再相關*或*因依賴項而被阻止* - 通過解釋關閉過時的問題，用特定的阻擋註釋被阻止的問題，並將準備好的問題列入候選名單。
+3. **按順序確定優先順序並實作**已準備好的問題，將密切相關的問題分組到有意義的單一 PR 中。
 
-## Mindset — take your time and be thorough
+## 心態－慢慢來，徹底
 
-This is the most important instruction in this skill. **Do not rush, and do not jump to conclusions.** Triage is an analysis task first and an editing task second. Opening a duplicate issue, closing one that is still needed, annotating the wrong blocker, or implementing against a stale description is expensive to unwind and erodes trust in the backlog. A shallow pass is worse than doing nothing.
+這是該技能中最重要的指令。 **不要急，也不要急於下結論。 ** 分類首先是分析任務，其次是編輯任務。打開重複的問題、關閉仍然需要的問題、註釋錯誤的阻擋或針對陳舊的描述進行實作，這些都需要花費昂貴的成本來解決，並會削弱對積壓的信任。淺薄的通過比什麼都不做更糟糕。
 
-- **Take as much time as you need** to build a genuine understanding of each PR, each issue, and the current state of the spec, the clients, and the docs before you open, close, comment, or implement anything. Read the actual PR diffs, the review threads, the issue bodies, the `types/` they point at, the generated mirrors, and the conformance fixtures — don't infer from titles and subjects alone.
-- **Validate every candidate against current reality.** Before filing a follow-up: is it still needed, or did a later PR already do it, or did a subsequent spec change make it moot? Before closing an issue: are you *certain* it's obsolete, or does it just look stale? Before calling an issue "ready": is there really no hidden dependency (a versioning-policy decision, an unresolved design question, an open proposal)? If you can't answer confidently, keep investigating.
-- **Distinguish real work from noise.** Not every "out of scope" line in a PR deserves an issue, and not every old issue is dead. Separate "this genuinely still needs doing" from "this is already handled" or "this was speculative and never mattered."
-- **When the right answer is ambiguous, stop and ask** rather than guessing — especially before bulk-closing issues or before starting a multi-PR implementation push. A wrong close or a wasted PR is costly.
-- **Prefer correctness over a small diff.** Don't contort an implementation to minimize the diff, and don't add migration shims or phased rollouts unless the [versioning policy](../../docs/specification/versioning.md) or the user calls for them. Get each issue *right*. But AHP is a **published, versioned wire contract** with real-world implementers — a breaking protocol change is governed by `docs/specification/versioning.md` and the version registry in `types/version/`, not made casually. When a fix would break the wire surface, treat the versioning policy as a hard constraint and surface the call rather than silently shipping it.
+- **在您開啟、關閉、評論或實作任何內容之前，花盡可能多的時間**真正了解每個 PR、每個問題以及規格的當前狀態、用戶端和文件。閱讀實際的 PR 差異、審核執行緒、問題主體、它們指向的 `types/`、生成的鏡像和一致性夾具 - 不要僅從標題和主題推斷。
+- **根據當前現實驗證每個候選人。 ** 在提交後續行動之前：是否仍然需要，或者後來的 PR 是否已經做到了，或者後續的規格更改是否使其毫無意義？在關閉問題之前：您*確定*它已經過時了，還是只是看起來過時了？在稱某個問題「準備就緒」之前：是否真的沒有隱藏的依賴關係（版本控制策略決策、未解決的設計問題、開放性提案）？如果您不能自信地回答，請繼續調查。- **區分真正的工作和噪音。 ** 並非 PR 中的每個「超出範圍」的行都值得提出問題，也不是每個舊問題都已消失。將「這確實還需要做」與「這已經處理了」或「這是推測性的，從來不重要」分開。
+- **當正確答案不明確時，停下來詢問**而不是猜測 - 特別是在批量關閉問題之前或開始多 PR 實作推送之前。錯誤的關閉或浪費的 PR 代價高昂。
+- **優先考慮正確性而不是小的差異。 ** 不要扭曲實作以最小化差異，並且不要新增遷移墊片或分階段推出，除非[版本控制策略](../../docs/specification/versioning.md)或使用者要求它們。 *正確*解決每個問題。但 AHP 是與現實世界的實作者**發布的、版本控制的線路合約** - 破壞性協定更改由 `docs/specification/versioning.md` 和 `types/version/` 中的版本註冊表控制，而不是隨意進行的。當修復會破壞線路表面時，請將版本控制策略視為硬約束並公開呼叫，而不是默默地傳送它。
 
-Lean on the `explore` agent to parallelize research across many PRs / issues within this repo when the investigation is broad, and feel free to spend several passes reading before you conclude anything.
+當調查範圍廣泛時，依靠 `explore` 代理來並行研究此儲存庫中的許多 PR/問題，並且在得出任何結論之前，請隨意花幾遍閱讀。
 
-## Familiarize yourself first
+## 先熟悉一下自己
 
-Before touching the backlog, ground yourself in the system the same way you would before any non-trivial change here:
+在接觸待辦事項之前，請像在此處進行任何重大更改之前一樣，讓自己融入系統：
 
-- Read the repo's own source and docs: the canonical types under `types/` (the source of truth), the generated `schema/`, the prose in `docs/specification/` and `docs/guide/`, and `AGENTS.md`, `CONTRIBUTING.md`, and `RELEASING.md`. The editorial rules for changing protocol types live in [`.github/instructions/general-instructions.instructions.md`](../../.github/instructions/general-instructions.instructions.md) — follow them.
-- Understand how a `types/` change ripples outward: every protocol change regenerates `schema/` and each client's `**/generated/**` mirror, may need a hand-written client update, must keep the conformance fixtures under `types/test-cases/` in sync, and lands a `docs/.changes` fragment for **every** affected artifact (per `AGENTS.md` → "Adding changelog fragments"). The version surface lives in `types/version/registry.ts` (`PROTOCOL_VERSION`, `SUPPORTED_PROTOCOL_VERSIONS`).
-- Refresh your understanding of the protocol's public surface and its **published, versioned artifacts** — the crates, the npm package, the Maven/JVM library, the Swift package, and the Go module, all generated from `types/`. AHP is a contract that external clients implement and external products consume, so "is this follow-up still relevant?" is answered against the current spec, the generated and hand-maintained clients in this repo, and what the protocol already guarantees — not against any single implementation.
+- 閱讀儲存庫自己的原始程式碼和文件：`types/` 下的規範類型（事實來源）、產生的 `schema/`、`docs/specification/` 和 `docs/guide/`、`AGENTS.md`、`CONTRIBUTING.md` 和 `RELEASING.md` 中的散文。更改協定類型的編輯規則位於 [`.github/instructions/general-instructions.instructions.md`](../../.github/instructions/general-instructions.instructions.md) 中 - 請遵循它們。
+- 了解 `types/` 更改如何向外擴散：每個協定更改都會重新生成 `schema/` 和每個用戶端的 `**/generated/**` 鏡像，可能需要手寫的用戶端更新，必須保持 `types/test-cases/` 下的一致性夾具同步，並為 **每個日誌更改受影響的工件版本表面位於 `types/version/registry.ts` (`PROTOCOL_VERSION`, `SUPPORTED_PROTOCOL_VERSIONS`)。
+- 刷新您對協定的公共表面及其**已發布的版本化工件**的理解 - crate、npm 包、Maven/JVM 庫、Swift 包和 Go 模組，全部從 `types/` 生成。AHP 是外部用戶端實作和外部產品使用的合同，因此「此後續行動仍然相關嗎？」是根據當前的規格、此儲存庫中生成和手動維護的用戶端以及協定已經保證的內容來回答的，而不是針對任何單一實作。
 
-You don't need to memorize everything up front, but a follow-up audit and an issue triage are only as good as your understanding of the current state of the system. Invest in that first.
+您不需要預先記住所有內容，但後續審核和問題分類僅取決於您對系統目前狀態的理解。首先投資於此。
 
-## What to validate against
+## 驗證什麼
 
-You triage, file, and implement against this one repo — `microsoft/agent-host-protocol`. This is a **public** repository; keep the entire pass inside it and don't reference, read, or depend on any non-public repository or code. "Validation context" therefore means the current, public state of this repo plus what the protocol already ships:
+您針對這個儲存庫進行分類、歸檔和實作 — `microsoft/agent-host-protocol`。這是一個**公共**儲存庫；將整個通行證保留在其中，並且不要引用、閱讀或依賴任何非公共儲存庫或程式碼。因此，「驗證上下文」是指此儲存庫的目前公共狀態以及協定已發布的內容：
 
-- **The canonical spec and its generated outputs** — `types/`, the generated `schema/`, and each client's `**/generated/**` mirror.
-- **The hand-maintained client surface** under `clients/<lang>/`, plus the conformance fixtures in `types/test-cases/`.
-- **The prose** in `docs/specification/` and `docs/guide/`, and the in-flight design notes in `docs/proposals/`.
-- **The version surface** in `types/version/registry.ts` and the **published, versioned artifacts** generated from it (the crates, npm package, Maven/JVM library, Swift package, and Go module).
-- **The repo's own history** — the merged PRs and the open / closed issues themselves.
+- **規範的規格及其產生的輸出** — `types/`、產生的 `schema/` 以及每個用戶端的 `**/generated/**` 鏡像。
+- **`clients/<lang>/` 下的手工維護的用戶端表面**，以及 `types/test-cases/` 中的一致性夾具。
+- `docs/specification/` 和 `docs/guide/` 中的 **散文**，以及 `docs/proposals/` 中的飛行設計說明。
+- `types/version/registry.ts` 中的 **版本表面** 以及從中產生的 **已發佈的版本化工件**（crate、npm 套件、Maven/JVM 庫、Swift 套件和 Go 模組）。
+- **儲存庫自己的歷史** - 合併的 PR 和開啟/關閉的問題本身。
 
-AHP is a contract that external clients implement and external products consume, but those live in other repositories that are out of scope here. Judge "is this still relevant?" from the spec and the clients in *this* repo and from what the protocol already guarantees. If an issue's real resolution clearly belongs to some external implementation, **note it for the user** rather than going to read or act on another repository.
+AHP 是外部用戶端實作和外部產品使用的合約，但這些合約位於超出此處範圍的其他儲存庫中。法官「這仍然有意義嗎？」來自 *this* 儲存庫中的規格和用戶端以及協定已經保證的內容。如果問題的真正解決方案顯然屬於某個外部實作，**請為使用者註明**，而不是Go閱讀或操作另一個儲存庫。
 
-Always judge relevance against the **current state of this repo's default branch** plus its **recently active open PRs** — not whatever a local clone happens to have checked out. Fetch/refresh before you judge, and use `gh` to read the remote authoritatively. **Note:** this repo is in the `microsoft` org, where `gh`'s GraphQL-backed commands (`gh issue list`, `gh pr list`) can intermittently fail with a credentials error; when that happens, fall back to the REST endpoints via `gh api repos/microsoft/agent-host-protocol/...` (see the appendix).
+始終根據此儲存庫預設分支的 **當前狀態加上其 **最近活動的開啟 PR** 來判斷相關性 - 而不是本地克隆碰巧簽出的任何內容。在判斷之前取得/刷新，並使用 `gh` 權威地讀取遠端。 **注意：** 此儲存庫位於 `microsoft` 組織中，其中 `gh` 的 GraphQL 支援的命令（`gh issue list`、`gh pr list`）可能會間歇性失敗並出現憑證錯誤；當發生這種情況時，透過 `gh api repos/microsoft/agent-host-protocol/...` 回退到 REST 端點（請參閱附錄）。
 
-## How this repo tracks issues and follow-ups
+## 此儲存庫如何追蹤問題和後續行動
 
-Ground yourself in the local conventions so your issues match the house style and your triage uses the right signals:
+讓自己融入當地慣例，以便您的問題符合公司風格，並且您的分類會使用正確的訊號：
 
-- **Labels.** This repo does **not** have a dedicated `follow-up` label — don't assume one exists. Apply the labels a maintainer would: type/area labels like `enhancement`, `documentation`, `bug`, `debt`, `dependencies`, and language tags like `rust`, plus disposition labels `wontfix`, `duplicate`, and `invalid` for closes. `gh label list -R microsoft/agent-host-protocol` is authoritative; if the team would benefit from a `follow-up` label, suggest creating one rather than silently inventing it.
-- **Issue templates.** This repo has no `.github/ISSUE_TEMPLATE/` forms today, so new issues are free-form — which means a follow-up issue needs to carry its own structure and completeness.
-- **The quality bar for a follow-up issue.** A good follow-up issue stands on its own: a **Context** section linking the originating PR *and* the specific review thread *and* the `types/`/client code or spec prose in question, a **Problem** statement, a concrete **Proposed fix**, an **Affected artifacts** note (which of `types/` / `schema/` / each `clients/<lang>/` / `docs/` / the CHANGELOGs the fix touches), a **Tests / conformance** list (the `types/test-cases/` fixtures or client tests it needs), and an **Out of scope** section. Well-scoped existing issues are the model; read a few current open ones to match the house depth (`gh issue list` / `gh issue view`).
-- **Where PRs call out future work.** Look in the PR **body** (`## What` / `## Why` / `## How` notes, "out of scope", "future work", "follow-up", "deferred"), in **review threads** (a reviewer asks for something and the author defers it), and in **the code the PR landed** (`TODO`, `FIXME`, "Known … gap", "deferred from PR #…" in `types/` comments, hand-written client source, or docs). The inverse — promised work with *no* issue — is exactly what phase 1 hunts for.
-- **`types/` is the canonical wire contract.** A change to the protocol surface is never local: it regenerates `schema/` and every client's `**/generated/**` mirror, may require a matching hand-written client change, must keep the conformance fixtures in `types/test-cases/` aligned, and lands a `docs/.changes` fragment in each affected artifact's scope. `AGENTS.md` and [`.github/instructions/general-instructions.instructions.md`](../../.github/instructions/general-instructions.instructions.md) are the authorities on when and how to touch that tree; the [versioning policy](../../docs/specification/versioning.md) governs anything that moves `PROTOCOL_VERSION`. Follow them.
+- **標籤。 **此儲存庫**沒有**有專用的 `follow-up` 標籤 - 不要假設存在這樣的標籤。應用維護者會使用的標籤：型別/區域標籤，例如 `enhancement`、`documentation`、`bug`、`debt`、`dependencies` 和語言標籤，例如 `rust`，以及用於關閉的處置標籤 `wontfix`、`duplicate` 和 `invalid`。 `gh label list -R microsoft/agent-host-protocol` 具有權威性；如果團隊可以從 `follow-up` 標籤中受益，建議建立一個標籤，而不是默默地發明它。
+- **問題模板。 ** 該儲存庫目前沒有 `.github/ISSUE_TEMPLATE/` 表單，因此新問題是自由格式的 - 這意味著後續問題需要具有自己的結構和完整性。- **後續問題的品質標準。 ** 一個好的後續問題是獨立的：一個 **上下文** 部分，連結原始 PR *和* 具體審查執行緒 * 和 * 有問題的 `types/`/用戶端代碼或規格散文、**問題** 陳述、具體 **建議的修復**、** 6/c/62修復涉及的 CHANGELOGs），一個 **測試/一致性** 列表（它需要的 `types/test-cases/` 夾具或用戶端測試），以及一個 **超出範圍** 部分。範圍明確的現有問題是模型；讀取一些目前開放的內容以匹配房屋深度（`gh issue list` / `gh issue view`）。- **其中 PR 指出未來的工作。 ** 看 PR **正文**（`## What` / `## Why` / `## How` 註釋，「超出範圍」、「未來的工作」、「後續」、「延遲」），在 **審閱執行緒**（審閱者要求某些內容，而作者推遲它），並在 **PR 手寫的代碼中、{c70** （`types/` 24} 的註釋。用戶端原始碼或文件中的「已知...間隙」、「從 PR #... 延遲」）。相反，承諾的工作不會出現任何問題，而這正是第一階段所尋求的。
+- **`types/` 是規範的線路合約。 ** 協定表面的更改絕不是本地的：它會重新產生 `schema/` 和每個用戶端的 `**/generated/**` 鏡像，可能需要匹配的手寫用戶端更改，必須保持 `types/test-cases/` 中的一致性夾具對齊，並在每個受影響的工件的範圍中放置一個 `docs/.changes` 片段。 `AGENTS.md` 和 [`.github/instructions/general-instructions.instructions.md`](../../.github/instructions/general-instructions.instructions.md) 是何時以及如何觸摸那棵樹的權威；[版本控制策略](../../docs/specification/versioning.md) 管理任何移動 `PROTOCOL_VERSION` 的內容。跟著他們。
 
-## The triage pass
+## 分類通行證
 
-Treat the following as the shape of the work, not a rigid script. Adapt the order and depth to what you find; the goal is a confident, well-understood backlog plus a clear report — **not** mechanical step-execution.
+將以下視為作品的形狀，而不是死板的劇本。根據您發現的內容調整順序和深度；目標是自信、易於理解的積壓工作以及清晰的報告——**不是**機械的步驟執行。
 
-### Phase 1 — Audit recently closed PRs for un-tracked follow-ups
+### 第 1 階段 — 審核最近結束 PR，以尋找未追蹤的後續行動
 
-1. **Scope the window.** Gather the recently closed (merged) PRs. If the user gave a window, use it; otherwise default to a sensible recent range (e.g. since the last triage pass, or the last several weeks of merged PRs) and say what you chose. Dependabot / pure-dependency PRs rarely spawn follow-ups — skim them, don't dwell.
-2. **Extract the promises.** For each PR, read the body, the review threads, and the code it landed, and list every piece of work it explicitly **deferred to the future** — "out of scope", "follow-up", "in a later PR", "known gap", a `TODO`/`FIXME` it introduced, a reviewer request the author postponed, a client mirror left un-regenerated, a conformance fixture marked skipped.
-3. **Validate each candidate against current reality.** Before filing anything, confirm the work is *still* real and correctly described:
-   - Did a **later PR** already do it? (Then there's nothing to file — note it in the report.)
-   - Did a **subsequent spec change** make it moot or change its shape? Re-describe or drop accordingly.
-   - Is the `types/`/client code or doc it pointed at still there and still the right place?
-4. **Check for an existing issue.** Search open **and** closed issues for the same work. If a matching **open** issue exists, **link the PR(s) to it** (a comment cross-referencing the PR and the relevant thread/code) rather than opening a duplicate. If a matching issue was already **closed as done**, the follow-up is satisfied — don't refile.
-5. **File the gaps.** For each still-relevant, un-tracked follow-up, open a new issue at the quality bar above: Context (links to the PR, the review thread, and the code/spec), Problem, Proposed fix, Affected artifacts, Tests/conformance, Out of scope. Label it with the area labels a maintainer would apply (e.g. `enhancement`, `documentation`, `bug`, `rust`). Cross-link the PR.
+1. **確定視窗範圍。 ** 收集最近關閉（合併）的 PR。如果使用者給了一個視窗，請使用它；否則預設為合理的近期範圍（例如自上次分類通過或合併 PR 的最後幾週以來）並說出您的選擇。 Dependabot / pure-dependency PR 很少產生後續內容 - 瀏覽它們，不要糾纏。
+2. **提取承諾。 ** 對於每個 PR，閱讀正文、審閱執行緒和它落地的程式碼，並列出它明確 **推遲到未來的每一項工作** —“超出範圍”、“後續”、“稍後的 PR”、“已知差距”、它引入的 `TODO`/`FIXME`、作者已推遲的閱審者請求、已跳過鏡像
+3. **根據當前現實驗證每個候選人。 ** 在提交任何內容之前，請確認作品*仍然*真實且描述正確：- **後來的PR**已經做到了嗎？（那麼就沒有什麼可歸檔的－在報告中註明。）
+   - **後續的規格更改**是否使其毫無意義或改變了其形狀？重新描述或相應刪除。
+   - 它指向的 `types/`/用戶端程式碼或文件是否仍然存在並且仍然是正確的位置？
+4. **檢查現有問題。 ** 搜尋相同工作的開放 ** 和 ** 已關閉問題。如果存在匹配的 **open** 問題，**將 PR 連結到它**（交叉引用 PR 和相關執行緒/程式碼的評論），而不是打開副本。如果匹配的問題已經**結束**，則後續工作滿意 - 不要重新提交。
+5.**歸檔差距。 ** 對於每個仍然相關、未追蹤的後續問題，請在上面的品質欄中開啟一個新問題：上下文（連結到 PR、審核執行緒和程式碼/規格）、問題、建議的修復、受影響的工件、測試/一致性、超出範圍。使用維護者將套用的區域標籤對其進行標記（例如 `enhancement`、`documentation`、`bug`、`rust`）。交叉連結 PR。
 
-### Phase 2 — Triage every open issue
+### 第 2 階段 — 將每個未解決的問題分類
 
-1. **Pull the full open list** and read each issue in depth — its body, its links, and the current state of the `types/`/client code, the schema, the docs, and any `docs/proposals/` discussion it refers to. **Validate before you classify.** Never close or annotate on a hunch.
-2. **Classify each issue into exactly one bucket:**
-   - **Implementable now** — still relevant, correctly described, and has **no** unresolved dependency or external blocker. Shortlist it for phase 3.
-   - **No longer relevant / necessary** — already implemented, superseded, obsoleted by a later spec change, or speculative work that no longer makes sense. **Close it** with a comment that explains *precisely why* (link the PR/commit/change that resolved or invalidated it) and apply the fitting disposition label (`wontfix` / `duplicate` / `invalid`). Use the "not planned" close reason when it wasn't completed.
-   - **Blocked on a dependency / external factor** — still relevant but can't proceed until something else lands (a versioning-policy decision, an unresolved design question or open `docs/proposals/` discussion, a prerequisite spec change). **Leave it open** and add a comment naming the *specific* blocker, why it must resolve first, and — where possible — a link to the issue / PR / proposal in this repo to watch.
-3. **Be explicit and auditable.** Every close and every blocked annotation should stand on its own: a future reader should understand the call without re-deriving it. If a classification is genuinely ambiguous, surface it for the user rather than guessing.
+1. **拉出完整的開放列表**並深入閱讀每個問題 - 其正文、連結以及 `types/`/用戶端代碼的當前狀態、架構、文件以及它引用的任何 `docs/proposals/` 討論。 **分類前先進行驗證。 **切勿憑直覺關閉或註記。
+2. **將每個問題準確分類到一個桶子：**
+   - **現在可實作** - 仍然相關，正確描述，並且**沒有**未解決的依賴項或外部阻擋。將其列入第三階段的候選名單。
+   - **不再相關/必要** — 已被實作、取代、被後來的規格更改所廢棄，或不再有意義的推測性工作。 **用註釋關閉它**，解釋*確切的原因*（連結解決或使其無效的 PR/commit/change）並應用合適的處置標籤 (`wontfix` / `duplicate` / `invalid`)。未完成時使用“未計劃”關閉原因。- **因依賴項/外部因素而受阻** — 仍然相關，但在其他事情發生之前無法繼續（版本控制策略決策、未解決的設計問題或開放的 `docs/proposals/` 討論、先決條件規格更改）。 **將其保持打開狀態**並新增一條註釋，命名*特定*阻擋，為什麼它必須首先解決，以及（如果可能）指向此儲存庫中要觀看的問題/PR/提案的連結。
+3. **明確且可審計。 ** 每個關閉和每個阻止註釋都應該獨立：未來的讀者應該理解該呼叫而無需重新派生它。如果分類確實不明確，請向使用者展示它而不是猜測。
 
-### Phase 3 — Prioritize and implement the ready issues
+### 第 3 階段 — 確定優先順序並實作已準備好的問題
 
-1. **Prioritize** the "implementable now" shortlist by importance and urgency. Security and spec-correctness items lead; then conformance gaps and behaviour bugs affecting consumers (e.g. a client mirror or reducer that diverges from `types/`); then enhancements and docs. State the ordering and the reasoning.
-2. **Cluster** closely-related issues that can be implemented and reviewed together into a single PR; keep unrelated work in separate, focused PRs (per `CONTRIBUTING.md`).
-3. **Implement in priority order.** For each issue (or tight cluster): work on a focused branch, make the change, and keep the whole chain in lockstep when the wire contract moves — edit `types/`, run `npm run generate` so `schema/` and every client's `**/generated/**` mirror regenerate, update any hand-written client surface and the `types/test-cases/` conformance fixtures, refresh the docs, and add the `docs/.changes` fragment(s) the change requires (per `AGENTS.md`). **Validate** with the repo's own build / lint / test gates (see appendix). Don't consider a change done until it builds and passes. Open the PR with `Closes #N` (list each issue in a cluster).
-   - If the user asked you to confirm before acting (e.g. "check with me first", "don't change anything yet"), present the audit results, the triage classification, and the proposed implementation order, and **wait for approval** before opening/closing issues or writing code.
+1. **依重要性和緊迫性對「立即實作」候選清單進行優先排序**。安全性和規格-正確性項目領先；然後是影響消費者的一致性差距和行為錯誤（例如與 `types/` 不同的用戶端鏡像或 reducer）；然後是增強功能和文件。狀態排序與推理。
+2. **叢集** 密切相關的問題可以在單一 PR 中一起實作和審查；將不相關的工作放在單獨的、有重點的 PR 中（根據 `CONTRIBUTING.md`）。
+3. **依優先順序實作。 ** 對於每個問題（或嚴格的叢集）：處理重點分支，進行更改，並在線路合約移動時保持整個鏈同步 - 編輯 `types/`，運行 `npm run generate`，以便 `schema/` 和每個用戶端的 `**/generated/**` 鏡像重新生成，更新任何手寫的用戶端的 `AGENTS.md` 鏡像`docs/.changes` 片段（根據 `AGENTS.md`）。**使用儲存庫自己的建置/lint/測試閘進行驗證**（請參閱附錄）。在建置並通過之前不要考慮更改已完成。使用 `Closes #N` 開啟 PR（列出叢集中的每個問題）。
+   - 如果使用者在採取行動之前要求您確認（例如「先與我聯絡」、「暫時不要更改任何內容」），請提供審核結果、分類分類和建議的實作順序，並在開啟/關閉問題或編寫程式碼之前**等待批准**。
 
-### Report
+### 報告
 
-Produce a clear, honest summary covering:
+產生清晰、誠實的摘要，內容包括：
 
-- **Follow-ups filed / linked** — new issues opened (with links), PRs linked to existing issues, and follow-ups you deliberately *didn't* file (already done / obsolete) with the reason.
-- **Triage outcome** — the three buckets: what you closed and why, what you annotated as blocked and on what, and the ready shortlist.
-- **Implementation** — what you implemented, the PR(s), and which issues each closes; plus what remains on the ready list for next time.
-- **Belongs-elsewhere items** — anything whose real fix lives outside this repo (in an external client implementation or a consuming product). Describe each precisely and hand it back to the user — don't go read or act on another repository yourself.
-- **Anything notable or uncertain** that warrants the user's attention or a decision (especially anything that would require a `PROTOCOL_VERSION` bump under the versioning policy).
+- **提交/連結的後續行動** - 開啟的新問題（帶連結），連結到現有問題的PR，以及您故意「未」歸檔（已完成/過時）的後續行動及其原因。
+- **分類結果** — 三個部分：您關閉的內容和原因、您註釋為被阻止的內容和內容，以及準備好的候選名單。
+- **實作** — 您實作了什麼、PR，以及每個問題都關閉；加上下次準備好的清單上剩餘的內容。
+- **屬於其他專案** — 真正修復位於此儲存庫之外的任何內容（在外部用戶端實作或消費產品中）。準確地描述每個內容並將其傳回給使用者 - 不要自己Go閱讀或操作另一個儲存庫。
+- **任何值得注意或不確定的事情**需要使用者註意或做出決定（特別是在版本控制政策下需要 `PROTOCOL_VERSION` 提升的任何事情）。
 
-If the user wants a durable artifact, the report can be written to the repo's gitignored `.local/` folder; otherwise present it in the conversation.
+如果使用者想要持久的工件，可以將報告寫入儲存庫的 gitignored `.local/` 資料夾；否則將其呈現在對話中。
 
-## Guardrails
+## 護欄
 
-- **Validate before you mutate the backlog.** Don't open, close, or re-label an issue until you've confirmed the call against the current `types/`, the generated mirrors, the schema, the docs, and the conformance fixtures. A wrong close is worse than a stale issue.
-- **Never open a duplicate.** Always search open *and* closed issues first; prefer linking a PR to an existing issue over filing a new one.
-- **Match the house style.** New issues meet the quality bar above and carry the labels a maintainer would apply; don't invent labels (there is no `follow-up` label) — suggest one if it's warranted. Closed issues get an explanatory comment and a disposition label.
-- **Stay inside this repository.** This is a public repo; keep the entire pass within `microsoft/agent-host-protocol` and don't reference, read, or act on any other (non-public) repository. If an issue's resolution belongs elsewhere, describe it for the user instead of acting on it.
-- **Pause before high-consequence batches.** When a pass would bulk-close many issues or kick off a multi-PR implementation push, and the user hasn't clearly said "just do it," present the plan and get a go-ahead first.
-- **The wire contract moves as one unit.** When a change touches `types/`, the regenerated `schema/` + client mirrors, the conformance fixtures, the docs, and the scoped `docs/.changes` fragment move together — never hand-edit a `**/generated/**` file. A breaking protocol change is gated by the [versioning policy](../../docs/specification/versioning.md); don't ship one without honoring it.
-- **Correctness wins, within the versioning policy.** Don't shrink a correct implementation to keep the diff small, and don't add migrations/deprecations/phased rollouts unless the versioning policy or the user calls for them.
-- **Validate before declaring done.** Run the repo's build/lint/test and resolve any fallout from every change you implement.
+- **在更改積壓工作之前進行驗證。 ** 在確認針對目前 `types/`、產生的鏡像、架構、文件和一致性夾具的呼叫之前，請勿開啟、關閉或重新標記問題。錯誤的結束比陳舊的問題更糟。
+- **永遠不要打開重複的問題。 **總是先搜尋開啟的*和*已關閉的問題；喜歡將 PR 連結到現有問題，而不是提交新問題。
+- **搭配房屋風格。 ** 新問題符合上述品質標準，並附有維修人員將應用的標籤；不要發明標籤（沒有`follow-up`標籤）－如果有保證的話建議一個。已關閉的問題會獲得解釋性評論和處置標籤。
+- **留在這個儲存庫中。 **這是一個公共儲存庫；將整個通行證保留在 `microsoft/agent-host-protocol` 內，並且不要引用、讀取或對任何其他（非公開）儲存庫進行操作。如果問題的解決方案屬於其他地方，請向使用者描述它，而不是採取行動。
+- **在高後果批次之前暫停。 ** 當一次傳遞將批量關閉許多問題或啟動多個 PR 實作推送，並且使用者沒有明確表示「就這樣做」時，請先提出計劃並獲得批准。
+- **Wire 合約作為一個單元移動。 ** 當變更觸及 `types/` 時，重新產生的 `schema/` + 用戶端鏡像、一致性夾具、文件和作用域 `docs/.changes` 片段一起移動 - 切勿手動編輯 `**/generated/**` 檔案。破壞性協定變更由[版本控制策略](../../docs/specification/versioning.md)控制；不要在不尊重的情況下發貨。
+- **在版本控制策略內，正確性獲勝。 ** 不要縮小正確的實作以保持較小的差異，並且不要新增遷移/棄用/分階段推出，除非版本控制策略或使用者要求它們。- **在聲明完成之前進行驗證。 ** 執行儲存庫的建置/lint/測試並解決您實作的每個變更的任何後果。
 
-## Appendix — grounding facts and commands
+## 附錄－基礎事實與命令
 
-These are starting points, not the whole method — verify them against the repo's current state (`AGENTS.md`, `CONTRIBUTING.md`, `RELEASING.md`, `gh label list`), which is authoritative if it disagrees with anything here. For each `gh issue`/`gh pr` command below, if the GraphQL-backed form returns a credentials error in this `microsoft`-org repo, use the REST `gh api repos/microsoft/agent-host-protocol/...` form instead.
+這些是起點，而不是整個方法 - 根據儲存庫當前的狀態（`AGENTS.md`、`CONTRIBUTING.md`、`RELEASING.md`、`gh label list`）驗證它們，如果與此處的任何內容不同意，則為權威。對於下面的每個 `gh issue`/`gh pr` 命令，如果 GraphQL 支援的表單在此 `microsoft`-org 儲存庫中傳回憑證錯誤，請改用 REST `gh api repos/microsoft/agent-host-protocol/...` 表單。
 
-**Survey recently closed PRs and read what they promised:**
+**調查最近結束了PR並閱讀他們的承諾：**
+
+
+
+
 
 ```sh
 # Recently merged PRs (adjust --limit / filter the window you chose):
@@ -139,7 +137,12 @@ gh api repos/microsoft/agent-host-protocol/pulls/<n>/comments --jq '.[] | {path,
 grep -rniE 'TODO|FIXME|follow-up|known .* gap|deferred from' types/ clients/ docs/
 ```
 
-**Search existing issues before filing (open *and* closed), then file or link:**
+
+**在歸檔前搜尋現有問題（開啟*和*關閉），然後歸檔或連結：**
+
+
+
+
 
 ```sh
 gh issue list -R microsoft/agent-host-protocol --state all --search "<keywords>" \
@@ -157,7 +160,12 @@ gh issue comment <n> -R microsoft/agent-host-protocol \
   --body "Follow-up tracked here was deferred from #<pr> (<thread/code link>)."
 ```
 
-**Triage the open issues:**
+
+**將未解決的問題分類：**
+
+
+
+
 
 ```sh
 # Full open list with labels and recency:
@@ -177,7 +185,12 @@ gh issue comment <n> -R microsoft/agent-host-protocol \
   --body "Blocked on <dependency> (<blocking issue / PR / proposal link>); needs to land first because <reason>."
 ```
 
-**Judge relevance against this repo's own history and surface:**
+
+**根據此儲存庫本身的歷史和表面來判斷相關性：**
+
+
+
+
 
 ```sh
 # Did a later merged PR already do it, or change its shape?
@@ -192,7 +205,12 @@ grep -rniE '<symbol or keyword>' types/ docs/
 cat types/version/registry.ts
 ```
 
-**Validate every implementation before declaring it done** (see `CONTRIBUTING.md` / `AGENTS.md` for the authoritative list):
+
+**在聲明完成之前驗證每個實作**（有關權威列表，請參閱 `CONTRIBUTING.md` / `AGENTS.md`）：
+
+
+
+
 
 ```sh
 npm install                 # root tooling

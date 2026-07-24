@@ -1,108 +1,116 @@
 ---
 description: >-
-  Migrate code that talks to or implements the Agent Host Protocol from the
-  pre-channels model to the current channel-based model. Use when asked to
-  upgrade an AHP client/server, when seeing references to `agenthost:/root`,
-  `<provider>:/<uuid>` session URIs, a `notification` wrapper method, an
-  `envelope` field inside `action` params, a `resource` field on
-  subscribe/unsubscribe/snapshot results, or `session` / `terminal` /
-  `changeset` fields on command params or action payloads.
+  將使用或實作代理主機協定的程式碼，從舊有「預通道」模型
+  遷移到目前的通道式模型。當需要升級 AHP 用戶端/伺服器，
+  或看到 `agenthost:/root`、`<provider>:/<uuid>` 這類
+  session URI、`notification` 封裝方法、`action` 參數內的
+  `envelope` 欄位、subscribe/unsubscribe/snapshot 結果中的 `resource`
+  欄位，或指令參數／行為負載上的 `session`、`terminal`、`changeset`
+  欄位時，請使用此技能。
 ---
 
-# AHP Channels Migration
+# AHP 通道遷移
 
-This skill helps you migrate a codebase that consumes (or implements) the
-Agent Host Protocol from the **pre-channels model** to the **channel-based
-model** introduced by RFC #117. The migration was folded into the protocol
-as a single breaking step alongside the `0.2.0` version bump (which also
-introduced changesets and the `session/customizationUpdated` action). The
-combined wire format on `0.2.0` is what this skill targets; there is no
-transitional version.
+此技能可協助您遷移使用（或實作）
+代理主機協定從 **預通道模型** 到 **基於通道
+RFC #117 所引入的模型**。遷移被納入協定中
+作為與 `0.2.0` 版本提升一起的一個突破性步驟（這也
+引入了變更集和 `session/customizationUpdated` 操作）。的
+`0.2.0` 上的組合線路格式是此技能的目標；沒有
+過渡版本。
 
-The migration is mechanical in most places but touches several shapes at once,
-so do it in passes rather than file-by-file. The order below minimises the
-chance of leaving the codebase in a half-broken state.
+這種遷移在大多數地方都是機械的，但會同時觸及多個形狀，
+所以要分階段進行，而不是逐一文件進行。下面的順序最小化
+使程式碼庫處於半損壞的狀態的可能性。
 
-## How to use this skill
+## 如何使用該技能
 
-1. Start with the **Mental model** section so you understand what "channel"
-   means and why fields moved.
-2. Work through the **Migration passes** in order. Each pass is independent
-   enough that you can land it as its own commit.
-3. Use the **Grep cheat sheet** at the bottom to find every site that needs
-   updating in your codebase.
-4. When in doubt about a specific type's new shape, look it up in the AHP
-   repo's `types/*.ts` (`state.ts`, `actions.ts`, `commands.ts`,
-   `messages.ts`, `notifications.ts`) or in `docs/specification/`.
+1. 從 **心智模型** 部分開始，以便您了解什麼是“管道”
+   田地移動的方式和原因。
+2. 依序完成**遷移過程**。每個通道都是獨立的
+   足以讓你可以將其作為自己的提交。
+3. 使用底部的 **Grep 備忘單** 尋找每個需要的站點
+   更新您的程式碼庫。
+4. 當對特定型別的新形狀有疑問時，請在 AHP 中尋找
+   儲存庫的 `types/*.ts`（`state.ts`、`actions.ts`、`commands.ts`、
+   `messages.ts`、`notifications.ts`) 或在 `docs/specification/` 中。
 
-## Mental model
+## 心理模型
 
-In the pre-channels world, AHP had a privileged "state subscription"
-mechanism: clients subscribed to a URI, got a snapshot, and received action
-envelopes for that URI's state. Notifications (session catalogue events,
-auth-required) were stuffed inside a single `notification` wrapper method.
-The URI of a state-bearing resource was embedded directly into the action
-payload (`action.session`, `action.terminal`).
+在預通道世界中，AHP 擁有特權“狀態訂閱”
+機制：用戶端訂閱 URI、取得快照並接收操作
+該 URI 的狀態的信封。通知（工作階段目錄事件、
+auth-required）被填入單一 `notification` 包裝器方法中。
+包含狀態的資源的 URI 直接嵌入到操作中
+有效負載（`action.session`，`action.terminal`）。
 
-In the channel-based world, every push-style interaction lives on a
-**channel**, identified by a URI. Subscriptions, action delivery, and
-protocol notifications all carry a top-level `channel: URI` field that
-identifies which subscription a message belongs to. A channel MAY have
-associated state (root, sessions, terminals), or it MAY be stateless (future
-use: logging, MCP, LSP relay). The wire shape is uniform across types.
+在基於管道的世界中，每一次推送式互動都依賴
+**通道**，以 URI 識別。訂閱、行動交付以及
+協定通知都帶有一個頂級 `channel: URI` 欄位，
+標識訊息屬於哪個訂閱。一個通道可能有
+關聯的狀態（根、工作階段、終端），或者它可能是無狀態的（未來
+使用：日誌記錄、MCP、LSP 中繼）。不同類型的線路形狀是一致的。
 
-Concretely:
+具體來說：
 
-- **Root URI**: `agenthost:/root` → `ahp-root://`
-- **Session URI scheme**: provider-named (`copilot:/<uuid>`) →
-  `ahp-session:/<uuid>` in docs/examples. The provider lives on
-  `SessionSummary.provider`, not in the URI. (Live session URIs are
-  announced by the server, so this is mainly a docs/example change for
-  consumers — but type-level shape changes still apply.)
-- **Terminal URI scheme** (docs/examples): `ahp-terminal:/<id>`. Server-
-  defined; clients treat as opaque.
-- **Changeset URI scheme** (docs/examples): `ahp-changeset:/<id>`. Server-
-  defined; obtained by expanding a `Changeset.uriTemplate`.
-  Changesets are a new channel type introduced in the same step.
-- **`channel` everywhere**: `subscribe`/`unsubscribe`/action-envelope/
-  `dispatchAction`/every protocol notification AND every command has
-  `channel: URI` at the top level of its params. Commands that are
-  connection-level rather than channel-scoped (e.g. `initialize`, `ping`,
-  `listSessions`, the `resource*` filesystem commands, `authenticate`)
-  set `channel` to the literal `'ahp-root://'`.
-- **Action payloads are channel-less**: `session: URI` and `terminal: URI`
-  fields are gone from individual actions. Routing is by envelope.
-- **Notifications are top-level methods**: the `notification` wrapper and
-  the `ProtocolNotification` union are gone.
-- **`SessionDiffsChangedAction` is gone**: replaced by
-  `SessionChangesetsChangedAction` (catalogue updates on a session) plus a
-  new family of per-changeset actions (`changeset/statusChanged`,
-  `changeset/fileSet`, `changeset/fileRemoved`,
-  `changeset/operationsChanged`, `changeset/cleared`) and the
-  `invokeChangesetOperation` command. See `docs/guide/changesets.md`.
+- **根 URI**：`agenthost:/root` → `ahp-root://`
+- **工作階段 URI 方案**：提供者命名 (`copilot:/<uuid>`) →
+  文件/範例中的 `ahp-session:/<uuid>`。提供者繼續生存
+  `SessionSummary.provider`，不在 URI 中。（實時工作階段 URI 是
+  由伺服器宣布，因此這主要是文件/範例更改
+  消費者 - 但型別等級的形狀變化仍然適用。）
+- **終端機 URI 方案**（文件/範例）：`ahp-terminal:/<id>`。伺服器-
+  定義；用戶端視為不透明。
+- **變更集 URI 方案**（文件/範例）：`ahp-changeset:/<id>`。伺服器-
+  定義；透過展開 `Changeset.uriTemplate` 獲得。
+  變更集是在同一步驟中引入的新通道型別。
+- **`channel` 無所不在**：`subscribe`/`unsubscribe`/action-envelope/
+  `dispatchAction`/每個協定通知和每個指令都有
+  `channel: URI` 位於其參數的頂層。命令是
+  連線等級而不是通道範圍（例如 `initialize`、`ping`、
+  `listSessions`、`resource*` 檔案系統指令、`authenticate`）
+  將 `channel` 設定為文字 `'ahp-root://'`。- **動作負載是無通道的**：`session: URI` 和 `terminal: URI`
+  個人行動中的領域已經消失。路由是透過信封進行的。
+- **通知是頂級方法**：`notification` 包裝器和
+  `ProtocolNotification` 聯盟消失了。
+- **`SessionDiffsChangedAction` 消失了**：替換為
+  `SessionChangesetsChangedAction`（工作階段上的目錄更新）加上
+  每個變更集操作的新系列（`changeset/statusChanged`，
+  `changeset/fileSet`，`changeset/fileRemoved`，
+  `changeset/operationsChanged`，`changeset/cleared`）和
+  `invokeChangesetOperation`指令。參見`docs/guide/changesets.md`。
 
-## Migration passes
+## 遷移通行證
 
-Apply these in order. After each pass, run your typecheck/test loop.
+按順序應用這些。每次通過後，執行類型檢查/測試循環。
 
-### Pass 1 — Rename the root URI
+### Pass 1 — 重新命名根 URI
+
+
+
+
 
 ```
 agenthost:/root  →  ahp-root://
 ```
 
-This is the one immediately-wire-breaking rename. Any client that subscribes
-to root state with the old URI will receive an error from a channels-era
-server.
 
-Update every literal occurrence in code, tests, fixtures, configuration, and
-documentation. Search patterns:
+這是一個立即斷線的重命名。任何訂閱的用戶端
+使用舊 URI 的 root 狀態將收到來自通道時代的錯誤
+伺服器。
 
-- TypeScript/JavaScript/JSON: `agenthost:/root`
-- Anywhere the URI is constructed from constants: look for an `AHP_ROOT_URI`
-  or similar constant.
+更新程式碼、測試、裝置、配置和中的每個文字出現
+文件。搜尋模式：
 
-### Pass 2 — `subscribe` / `unsubscribe` params: `resource` → `channel`
+- TypeScript/JavaScript/JSON：`agenthost:/root`
+- URI 由常數構造的任何地方：找出 `AHP_ROOT_URI`
+  或類似的常數。
+
+# # #通過2 — `subscribe`/`unsubscribe`參數： `resource` → `channel`
+
+
+
+
 
 ```ts
 // before
@@ -114,15 +122,20 @@ documentation. Search patterns:
 { method: 'unsubscribe', params: { channel: <uri> } }
 ```
 
-`SubscribeParams.resource` is now `SubscribeParams.channel`.
-`UnsubscribeParams.resource` is now `UnsubscribeParams.channel`. The URI
-value is unchanged for state channels — only the field name moves.
 
-### Pass 3 — `SubscribeResult` becomes `{ snapshot? }`
+`SubscribeParams.resource` 現在是 `SubscribeParams.channel`。
+`UnsubscribeParams.resource` 現在是 `UnsubscribeParams.channel`。統一資源定位符
+狀態通道的值未變更 — 僅欄位名稱變更。
 
-The result of a `subscribe` request was a flat snapshot. It is now wrapped
-in an optional `snapshot` field, because stateless channels return no
-snapshot.
+### 透過 3 — `SubscribeResult` 變成 `{ snapshot? }`
+
+`subscribe` 請求的結果是平面快照。現在已經套件好了
+在可選的 `snapshot` 欄位中，因為無狀態通道傳回 no
+快照。
+
+
+
+
 
 ```ts
 // before — SubscribeResult was the snapshot directly
@@ -142,21 +155,31 @@ snapshot.
 }
 ```
 
-For stateless channels, `snapshot` is omitted entirely:
+
+對於無狀態通道，`snapshot` 被完全省略：
+
+
+
+
 
 ```ts
 // stateless channel: subscribe returns an empty result
 {}
 ```
 
-Update every place that destructures the subscribe response. If your client
-threaded the snapshot directly into reducers, you now need to read
-`result.snapshot` and handle `undefined` (stateless) as a separate path.
 
-### Pass 4 — Action envelopes carry `channel`; action payloads lose theirs
+更新破壞訂閱回應的每個地方。如果您的用戶端
+將快照直接執行緒化到reducer中，您現在需要閱讀
+`result.snapshot` 並將 `undefined` （無狀態）處理為單獨的路徑。
 
-The envelope grew a top-level `channel` field. Every individual session and
-terminal action lost its inner channel-identifier field.
+### Pass 4 — 動作信封帶有 `channel`；行動有效載荷遺失
+
+信封產生了一個頂級 `channel` 欄位。每個人工作階段和
+終端機操作遺失了其內部通道識別碼欄位。
+
+
+
+
 
 ```ts
 // before — ActionEnvelope
@@ -175,60 +198,65 @@ terminal action lost its inner channel-identifier field.
 }
 ```
 
-**Producer-side changes** (anything that builds action envelopes or
-individual actions): stop populating `session`/`terminal` on action payloads.
-Populate `envelope.channel` instead. The two are typically the same URI you
-were already using.
 
-**Consumer-side changes** (anything that routes actions to per-session or
-per-terminal reducers): switch your dispatch keying from
-`action.session` / `action.terminal` to `envelope.channel`. The reducer
-selection becomes "look at the envelope's `channel`, route by URI scheme".
+**生產者方面的變化**（任何構建行動信封或
+單一操作）：停止在操作負載上填入 `session`/`terminal`。
+改為填滿 `envelope.channel`。這兩個通常是相同的 URI
+已經在使用了。
 
-Action interfaces that lost their channel field — full list:
+**消費者端更改**（將操作路由到 per-工作階段或
+per-終端機 reducer）：切換您的調度鍵控
+`action.session` / `action.terminal` 至 `envelope.channel`。 reducer
+選擇變為「查看信封的 `channel`，按 URI 方案路由」。
 
-- All session actions: `SessionReadyAction`, `SessionCreationFailedAction`,
-  `SessionTurnStartedAction`, `SessionDeltaAction`,
-  `SessionResponsePartAction`, `SessionToolCallStartAction`,
-  `SessionToolCallDeltaAction`, `SessionToolCallReadyAction`,
-  `SessionToolCallConfirmedAction`, `SessionToolCallCompleteAction`,
-  `SessionToolCallResultConfirmedAction`,
-  `SessionToolCallContentChangedAction`, `SessionTurnCompleteAction`,
-  `SessionTurnCancelledAction`, `SessionErrorAction`,
-  `SessionTitleChangedAction`, `SessionUsageAction`,
-  `SessionReasoningAction`, `SessionModelChangedAction`,
-  `SessionServerToolsChangedAction`,
-  `SessionActiveClientChangedAction`,
-  `SessionActiveClientToolsChangedAction`,
-  `SessionPendingMessageSetAction`,
-  `SessionPendingMessageRemovedAction`,
-  `SessionQueuedMessagesReorderedAction`,
-  `SessionInputRequestedAction`, `SessionInputAnswerChangedAction`,
-  `SessionInputCompletedAction`, `SessionCustomizationsChangedAction`,
-  `SessionCustomizationToggledAction`,
-  `SessionCustomizationUpdatedAction`, `SessionTruncatedAction`,
-  `SessionIsReadChangedAction`, `SessionIsArchivedChangedAction`,
-  `SessionActivityChangedAction`,
-  `SessionChangesetsChangedAction` (replaces the removed
+失Go通道欄位的操作介面 - 完整清單：
+
+- 所有工作階段操作：`SessionReadyAction`、`SessionCreationFailedAction`、
+  `SessionTurnStartedAction`，`SessionDeltaAction`，
+  `SessionResponsePartAction`，`SessionToolCallStartAction`，
+  `SessionToolCallDeltaAction`，`SessionToolCallReadyAction`，
+  `SessionToolCallConfirmedAction`，`SessionToolCallCompleteAction`，
+  `SessionToolCallResultConfirmedAction`，
+  `SessionToolCallContentChangedAction`，`SessionTurnCompleteAction`，
+  `SessionTurnCancelledAction`，`SessionErrorAction`，
+  `SessionTitleChangedAction`，`SessionUsageAction`，
+  `SessionReasoningAction`，`SessionModelChangedAction`，
+  `SessionServerToolsChangedAction`，
+  `SessionActiveClientChangedAction`，
+  `SessionActiveClientToolsChangedAction`，
+  `SessionPendingMessageSetAction`，
+  `SessionPendingMessageRemovedAction`，
+  `SessionQueuedMessagesReorderedAction`，
+  `SessionInputRequestedAction`，`SessionInputAnswerChangedAction`，
+  `SessionInputCompletedAction`，`SessionCustomizationsChangedAction`，
+  `SessionCustomizationToggledAction`，
+  `SessionCustomizationUpdatedAction`，`SessionTruncatedAction`，
+  `SessionIsReadChangedAction`，`SessionIsArchivedChangedAction`，
+  `SessionActivityChangedAction`，
+  `SessionChangesetsChangedAction`（替換已刪除的
   `SessionDiffsChangedAction`),
-  `SessionConfigChangedAction`, `SessionMetaChangedAction`.
-- Tool-call actions also lost `session` because `ToolCallActionBase` no
-  longer carries it. `turnId` and `toolCallId` remain.
-- All terminal actions: `TerminalDataAction`, `TerminalInputAction`,
-  `TerminalResizedAction`, `TerminalClaimedAction`,
-  `TerminalTitleChangedAction`, `TerminalCwdChangedAction`,
-  `TerminalExitedAction`, `TerminalClearedAction`,
-  `TerminalCommandDetectionAvailableAction`,
-  `TerminalCommandExecutedAction`, `TerminalCommandFinishedAction`.
-- All changeset actions (new in `0.2.0`):
-  `ChangesetStatusChangedAction`, `ChangesetFileSetAction`,
-  `ChangesetFileRemovedAction`, `ChangesetOperationsChangedAction`,
-  `ChangesetClearedAction`. These never carried a `changeset: URI` field
-  in shipping code — it was removed before they were released.
+  `SessionConfigChangedAction`，`SessionMetaChangedAction`。
+- 工具呼叫操作也遺失了 `session`，因為 `ToolCallActionBase` 沒有
+  攜帶時間較長。 `turnId` 和 `toolCallId` 保留。
+- 所有終端機操作：`TerminalDataAction`、`TerminalInputAction`、
+  `TerminalResizedAction`，`TerminalClaimedAction`，
+  `TerminalTitleChangedAction`，`TerminalCwdChangedAction`，
+  `TerminalExitedAction`，`TerminalClearedAction`，
+  `TerminalCommandDetectionAvailableAction`，
+  `TerminalCommandExecutedAction`，`TerminalCommandFinishedAction`。
+- 所有變更集操作（`0.2.0` 中的新增功能）：
+  `ChangesetStatusChangedAction`，`ChangesetFileSetAction`，
+  `ChangesetFileRemovedAction`，`ChangesetOperationsChangedAction`，
+  `ChangesetClearedAction`。這些從未攜帶 `changeset: URI` 欄位
+  在運輸代碼中 - 它在發布之前已被刪除。
 
-### Pass 5 — `action` server notification: drop the `envelope` wrapper
+### 第 5 遍 — `action` 伺服器通知：刪除 `envelope` 包裝器
 
-The server → client `action` method previously wrapped its envelope:
+伺服器 → 用戶端 `action` 方法先前套件了它的信封：
+
+
+
+
 
 ```ts
 // before
@@ -238,13 +266,18 @@ The server → client `action` method previously wrapped its envelope:
 { method: 'action', params: ActionEnvelope }   // envelope is the params, flat
 ```
 
-Wherever you build or parse `action` notifications, remove the extra
-`{ envelope: ... }` nesting.
 
-### Pass 6 — `dispatchAction` gains a `channel`
+無論您在何處建置或解析 `action` 通知，請刪除額外的
+`{ envelope: ... }` 巢狀。
 
-Client → server still uses the `dispatchAction` method name (this did **not**
-get renamed to `action`). The params type adds a top-level `channel`:
+### 第 6 關 — `dispatchAction` 得到 `channel`
+
+用戶端 → 伺服器仍然使用 `dispatchAction` 方法名稱（這**沒有**
+重新命名為 `action`)。參數型別新增頂層 `channel`：
+
+
+
+
 
 ```ts
 // before
@@ -264,22 +297,27 @@ get renamed to `action`). The params type adds a top-level `channel`:
 }
 ```
 
-### Pass 7 — Protocol notifications become top-level methods
 
-The `notification` wrapper method is gone. Each protocol notification is
-now its own top-level JSON-RPC method with its own params type, and each
-carries a top-level `channel`.
+### 第 7 階段 — 協定通知成為頂級方法
 
-| Pre-channels                                         | Post-channels (method)          | Params type                  |
-|------------------------------------------------------|---------------------------------|------------------------------|
-| `notification` → `notify/sessionAdded`               | `root/sessionAdded`             | `SessionAddedParams`         |
-| `notification` → `notify/sessionRemoved`             | `root/sessionRemoved`           | `SessionRemovedParams`       |
-| `notification` → `notify/sessionSummaryChanged`      | `root/sessionSummaryChanged`    | `SessionSummaryChangedParams`|
-| `notification` → `notify/authRequired`               | `auth/required`                 | `AuthRequiredParams`         |
+`notification` 包裝器方法消失了。每個協定通知是
+現在它自己的頂級 JSON-RPC 方法有自己的參數型別，並且每個
+帶有頂`channel`。
 
-Each new params type has `channel: URI` as its top-level field. For
-`root/*` notifications, `channel` is `ahp-root://`. For `auth/required`,
-`channel` can be any channel the auth requirement is scoped to.
+|預通道|後通道（方法）|參數型別 |
+|----------------------------------------------------------------|---------------------------------|------------------------------------------------|
+| `notification` → `notify/sessionAdded` | `root/sessionAdded` | `SessionAddedParams` |
+| `notification` → `notify/sessionRemoved` | `root/sessionRemoved` | `SessionRemovedParams`|
+| `notification` → `notify/sessionSummaryChanged` | `root/sessionSummaryChanged` | `SessionSummaryChangedParams`|
+| `notification` → `notify/authRequired` | `auth/required` | `AuthRequiredParams` |
+
+每個新參數型別都將 `channel: URI` 作為其頂層欄位。對於
+`root/*` 通知，`channel` 是 `ahp-root://`。對於`auth/required`，
+`channel` 可以是驗證要求範圍內的任何通道。
+
+
+
+
 
 ```ts
 // before
@@ -303,70 +341,75 @@ Each new params type has `channel: URI` as its top-level field. For
 }
 ```
 
-Drop any code that imports `ProtocolNotification`, the `NotificationType`
-enum, `NotificationMethodParams`, or the combined `NotificationMap` — these
-types were removed. Replace them with the per-method params types and a
-direct lookup on the wire-level method name. The type-level constraint
-that every entry in `ClientNotificationMap` / `ServerNotificationMap` has
-`params extends { channel: URI }` is enforced in
-`types/version/message-checks.ts`, alongside an equivalent check that
-every entry in `CommandMap` / `ServerCommandMap` has
-`params extends BaseParams` (see Pass 10).
 
-### Pass 8 — Session URI scheme (docs/examples + helpers)
+刪除導入 `ProtocolNotification`、`NotificationType` 的任何程式碼
+列舉、`NotificationMethodParams` 或組合的 `NotificationMap` — 這些
+類型被刪除。將它們替換為每個方法的參數類型和
+直接尋找線路級方法名稱。型別級約束
+`ClientNotificationMap` / `ServerNotificationMap` 中的每個條目都有
+`params extends { channel: URI }` 強制執行於
+`types/version/message-checks.ts`，以及等效的檢查
+`CommandMap` / `ServerCommandMap` 中的每個條目都有
+`params extends BaseParams`（參閱第 10 遍）。
 
-If your code constructs session URIs via a helper like
-`AgentSession.uri(provider, rawId)`, the provider component is no longer
-encoded in the scheme. Update the helper to produce `ahp-session:/<rawId>`
-and remove any `AgentSession.provider(session)` lookups that extracted the
-provider from the URI. Read the provider from `SessionSummary.provider`
-instead.
+### Pass 8 — 工作階段 URI 方案（文件/範例 + 幫助程式）
 
-For session URIs that are **announced** by an existing AHP server you talk
-to, you do not need to change anything in your client beyond accepting the
-new scheme. Treat session URIs as opaque strings except where you
-specifically construct them.
+如果您的程式碼透過類似的幫助程式建構工作階段 URI
+`AgentSession.uri(provider, rawId)`，提供者元件不再是
+編碼在方案中。更新助手以產生 `ahp-session:/<rawId>`
+並刪除任何提取了的 `AgentSession.provider(session)` 查找
+來自 URI 的提供者。從 `SessionSummary.provider` 讀取提供者
+相反。
 
-### Pass 9 — Reconnect / replay behaviour for stateless channels
+對於您談論的現有 AHP 伺服器 **宣布**的工作階段 URI
+到，除了接受
+新計劃。將工作階段 URI 視為不透明字串，除非您
+專門建造它們。
 
-`reconnect` still carries `subscriptions: URI[]`. State-channel replay
-behaviour is unchanged. Stateless channels (where they exist) are
-re-subscribed on reconnect — missed messages are dropped, never replayed.
-If you implement a server: do not include stateless channels in the
-`replay` result's `actions` list. They will simply re-subscribe.
+### Pass 9 — 無狀態通道的重新連線/重播行為
 
-### Pass 10 — Commands carry `channel: URI`
+`reconnect` 仍然帶有 `subscriptions: URI[]`。狀態-通道重播
+行為沒有改變。無狀態通道（如果存在）是
+重新連線時重新訂閱 - 缺少的訊息將被丟棄，永遠不會重播。
+如果您實作伺服器：請勿在
+`replay` 結果的 `actions` 列表。他們只會重新訂閱。
 
-Every command's params now extends `BaseParams { channel: URI }`. The
-`channel` field tells the server which channel the command targets, so a
-router can dispatch any incoming message — request, response, or
-notification — by inspecting `params.channel` without further
-deserialisation.
+### Pass 10 — 指令攜帶 `channel: URI`
 
-There are two flavours:
+現在每個指令的參數都擴充了 `BaseParams { channel: URI }`。的
+`channel` 欄位告訴伺服器指令針對哪個通道，因此
+路由器可以發送任何傳入的訊息——請求、回應或
+通知 - 透過檢查 `params.channel` 無需進一步
+反序列化。
 
-**Channel-scoped commands** — rename the existing
-`session` / `terminal` / `changeset` field to `channel`. The URI value is
-unchanged.
+有兩種口味：
 
-| Command                     | Old field             | New field |
-|-----------------------------|-----------------------|-----------|
-| `createSession`             | `session: URI`        | `channel: URI` |
-| `disposeSession`            | `session: URI`        | `channel: URI` |
-| `createTerminal`            | `terminal: URI`       | `channel: URI` |
-| `disposeTerminal`           | `terminal: URI`       | `channel: URI` |
-| `fetchTurns`                | `session: URI`        | `channel: URI` |
-| `completions`               | `session: URI`        | `channel: URI` |
-| `invokeChangesetOperation`  | `changeset: URI`      | `channel: URI` |
-| `subscribe`, `unsubscribe`, `dispatchAction` | already `channel` (Passes 2 & 6) | unchanged |
+**通道範圍的指令** — 重新命名現有的
+`session` / `terminal` / `changeset` 欄位至 `channel`。 URI 值為
+不變。
 
-**Connection-level commands** — narrow `channel` to the literal
-`'ahp-root://'`. Add the field explicitly; the TS types enforce it.
+|命令|老場|新領域 |
+|----------------------------------------|------------------------|------------------------|
+| `createSession` | `session: URI` | `channel: URI` |
+| `disposeSession` | `session: URI` | `channel: URI` |
+| `createTerminal` | `terminal: URI` | `channel: URI`|
+| `disposeTerminal`| `terminal: URI` | `channel: URI` |
+| `fetchTurns` | `session: URI` | `channel: URI` |
+| `completions` | `session: URI` | `channel: URI` |
+| `invokeChangesetOperation` | `changeset: URI` | `channel: URI` |
+| `subscribe`，`unsubscribe`，`dispatchAction` |已經`channel`（第 2 次和第 6 次）|不變|
 
-Methods: `initialize`, `ping`, `reconnect`, `listSessions`,
-`authenticate`, `resolveSessionConfig`, `sessionConfigCompletions`,
-`resourceRead`, `resourceWrite`, `resourceList`, `resourceCopy`,
-`resourceDelete`, `resourceMove`, `resourceRequest`.
+**連線級指令** — 將 `channel` 縮小為文字
+`'ahp-root://'`。明確地新增該欄位； TS 類型強制執行它。
+
+方法：`initialize`、`ping`、`reconnect`、`listSessions`、
+`authenticate`，`resolveSessionConfig`，`sessionConfigCompletions`，
+`resourceRead`、`resourceWrite`、`resourceList`、`resourceCopy`、
+`resourceDelete`，`resourceMove`，`resourceRequest`。
+
+
+
+
 
 ```ts
 // before
@@ -382,86 +425,85 @@ Methods: `initialize`, `ping`, `reconnect`, `listSessions`,
 { method: 'fetchTurns',   params: { channel: 'ahp-session:/<uuid>', limit: 20 } }
 ```
 
-The compile-time check `_CheckCommandsHaveChannel` in
-`types/version/message-checks.ts` verifies that every entry in
-`CommandMap` / `ServerCommandMap` has params assignable to `BaseParams`.
-If you forget to add `channel` to a new command's params, the check
-fails to compile and points at the missing field.
 
-## Grep cheat sheet
+編譯時檢查 `_CheckCommandsHaveChannel`
+`types/version/message-checks.ts` 驗證中的每個條目
+`CommandMap` / `ServerCommandMap` 具有可指派給 `BaseParams` 的參數。
+如果您忘記將 `channel` 新增到新命令的參數中，則檢查
+無法編譯並指向缺失的欄位。
 
-Run these searches in your codebase. Each pattern is a strong signal that a
-migration site still needs attention.
+## Grep 備忘單
 
-| Pattern                              | What it indicates |
-|--------------------------------------|--------------------|
-| `agenthost:/root`                    | Old root URI literal (Pass 1) |
-| `"resource"`/`resource:` near `subscribe`/`unsubscribe`/`Subscribe` | Old subscribe param shape (Pass 2) |
-| `result.resource` / `result.state` / `result.fromSeq` right after subscribe | Old flat-snapshot subscribe result (Pass 3) |
-| `action.session` / `action.terminal` | Reading the channel off the action payload — should be from the envelope (Pass 4) |
-| `session:` inside an action literal  | Producer writing pre-channels payload (Pass 4) |
-| `params.envelope` near `'action'`    | Old `action` server notification wrapper (Pass 5) |
-| `dispatchAction` without `channel`   | Client dispatch missing channel (Pass 6) |
-| `'notification'` as a JSON-RPC method name | Old protocol notification wrapper (Pass 7) |
-| `notify/sessionAdded`, `notify/sessionRemoved`, `notify/sessionSummaryChanged`, `notify/authRequired` | Old protocol notification names (Pass 7) |
-| `ProtocolNotification`, `NotificationType`, `NotificationMethodParams`, `NotificationMap` | Removed types (Pass 7) |
-| `SessionAddedNotification`, `SessionRemovedNotification`, `SessionSummaryChangedNotification`, `AuthRequiredNotification` | Old notification interfaces — renamed to `*Params` (Pass 7) |
-| `AgentSession.provider`, `provider` extracted from session scheme | Old provider-via-scheme helper (Pass 8) |
-| `SessionDiffsChangedAction`, `summary.diffs`, `session/diffsChanged` | Removed in favour of changesets (Pass 4 list) |
-| `CreateSessionParams\W+session:`, `DisposeSessionParams\W+session:`, `CreateTerminalParams\W+terminal:`, `DisposeTerminalParams\W+terminal:`, `FetchTurnsParams\W+session:`, `CompletionsParams\W+session:`, `InvokeChangesetOperationParams\W+changeset:` | Channel-scoped command params still using the old field name (Pass 10) |
-| `ListSessionsParams()`, `PingParams()`, `ResourceReadParams\(uri:` (no `channel:`), or any other command params constructed without `channel` | Connection-level command missing the `channel: 'ahp-root://'` literal (Pass 10) |
+在您的程式碼庫中執行這些搜尋。每個模式都是一個強烈的信號，表明
+遷徙地點仍需注意。
 
-## Verification checklist
+|圖案|它顯示什麼 |
+|------------------------------------------------|--------------------|
+| `agenthost:/root` |舊的根 URI 文字（第 1 遍）|
+| `"resource"`/`resource:` 靠近 `subscribe`/`unsubscribe`/`Subscribe` |舊訂閱參數形狀（第 2 遍）|
+|訂閱後立即 `result.resource` / `result.state` / `result.fromSeq` |舊的平面快照訂閱結果（第 3 遍）|
+| `action.session` / `action.terminal` | `action.session` / `action.terminal` |從動作負載讀取通道 — 應該來自信封（第 4 遍）|
+|動作文字內的 `session:` |製作人編寫預通道有效負載（第 4 階段）|
+| `params.envelope` 靠近 `'action'` |舊的 `action` 伺服器通知包裝器（第 5 遍）|
+| `dispatchAction` 沒有 `channel` | 用戶端調度缺少的通道（第 6 遍）|
+| `'notification'` 作為 JSON-RPC 方法名稱 |舊協定通知包裝器（第 7 遍）|
+| `notify/sessionAdded`、`notify/sessionRemoved`、`notify/sessionSummaryChanged`、`notify/authRequired` |舊協定通知名稱（第 7 遍）|| `ProtocolNotification`、`NotificationType`、`NotificationMethodParams`、`NotificationMap` |刪除的型別（第 7 遍）|
+| `SessionAddedNotification`、`SessionRemovedNotification`、`SessionSummaryChangedNotification`、`AuthRequiredNotification` |舊通知介面 — 重新命名為 `*Params`（第 7 遍）|
+|從工作階段方案中提取的 `AgentSession.provider`、`provider` |舊的provider-via-scheme 助手（第8 步） |
+| `SessionDiffsChangedAction`，`summary.diffs`，`session/diffsChanged` |刪除以支援變更集（第 4 遍清單）|
+| `CreateSessionParams\W+session:`、`DisposeSessionParams\W+session:`、`CreateTerminalParams\W+terminal:`、`DisposeTerminalParams\W+terminal:`、`FetchTurnsParams\W+session:`、`CompletionsParams\W+session:`、`InvokeChangesetOperationParams\W+changeset:` |通道範圍的指令參數仍使用舊的欄位名稱（第 10 遍）|
+| `ListSessionsParams()`、`PingParams()`、`ResourceReadParams\(uri:`（無 `channel:`）或任何其他不使用 `channel` | 建構的指令參數連線級指令缺少 `channel: 'ahp-root://'` 文字（第 10 遍）|
 
-After the migration, your code should:
+## 驗證清單
 
-- [ ] Subscribe to `ahp-root://` instead of `agenthost:/root`.
-- [ ] Pass `{ channel }` (not `{ resource }`) to `subscribe` and `unsubscribe`.
-- [ ] Read `result.snapshot` from `subscribe` responses; tolerate
-      `snapshot === undefined` for stateless channels.
-- [ ] Build action envelopes with a top-level `channel`. No
-      `session` / `terminal` fields inside individual action payloads.
-- [ ] Consume the `action` server notification's params as the envelope
-      itself, not as `{ envelope }`.
-- [ ] Build `dispatchAction` params with a top-level `channel`.
-- [ ] Receive protocol notifications as top-level methods
-      (`root/sessionAdded`, `root/sessionRemoved`,
-      `root/sessionSummaryChanged`, `auth/required`) rather than nested
-      inside `notification`.
-- [ ] No imports of `ProtocolNotification`, `NotificationType`,
-      `NotificationMethodParams`, or `NotificationMap`.
-- [ ] Resolve a session's provider via `SessionSummary.provider`, not via
-      the URI scheme.
-- [ ] No `SessionDiffsChangedAction` / `summary.diffs` references; consume
-      `SessionState.changesets` plus the `changeset/*` action family instead.
-- [ ] Every command's params carries `channel: URI`. Channel-scoped
-      commands (`createSession`, `disposeSession`, `createTerminal`,
-      `disposeTerminal`, `fetchTurns`, `completions`,
-      `invokeChangesetOperation`) pass the target channel URI;
-      connection-level commands pass the literal `'ahp-root://'`.
+遷移後，您的程式碼應該：
 
-When all these are true, your consumer is on the channels model.
+- [ ] 訂閱 `ahp-root://` 而非 `agenthost:/root`。
+- [ ] 將 `{ channel }`（不是 `{ resource }`）傳給 `subscribe` 和 `unsubscribe`。
+- [ ] 從 `subscribe` 回應中讀取 `result.snapshot`；容忍
+      `snapshot === undefined` 用於無狀態通道。
+- [ ] 使用頂級 `channel` 建構行動信封。否
+      各個操作負載內的 `session` / `terminal` 欄位。
+- [ ] 使用 `action` 伺服器通知的參數作為信封
+      本身，而不是 `{ envelope }`。
+- [ ] 使用頂級 `channel` 建構 `dispatchAction` 參數。
+- [ ] 作為頂級方法接收協定通知
+      （`root/sessionAdded`、`root/sessionRemoved`、
+      `root/sessionSummaryChanged`, `auth/required`) 而非巢狀
+      在`notification`內。
+- [ ] 不導入 `ProtocolNotification`、`NotificationType`、
+      `NotificationMethodParams` 或 `NotificationMap`。
+- [ ] 透過 `SessionSummary.provider` 解析工作階段的提供者，而非透過
+      URI 方案。
+- [ ] 沒有 `SessionDiffsChangedAction` / `summary.diffs` 引用；消耗
+      `SessionState.changesets` 加上 `changeset/*` 操作系列。
+- [ ] 每個指令的參數都帶有 `channel: URI`。通道範圍指令（`createSession`、`disposeSession`、`createTerminal`、
+      `disposeTerminal`，`fetchTurns`，`completions`，
+      `invokeChangesetOperation`) 傳遞目標通道 URI；
+      連線級命令傳遞文字 `'ahp-root://'`。
 
-## References
+當所有這些都成立時，您的消費者就處於通道模型中。
 
-For the full normative description of the channel model, consult these
-documents in the `microsoft/agent-host-protocol` repository:
+## 參考
 
-- `docs/specification/subscriptions.md` — Channels & Subscriptions (the
-  framework, including stateless channels and the URI scheme table)
-- `docs/specification/root-channel.md` — Root channel state, actions, and
-  protocol notifications
-- `docs/specification/session-channel.md` — Session channel lifecycle,
-  client-action validation, pending-message consumption
-- `docs/specification/terminal-channel.md` — Terminal channel data flow
-  and command detection
-- `docs/specification/lifecycle.md` — Connection handshake and reconnection
-- `docs/guide/changesets.md` — Changeset channel model, catalogue,
-  per-changeset state, and `invokeChangesetOperation`
-- `types/actions.ts`, `types/commands.ts`, `types/messages.ts`,
-  `types/notifications.ts` — Source-of-truth type definitions
-  (`BaseParams` lives in `commands.ts`)
-- `types/version/message-checks.ts` — Compile-time checks that every
-  command and notification carries `channel: URI`
-- GitHub issue [#117](https://github.com/microsoft/agent-host-protocol/issues/117)
-  — The RFC that introduced the channel model
+有關通道模型的完整規格描述，請參閱這些
+`microsoft/agent-host-protocol` 儲存庫中的文件：
+
+- `docs/specification/subscriptions.md` — 通道與訂閱（
+  框架，包括無狀態通道和 URI 方案表）
+- `docs/specification/root-channel.md` — 根通道狀態、操作和
+  協定通知
+- `docs/specification/session-channel.md` — 工作階段通道生命週期，
+  用戶端-操作驗證，待處理訊息消耗
+- `docs/specification/terminal-channel.md` — 終端機通道資料流
+  和命令檢測
+- `docs/specification/lifecycle.md` — 連線握手和重新連線
+- `docs/guide/changesets.md` — 變更集通道模型、目錄、
+  每個變更集狀態和 `invokeChangesetOperation`
+- `types/actions.ts`，`types/commands.ts`，`types/messages.ts`，
+  `types/notifications.ts` — 真實來源型別定義
+  （`BaseParams` 居住在 `commands.ts`）
+- `types/version/message-checks.ts` — 編譯時檢查每個
+  指令和通知攜帶`channel: URI`
+- GitHub 問題 [#117](https://github.com/microsoft/agent-host-protocol/issues/117)
+  — 引入通道模型的 RFC

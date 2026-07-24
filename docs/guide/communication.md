@@ -2,6 +2,6 @@
 redirect: /guide/actions
 ---
 
-# Communication
+# 溝通
 
-This page has moved. See [Actions](/guide/actions) and [Getting Started](/guide/getting-started) for information about client-server communication in the Agent Host Protocol.
+此頁面已移動。有關代理主機協定中的用戶端-伺服器通訊的資訊，請參閱[操作](/guide/actions) 和[入門](/guide/getting-started)。

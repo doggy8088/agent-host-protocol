@@ -1,48 +1,48 @@
-# Round-trip corpus — mechanism and known coverage gaps
+# 往返語料庫 — 機制和已知的覆蓋範圍差距
 
-The fixtures in this directory are a language-agnostic round-trip corpus. Each
-fixture's `input` is a wire payload that every client decodes and re-encodes; the
-re-encoded value must **exactly** match the single canonical form in
-`acceptableOutputs[0]`. The comparison is key-order-independent but value- and
-**key-presence-sensitive**: `null` is NOT normalized to absent, and absent is NOT
-normalized to `null` (so an absent `origin` re-encoding as `"origin": null` is a
-failure, not a pass). `acceptableOutputs` MUST have exactly one entry — multiple
-entries would cement observed-but-wrong divergence as "acceptable".
+此目錄中的夾具是與語言無關的往返語料庫。每個
+夾具的 `input` 是每個用戶端解碼和重新編碼的線路有效負載；的
+重新編碼的值必須**完全**匹配中的單一規範形式
+`acceptableOutputs[0]`。比較與鍵順序無關，但與值和順序無關
+**按鍵存在敏感**：`null` 未標準化為缺席，且缺席也不是
+歸一化為 `null`（因此缺少的 `origin` 重新編碼為 `"origin": null` 是
+失敗，而不是通過）。 `acceptableOutputs` 必須只有一個條目 — 多個
+條目會將觀察到但錯誤的分歧鞏固為「可接受的」。
 
-## Group A vs Group B
+## A 組 vs B 組
 
-- **Group A** (`"group": "A"`, or absent): every client agrees; all assert
-  `acceptableOutputs[0]`.
-- **Group B** (`"group": "B"`): a known type carries extra, unmodeled wire keys.
-  Runtime-decoder clients (Go, Rust, Swift, Kotlin) decode into a typed struct,
-  which drops the unknown keys, and assert the dropped form in
-  `acceptableOutputs[0]`. TypeScript has no runtime decoder, so `JSON.parse` /
-  `JSON.stringify` preserve every key; it asserts the preserved form in
-  `preservedOutput`. TypeScript still asserts — it is never skipped. Fixtures
-  017 and 019 are the Group B cases.
+- **A 組**（`"group": "A"`，或缺席）：每個用戶端都同意；全部斷言
+  `acceptableOutputs[0]`。
+- **B 組** (`"group": "B"`)：已知的型別帶有額外的、未建模的線鍵。
+  運行時解碼器用戶端 (Go, Rust, Swift, Kotlin) 解碼為型別結構，
+  它會刪除未知的鍵，並斷言刪除的形式
+  `acceptableOutputs[0]`。 TypeScript 沒有執行時期解碼器，因此 `JSON.parse` /
+  `JSON.stringify` 保留每個密鑰；它斷言保留的形式
+  `preservedOutput`。 TypeScript 仍然斷言 - 它永遠不會被跳過。夾具
+  017和019是B組病例。
 
-This is a real type-system capability difference, not a blessed divergence: a
-runtime client that wrongly *preserved* unknown keys would fail its
-`acceptableOutputs[0]` assertion, and a TypeScript path that wrongly *dropped*
-them would fail its `preservedOutput` assertion.
+這是真正的型別系統能力差異，而不是天賜的分歧：
+運行時用戶端錯誤地「保留」未知密鑰將使其失敗
+`acceptableOutputs[0]` 斷言，以及錯誤*丟棄* 的 TypeScript 路徑
+他們的 `preservedOutput` 斷言將會失敗。
 
-## Known coverage gaps (what the corpus does NOT verify)
+## 已知的覆蓋範圍差距（語料庫未驗證的內容）
 
-Honest limits, recorded so they are not mistaken for coverage:
+誠實的限制，記錄下來，這樣就不會被誤認為是承保範圍：
 
-- **TypeScript does not verify generated-type correctness.** TS types are erased
-  at runtime, so the TS round-trip harness checks runtime wire behavior + fixture
-  self-consistency — not whether the generated TS types are right. A wrong TS
-  field name / optionality / nesting would not be caught here; that is the
-  compiler's job, exercised where the types are consumed (reducers, client code)
-  and by `tsc`. (Separately, `SessionStatus` is a closed `const enum` in TS, so
-  the TYPE cannot represent a bitset combination like 72 or an unknown bit like
-  2147483720 — the bitset VALUE round-trip is covered by fixtures 004/005.)
+- **TypeScript 不驗證產生的-型別正確性。 ** TS 類型已刪除
+  在運行時，因此 TS 往返線束會檢查運行時導線行為 + 夾具
+  自我一致性—而不是產生的 TS 類型是否正確。錯誤的 TS
+  欄位名稱/可選性/巢狀不會在這裡被捕獲；那就是
+  編譯器的工作，在使用類型的地方執行（reducers，用戶端程式碼）
+  並通過`tsc`。（另外，`SessionStatus` 是 TS 中的封閉 `const enum`，因此
+  TYPE 不能表示像 72 這樣的位元集組合或像這樣的未知位元
+  2147483720 — 位元集 VALUE 往返由夾具 004/005 覆蓋。）
 
-Previously-listed gaps now **CLOSED**: Kotlin `JsonRpcMessage` is decoded via its
-real generated variant types (`JsonRpcRequest`/`Notification`/`SuccessResponse`/
-`ErrorResponse`) — fixtures 008–011 exercise the real classes, not a raw-AST
-passthrough. And `SessionStatus` is now a uniform 32-bit-unsigned bitset across
-Rust/Go/Kotlin/Swift (`u32`/`uint32`/`UInt`/`UInt32`), so every client holds the
-same value range — within TS's `number` 53-bit-safe limit, with no width
-divergence.
+先前列出的間隙現已**關閉**：Kotlin `JsonRpcMessage` 透過其解碼
+真實生成的變體類型（`JsonRpcRequest`/`Notification`/`SuccessResponse`/
+`ErrorResponse`) — 裝置 008-011 練習真實的類，而非原始 AST
+直通。 `SessionStatus` 現在是一個統一的 32 位元無符號位元集
+Rust/Go/Kotlin/Swift (`u32`/`uint32`/`UInt`/`UInt32`)，因此每個用戶端都包含
+相同的值範圍 - 在 TS 的 `number` 53 位元安全限制內，無寬度
+分歧。

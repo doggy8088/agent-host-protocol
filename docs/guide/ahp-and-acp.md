@@ -1,14 +1,18 @@
-# AHP and the Agent Client Protocol
+# AHP 和代理用戶端協定
 
-The [Agent Client Protocol (ACP)](https://github.com/agentclientprotocol/agent-client-protocol) defines how a single client talks to a single AI coding agent — initialization, authentication, prompts, streaming updates, tool calls, and permissions. It is a point-to-point protocol.
+[代理用戶端協定 (ACP)](https://github.com/agentclientprotocol/agent-client-protocol) 定義單一用戶端如何與單一 AI 編碼代理程式對話 — 初始化、驗證、提示、串流更新、工具呼叫和權限。它是一個點對點協定。
 
-The Agent Host Protocol (AHP) solves a different problem: **coordinating N clients over shared agent sessions**. An AHP host manages authoritative state, synchronizes it to every connected client, and sequences all mutations through pure reducers. The host itself needs to talk to agents — and that's where ACP fits in.
+代理主機協定 (AHP) 解決了另一個問題：**在共用代理程式工作階段上協調 N 用戶端**。 AHP 主機管理權威的狀態，將其同步到每個連線的用戶端，並透過純 reducer對所有突變進行排序。主機本身需要與代理程式通訊－這就是 ACP 的用武之地。
 
-**AHP is a coordination layer. ACP is a communication layer. They compose naturally.**
+**AHP 是協調層。 ACP 是通訊層。他們自然地創作。 **
 
-## The Layering
+## 分層
 
-Above the host, AHP handles multi-client problems: state synchronization, write-ahead reconciliation, subscription management, and action sequencing. Below the host, ACP (or any agent-specific interface) handles the 1:1 conversation with the agent — prompt turns, streaming content blocks, tool execution, and permission flows.
+在主機之上，AHP 處理多個用戶端問題：狀態同步、預先寫入協調、訂閱管理和作業排序。在主機下方，ACP（或任何特定於代理的介面）處理與代理的 1:1 對話 - 提示回合、串流內容區塊、工具執行和權限流。
+
+
+
+
 
 ```mermaid
 graph TD
@@ -28,61 +32,61 @@ graph TD
     linkStyle 3,4,5 stroke:#e5703b
 ```
 
-The host is the boundary between these two concerns.
 
-## What Each Protocol Owns
+主機是這兩個問題之間的邊界。
 
-| Concern | AHP | ACP |
+## 每個協定擁有什麼
+
+|關注| AHP | ACP |
 |---|---|---|
-| **Multi-client coordination** | Core purpose — N clients see synchronized state | Not addressed — assumes a single client |
-| **State authority** | Host holds the authoritative state tree; clients reconcile | Agent holds session state; client receives updates |
-| **Action sequencing** | Server-sequenced action envelopes with `serverSeq` ordering | Request-response with streaming notifications |
-| **Reconnection / replay** | Built-in — clients reconnect with `lastSeenServerSeq` and replay missed actions | Not specified at the protocol level |
-| **Agent abstraction** | Agent-agnostic by design — clients never see agent-specific details | Agent-specific — defines the agent's interface directly |
-| **Session lifecycle** | Host manages sessions; clients subscribe by URI | Client creates sessions directly with the agent |
-| **Streaming** | Actions (`chat/delta`, `chat/responsePart`) applied through reducers | `session/update` notifications sent over the wire |
+| **多用戶端協調** |核心目的 — N 用戶端參見同步狀態 |未解決 - 假設單一用戶端 |
+| **狀態權限** | Host持有權威的狀態樹；用戶端協調 |代理持有工作階段狀態；用戶端收到更新 |
+| **動作排序** |具有 `serverSeq` 排序的伺服器序列動作信封 |帶有流通知的請求-回應 |
+| **重新連線/重播** |內建 — 用戶端與 `lastSeenServerSeq` 重新連線並重播錯過的動作 |未在協定層級指定 |
+| **代理抽象** |設計上與代理無關 - 用戶端永遠不會看到特定於代理的詳細資訊 |特定於代理—直接定義代理的介面 |
+| **工作階段生命週期** |主機管理工作階段；用戶端透過 URI 訂閱 | 用戶端直接使用代理程式建立工作階段 || **串流媒體** |透過reducer應用的操作 (`chat/delta`, `chat/responsePart`) | `session/update` 透過線路發送的通知 |
 
-## How They Compose
+## 他們如何創作
 
-An AHP host implementation can use ACP as its agent backend protocol. The internal flow looks like this:
+AHP 主機實作可以使用 ACP 作為其代理後端協定。內部流程如下圖所示：
 
-1. **Client dispatches an action** (e.g. `chat/turnStarted`) via AHP.
-2. **Host sequences it** — assigns a `serverSeq`, applies it to the authoritative state, broadcasts the action envelope to all subscribed clients.
-3. **Host translates to ACP** — sends a `session/prompt` to the ACP agent.
-4. **Agent streams back** — the ACP agent sends `session/update` notifications with content chunks, tool calls, and permission requests.
-5. **Host maps to AHP actions** — the agent event mapper converts ACP-specific events into agent-agnostic AHP actions (`chat/delta`, `chat/toolCallStart`, `chat/toolCallReady`, etc.).
-6. **Host broadcasts** — each mapped action gets a `serverSeq` and flows to all subscribed clients through the normal state synchronization path.
+1. **用戶端透過 AHP 調度操作**（例如 `chat/turnStarted`）。
+2. **主機對其進行排序** — 分配一個 `serverSeq`，將其應用於權威的狀態，將操作信封廣播到所有訂閱的用戶端。
+3. **主機轉換為 ACP** — 將 `session/prompt` 傳送到 ACP 代理程式。
+4. **代理回傳** — ACP 代理程式發送包含內容區塊、工具呼叫和權限請求的 `session/update` 通知。
+5. **主機映射到 AHP 操作** — 代理事件映射器將特定於 ACP 的事件轉換為與代理無關的 AHP 操作（`chat/delta`、`chat/toolCallStart`、`chat/toolCallReady` 等）。
+6. **主機廣播** — 每個映射的操作都會獲得一個 `serverSeq` 並透過正常的狀態同步路徑流向所有訂閱的用戶端。
 
-The host is acting as a bridge: it speaks AHP upstream (to clients) and ACP downstream (to agents). The agent event mapper is the translation layer between the two.
+主機充當橋樑：它與上游 AHP（至用戶端）和下游（至代理）ACP 進行通訊。代理事件映射器是兩者之間的轉換層。
 
-## The Mutex Analogy
+## 互斥體類比
 
-A useful mental model: **AHP is a mutex over ACP.**
+一個有用的心理模型：**AHP 是 ACP 上的互斥鎖。 **
 
-When multiple clients connect to the same agent session, the host serializes their interactions. ACP defines a 1:1 conversation — one prompt, one response, one permission flow. AHP wraps that 1:1 conversation in coordination machinery so that N clients can observe and participate without stepping on each other.
+當多個用戶端連線到同一代理工作階段時，主機會序列化它們的交互作用。 ACP 定義了 1:1 對話 — 一個提示、一個回應、一個權限流程。 AHP 將 1:1 對話包裝在協調機制中，以便 N 用戶端可以觀察和參與，而不會互相踩踏。
 
-Concretely:
+具體來說：
 
-- **Turn ownership**: Only one turn runs at a time per chat. When Client A starts a turn in a chat, Clients B and C see the `chat/turnStarted` action and know that chat is busy. AHP's state tree makes this visible to everyone.
-- **Tool call confirmation**: When the agent needs user approval for a tool call, the host surfaces it as a state action. Any client can resolve it — but only once (the first `chat/toolCallConfirmed` wins; subsequent ones are rejected). The host arbitrates.
-- **Cancellation**: Any client can cancel a running turn. The host sequences the `chat/turnCancelled` action and forwards the cancellation to the agent via ACP's `session/cancel`. All clients see the result.
-- **Optimistic updates with reconciliation**: Clients apply their own actions immediately (write-ahead) and reconcile when the server echoes them back. This gives responsive UI without sacrificing consistency — something a 1:1 protocol doesn't need to worry about.
+- **回合所有權**：每次聊天一次只運行一個回合。當用戶端 A 開始聊天時，用戶端 B 和 C 會看到 `chat/turnStarted` 操作並知道聊天正忙。 AHP 的狀態樹使其對所有人都可見。
+- **工具呼叫確認**：當代理程式需要使用者批准工具呼叫時，主機會將其顯示為狀態操作。任何用戶端都可以解決它 - 但只能解決一次（第一個 `chat/toolCallConfirmed` 獲勝；後續的 `chat/toolCallConfirmed` 被拒絕）。主持人仲裁。
+- **取消**：任何用戶端都可以取消正在執行的回合。主機對 `chat/turnCancelled` 操作進行排序，並透過 ACP 的 `session/cancel` 將取消轉送給代理程式。所有用戶端都會看到結果。
+- **樂觀更新與協調**：用戶端立即套用自己的動作（預寫），並在伺服器回顯時進行協調。這提供了響應式 UI，而不犧牲一致性——這是 1:1 協定不需要擔心的。
 
-ACP doesn't need any of this because it assumes one client. AHP adds exactly this coordination, and nothing more — it doesn't redefine how agents work, what tools they expose, or how they stream content.
+ACP 不需要任何這些，因為它假定一個用戶端。 AHP 正是新增了這種協調，僅此而已 - 它不會重新定義代理的工作方式、它們公開的工具或它們如何傳輸內容。
 
-## What AHP Does Not Do
+## AHP 不做什麼
 
-AHP intentionally stays out of:
+AHP 故意不參與：
 
-- **Agent implementation** — AHP doesn't define how agents process prompts, call tools, or manage context windows. That's the agent's concern (and ACP's domain).
-- **Model routing** — The host publishes available agents and models to root state, but the actual LLM calls happen inside the agent backend.
-- **Tool definition** — AHP doesn't have a tool registry or tool schema. Tools are agent-internal. The host only sees display-ready metadata after the agent event mapper processes them.
-- **Agent-to-agent communication** — AHP coordinates clients, not agents. If agents need to talk to each other, that's a separate concern.
+- **代理實作** — AHP 不定義代理程式如何處理提示、呼叫工具或管理上下文視窗。這是代理關心的問題（以及 ACP 的域）。
+- **模型路由** — 主機將可用的代理程式和模型發佈到根狀態，但實際的 LLM 呼叫發生在代理後端內部。
+- **工具定義** — AHP 沒有工具登錄或工具架構。工具是代理內部的。主機僅在代理事件映射器處理元資料後才能看到可顯示的元資料。
+- **代理間通訊** — AHP 座標用戶端，而非代理。如果代理需要相互交談，那就是另一個問題了。
 
-## When to Use Which
+## 何時使用哪一個
 
-**Use ACP** when you're building an agent that needs to talk to a client (an editor, a CLI, a web app). ACP gives you session management, prompt/response cycles, streaming, tool calls, and permissions — everything needed for a single client to drive a single agent.
+**當您建立需要與用戶端（編輯器、CLI、Web 應用程式）對話的代理程式時，請使用 ACP**。 ACP 為您提供工作階段管理、提示/回應週期、串流、工具呼叫和權限 - 單一用戶端驅動單一代理程式所需的一切。
 
-**Use AHP** when you need multiple clients to share the same agent sessions. AHP gives you state synchronization, action sequencing, write-ahead reconciliation, and subscription management — everything needed to coordinate N clients over shared state.
+**當您需要多個用戶端共用同一個代理程式工作階段時，請使用 AHP**。 AHP 為您提供狀態同步、操作排序、預寫入協調和訂閱管理 - 在共享狀態上協調 N 用戶端所需的一切。
 
-**Use both** when you're building a host that bridges multiple clients to multiple agents. The host speaks AHP to its clients and ACP to its agents. This is the architecture that the AHP reference implementation targets: a standalone server (or Electron utility process) that manages sessions, synchronizes state, and delegates agent work to ACP-compatible backends.
+**當您建置將多個用戶端橋接到多個代理程式的主機時，請同時使用兩者。主機與其用戶端通話 AHP，對其代理通話 ACP。這是 AHP 參考實作的目標架構：一個獨立的伺服器（或 Electron 實用程式行程），用於管理工作階段、同步狀態並將代理工作委託給與 ACP 相容的後端。

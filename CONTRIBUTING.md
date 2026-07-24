@@ -1,33 +1,37 @@
-# Contributing to the Agent Host Protocol
+# 為代理主機協定做出貢獻
 
-Thanks for your interest in contributing to AHP. This document covers the
-mechanics of working in this repository as a contributor — for the
-protocol design rationale see the [specification](docs/specification/) and
-the [versioning policy](docs/specification/versioning.md), and for the
-mechanics of cutting a release see [`RELEASING.md`](RELEASING.md).
+感謝您有興趣為 AHP 做出貢獻。本文件涵蓋
+作為貢獻者在此儲存庫中工作的機制 - 對於
+協定設計原理請參考 [規格](docs/specification/) 和
+[版本控制策略](docs/specification/versioning.md)，以及
+削減版本的機制請參閱 [`RELEASING.md`](RELEASING.md)。
 
-> **Code of conduct:** participation is governed by the
-> [Microsoft Open Source Code of Conduct](CODE_OF_CONDUCT.md).
+> **行為準則：** 參與受
+> [微軟開源行為準則](CODE_OF_CONDUCT.md)。
 
-## Repository layout
+## 儲存庫佈局
 
-This is a polyglot repo. The TypeScript types under `types/` are the canonical
-source of truth; everything else is generated from them or hand-maintained
-against them.
+這是一個多語言倉庫。 `types/` 下的 TypeScript 類型是規範的
+真理的來源；其他一切都是由它們產生或手動維護的
+反對他們。
 
-| Path | What lives here |
+|路徑|這裡住著什麼 |
 | --- | --- |
-| `types/` | Canonical TypeScript protocol types, reducers, version registry. |
-| `schema/` | JSON Schema files generated from `types/`. |
-| `docs/` | VitePress documentation source. |
-| `scripts/` | TypeScript code-gen scripts (one per target language + shared helpers). |
-| `clients/rust/` | `ahp-types`, `ahp`, `ahp-ws` Cargo workspace. |
-| `clients/kotlin/` | Kotlin/JVM library (`com.microsoft.agenthostprotocol:agent-host-protocol`). |
-| `clients/swift/` | Swift package (consumed by SwiftPM at the repo root). |
-| `clients/typescript/` | npm package `@microsoft/agent-host-protocol`. |
-| `.github/workflows/` | CI and per-artifact publish pipelines. |
+| `types/` |規格 TypeScript 協定類型、reducer、版本登錄。 |
+| `schema/` |從 `types/` 產生的 JSON 架構檔。 |
+| `docs/` | VitePress 文件來源。 |
+| `scripts/` | TypeScript 程式碼產生腳本（每種目標語言一個 + 共用幫助程式）。 |
+| `clients/rust/` | `ahp-types`、`ahp`、`ahp-ws` 貨物工作區。 |
+| `clients/kotlin/` | Kotlin/JVM 函式庫 (`com.microsoft.agenthostprotocol:agent-host-protocol`)。 |
+| `clients/swift/` | Swift 套件（由儲存庫根目錄中的 SwiftPM 使用）。 |
+| `clients/typescript/` | npm 套件 `@microsoft/agent-host-protocol`。 |
+| `.github/workflows/` | CI 和每個工件的發布管道。 |
 
-## Local dev loop
+## 本機開發循環
+
+
+
+
 
 ```bash
 npm install                      # install root tooling
@@ -35,7 +39,12 @@ npm run generate                 # regenerate every client + schemas
 npm test                         # typecheck + lint + release/changelog verification + reducer tests
 ```
 
-Per-client builds (run only what's relevant to your change):
+
+Per-用戶端建置（僅執行與您的變更相關的內容）：
+
+
+
+
 
 ```bash
 cd clients/typescript && npm ci && npm test && npm run build
@@ -44,30 +53,35 @@ cd clients/kotlin && ./gradlew build
 swift build && swift test        # Swift uses the root Package.swift
 ```
 
-## Releases
 
-Release mechanics — tag conventions, per-client publish flows, CI guards,
-and the one-time admin setup for each environment — live in
-[`RELEASING.md`](RELEASING.md). For the protocol-level versioning policy,
-see [`docs/specification/versioning.md`](docs/specification/versioning.md).
+## 發布
 
-## Adding changelog fragments
+發布機制 - 標籤約定、每用戶端發布流程、CI 防護、
+以及每個環境的一次性管理設定 - 居住在
+[`RELEASING.md`](RELEASING.md)。對於協定層級的版本控制策略，
+請參閱[`docs/specification/versioning.md`](docs/specification/versioning.md)。
 
-This repo ships six independently-versioned artifacts (spec + five clients),
-each with its own `CHANGELOG.md` in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
-format. The publish workflows refuse to release a tag whose matching
-`## [X.Y.Z]` heading is missing. Normal PRs should not edit those shared
-changelog files directly; add a JSON changelog fragment under `docs/.changes/`
-instead. Release PRs collapse those fragments into the six changelogs.
+## 新增變更日誌片段
 
-**Add a one-line fragment** when your change is
-user-visible: a new / removed / renamed / behaviourally-changed action,
-command, state field, error, notification, version constant, or public client
-API; an observable bug fix; or anything security-relevant. **Skip the
-fragment** for generated code (`**/generated/**`), docs, tests, CI, lint
-config, formatting, or internal refactors with no observable effect.
+此儲存庫提供了六個獨立版本的工件（規格 + 五個用戶端），
+每個在 [保留變更日誌](https://keepachangelog.com/en/1.1.0/) 中都有自己的 `CHANGELOG.md`
+格式。發布工作流程拒絕發布匹配的標籤
+`## [X.Y.Z]` 標題缺少。正常的PR不應編輯那些共享的
+直接更改日誌檔；在 `docs/.changes/` 下新增 JSON 變更日誌片段
+相反。版本 PR 將這些片段折疊成六個變更日誌。
 
-Fragments live directly under `docs/.changes/` and use this shape:
+**當您進行更改時新增一行片段**
+使用者可見：新的/刪除的/重新命名的/行為改變的操作，
+指令、狀態欄位、錯誤、通知、版本常數或公共用戶端
+應用程式介面；一個可觀察到的錯誤修復；或任何與安全相關的內容。 **跳過
+產生程式碼 (`**/generated/**`)、文件、測試、CI、lint 的片段**
+配置、格式化或內部重構，沒有明顯的效果。
+
+片段直接位於 `docs/.changes/` 下方並使用以下形狀：
+
+
+
+
 
 ```json
 {
@@ -77,12 +91,17 @@ Fragments live directly under `docs/.changes/` and use this shape:
 }
 ```
 
-`type` must be one of `added`, `changed`, `deprecated`, `removed`, `fixed`, or
-`security`. `message` is the changelog bullet text without a leading `-`.
-`issues` is optional.
 
-Omit `targets` when the entry applies to the spec and all clients (the common
-case for protocol additions). Add `targets` to scope the entry to a subset:
+`type` 必須是 `added`、`changed`、`deprecated`、`removed`、`fixed` 之一，或
+`security`。 `message` 是不帶前導 `-` 的變更日誌項目符號文字。
+`issues` 是可選的。
+
+當條目適用於規格和所有用戶端（常見的
+協定新增的情況）。新增 `targets` 將條目範圍限定為子集：
+
+
+
+
 
 ```json
 {
@@ -92,31 +111,32 @@ case for protocol additions). Add `targets` to scope the entry to a subset:
 }
 ```
 
-Path → fragment target map:
 
-| Source path touched | Fragment target(s) |
+路徑→片段目標圖：
+
+|觸及源碼路徑|片段目標 |
 | --- | --- |
-| `types/**` (protocol surface) | Omit `targets` (spec + all clients) unless intentionally narrower. |
-| `clients/<lang>/**` (non-generated) | That client only, e.g. `["rust"]`. |
+| `types/**`（協定表面）|除非故意縮小範圍，否則省略 `targets`（規格 + 所有用戶端）。 |
+| `clients/<lang>/**`（非生成）|僅限用戶端，例如`["rust"]`。 |
 | `schema/**` | `["spec"]` |
-| `scripts/generate*.ts` that changes any client's generated output | Omit `targets` or list every affected target. |
+| `scripts/generate*.ts` 更改任何用戶端產生的輸出 |省略 `targets` 或列出每個受影響的目標。 |
 
-Run `npm run verify:change-fragments` to validate fragments. Don't invent a
-`## [X.Y.Z]` heading or edit changelogs directly for normal PRs — that's
-reserved for release time per [`RELEASING.md`](RELEASING.md).
+運行 `npm run verify:change-fragments` 以驗證片段。不要發明一個
+`## [X.Y.Z]` 標題或直接編輯正常 PR 的變更日誌 - 這就是
+根據 [`RELEASING.md`](RELEASING.md) 保留發佈時間。
 
-This rule is also encoded in [`AGENTS.md`](AGENTS.md) so AI coding agents
-working in the repo follow the same convention.
+此規則也被編碼在 [`AGENTS.md`](AGENTS.md) 中，因此 AI 編碼代理
+在儲存庫協定中工作遵循相同的約定。
 
-## Code-style and review
+## 程式碼風格和審查
 
-Editor / lint / typecheck configuration lives in this repo's `eslint.config.mjs`,
-`tsconfig.json`, and (per-client) the equivalent files. Run `npm test` before
-opening a PR; CI runs the same checks plus per-language builds.
+Editor / lint / typecheck 配置位於此儲存庫的 `eslint.config.mjs` 中，
+`tsconfig.json` 和（根據-用戶端）等效文件。之前執行 `npm test`
+開啟一個PR； CI 執行相同的檢查以及每種語言的建置。
 
-When iterating on the protocol surface in `types/`, see
+在 `types/` 中的協定表面上進行迭代時，請參閱
 [`.github/instructions/general-instructions.instructions.md`](.github/instructions/general-instructions.instructions.md)
-for the project's editorial rules on type changes.
+專案的編輯規則對型別的修改。
 
-For language-specific code-gen conventions, see the `AGENTS.md` file in each
-client directory (`clients/kotlin/AGENTS.md`, `clients/swift/AGENTS.md`).
+有關語言特定的程式碼產生約定，請參閱每個語言中的 `AGENTS.md` 文件
+用戶端目錄（`clients/kotlin/AGENTS.md`、`clients/swift/AGENTS.md`）。

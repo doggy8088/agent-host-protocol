@@ -1,10 +1,14 @@
-# Elicitation
+# 引出
 
-The agent can request structured input from the user by inserting an `InputRequestResponsePart` into the active turn on the [chat channel](/specification/chat-channel). These requests are useful for MCP elicitation, URL-based review flows, and agent clarification questions.
+代理可以透過將 `InputRequestResponsePart` 插入到 [聊天通道](/specification/chat-channel) 上的活動回合來請求使用者的結構化輸入。這些請求對於 MCP 啟發、基於 URL 的審核流程和代理程式澄清問題非常有用。
 
-Input requests are live response parts, not one-shot RPC prompts: every subscriber to the chat sees open requests and synchronized answer drafts in their original response-stream position.
+輸入請求是即時回應部分，而不是一次性 RPC 提示：聊天的每個訂閱者都會在其原始回應流位置看到開放請求和同步答案草稿。
 
-## State Shape
+## 狀態形狀
+
+
+
+
 
 ```typescript
 InputRequestResponsePart {
@@ -20,37 +24,38 @@ InputRequestResponsePart {
 }
 ```
 
-The part lives in `ChatState.activeTurn.responseParts` while the turn is active, then moves unchanged into the completed turn. Each request has a stable `id`. Each question has a stable `id` used as the key in `answers`. An absent `response` means the request is still awaiting submission.
 
-## Request Lifecycle
+當回合處於活動狀態時，該部分位於 `ChatState.activeTurn.responseParts` 中，然後不變地移動到已完成的回合。每個請求都有一個穩定的`id`。每個問題都有一個穩定的 `id` 用作 `answers` 中的鍵。缺少 `response` 意味著請求仍在等待提交。
 
-The server SHOULD use this sequence when it needs user input to continue a turn:
+## 請求生命週期
 
-1. Keep the turn active.
-2. Dispatch `chat/inputRequested` with a stable request `id` and stable question IDs. The reducer inserts an unresolved input-request part at the current end of the response stream.
-3. Observe zero or more client-dispatched `chat/inputAnswerChanged` actions. Each action updates one question's draft, submitted, or skipped answer.
-4. Observe `chat/inputCompleted` with `response: 'accept'`, `'decline'`, or `'cancel'`. The reducer sets `response` and any final answers on that same part.
-5. Resume the blocked operation, such as completing an MCP `elicitation/create` request or returning a result for an ask-questions tool call.
+當伺服器需要使用者輸入繼續回合時，應使用此序列：
 
-Because drafts live in the response part, a user can answer one question on client A and another on client B; every subscriber to the chat observes the merged `answers` map.
+1. 保持回合活躍。
+2. 使用穩定的請求 `id` 和穩定的問題 ID 調度 `chat/inputRequested`。 reducer 在回應流的目前結尾插入未解析的輸入請求部分。
+3. 觀察零個或多個用戶端調度的 `chat/inputAnswerChanged` 運算。每個操作都會更新一個問題的草稿、已提交或跳過的答案。
+4. 觀察 `chat/inputCompleted` 和 `response: 'accept'`、`'decline'` 或 `'cancel'`。 reducer 設定 `response` 以及同一部分的任何最終答案。
+5. 恢復被阻止的操作，例如完成 MCP `elicitation/create` 請求或傳回提問工具呼叫的結果。
 
-## Status And Cleanup
+由於草稿位於回應部分，因此使用者可以在用戶端 A 上回答一個問題，在用戶端 B 上回答另一個問題；每個聊天訂閱者都會觀察合併的 `answers` 地圖。
 
-While the active turn has any input-request part without a `response`, that chat's `status` carries `SessionStatus.InputNeeded`, and the session's aggregated `status` is promoted to `InputNeeded` because a chat needs input. When the last request receives a response and the turn is still active, the chat's status returns to `SessionStatus.InProgress`.
+## 狀態和清理
 
-If the active turn completes, is cancelled, or errors before input is submitted, the unresolved part remains in the completed transcript with `response` absent. Truncating the active turn removes it along with every other response part in that turn.
+雖然活動回合有任何沒有 `response` 的輸入請求部分，但該聊天的 `status` 攜帶 `SessionStatus.InputNeeded`，並且工作階段的聚合 `status` 會提升為 `InputNeeded`，因為聊天需要輸入。當最後一個請求收到回應且回合仍處於活動狀態時，聊天狀態將回到 `SessionStatus.InProgress`。
 
-## Durable Record
+如果活動回合完成、被取消或在提交輸入之前出現錯誤，則未解決的部分將保留在已完成的記錄中，且不存在 `response`。截斷活動回合會將其與該回合中的所有其他回應部分一起刪除。
 
-`InputRequestResponsePart` is both the live interaction and its durable record. `chat/inputRequested` inserts it into the active turn, answer changes update it in place, and `chat/inputCompleted` sets its final `response` and answers without moving it. This mirrors how a tool-call confirmation remains on its `ToolCallResponsePart` throughout the lifecycle.
+## 持久記錄
 
-The part embeds the request's `id`, `message`, `url`, `questions`, and current `answers`. On completion, any `answers` supplied by `chat/inputCompleted` overlay synchronized drafts. All three submitted outcomes are recorded, while an unanswered prompt remains distinguishable by its absent `response`.
+`InputRequestResponsePart` 既是即時互動也是其持久記錄。 `chat/inputRequested` 將其插入活動回合中，答案變更會就地更新它，而 `chat/inputCompleted` 設定其最終的 `response` 和答案而不移動它。這反映了工具呼叫確認如何在整個生命週期中保留在其 `ToolCallResponsePart` 上。
 
-## Questions And Answers
+該部分嵌入請求的 `id`、`message`、`url`、`questions` 和目前的 `answers`。完成後，`chat/inputCompleted` 提供的任何 `answers` 會覆蓋同步草稿。所有三個提交的結果都會被記錄，而未回答的提示仍然可以透過其不存在的 `response` 來區分。
 
-Each question is a discriminated union by `kind`:
+## 問題與解答
 
-| Question kind | Answer value shape |
+每個問題都是 `kind` 的判別聯集：
+
+|問題類型|答案值形狀|
 |---|---|
 | `text` | `{ kind: 'text', value: string }` |
 | `number` / `integer` | `{ kind: 'number', value: number }` |
@@ -58,24 +63,24 @@ Each question is a discriminated union by `kind`:
 | `single-select` | `{ kind: 'selected', value: optionId, freeformValues?: string[] }` |
 | `multi-select` | `{ kind: 'selected-many', value: optionIds[], freeformValues?: string[] }` |
 
-`ChatInputAnswer.state` distinguishes draft/submitted answers (`ChatInputAnswered`) from skipped answers (`ChatInputSkipped`). Draft answers are for multi-client synchronization; submitted answers are ready for the server to consume when the request completes.
+`ChatInputAnswer.state` 將草稿/提交的答案 (`ChatInputAnswered`) 與跳過的答案 (`ChatInputSkipped`) 區分開來。草稿答案適用於多用戶端同步；當請求完成時，提交的答案已準備好供伺服器使用。
 
-## URL Requests
+## URL 請求
 
-An input request may include `url` instead of, or in addition to, structured questions. Clients can open the URL or present it for review, then complete the request with `chat/inputCompleted`.
+輸入請求可以包括`url`來取代結構化問題，或除了結構化問題之外還包括`url`。用戶端可以開啟 URL 或將其提交以供審核，然後使用 `chat/inputCompleted` 完成請求。
 
-## Validation
+## 驗證
 
-Servers SHOULD reject client-dispatched input actions when:
+在以下情況下，伺服器應該拒絕用戶端分派的輸入操作：
 
-| Action | Condition |
+|行動|狀況 |
 |---|---|
-| `chat/inputAnswerChanged` | No unresolved input-request part has the matching `requestId` in the active turn. |
-| `chat/inputAnswerChanged` | `answer.state` requires a value but `answer.value` is absent, or the value kind does not match the answer payload. |
-| `chat/inputCompleted` | No unresolved input-request part has the matching `requestId` in the active turn. |
-| `chat/inputCompleted` | `response` is `'accept'` but required questions do not have submitted answers. |
+| `chat/inputAnswerChanged` |活動回合中沒有未解析的輸入請求部分具有符合的 `requestId`。 |
+| `chat/inputAnswerChanged` | `answer.state` 需要一個值，但 `answer.value` 不存在，或值類型與答案負荷不符。 |
+| `chat/inputCompleted` |活動回合中沒有未解析的輸入請求部分具有匹配的 `requestId`。 |
+| `chat/inputCompleted` | `response` 是 `'accept'`，但必填問題尚未提交答案。 |
 
-## Related Reference
+## 相關參考
 
-- [Chat Channel Reference](/reference/chat) — `InputRequestResponsePart`, `ChatInputRequest`, question and answer value types, and the `chat/input*` action variants.
-- [Chat Channel](/specification/chat-channel) — Per-chat turns, active turn, tool calls, and client-action validation.
+- [聊天通道參考](/reference/chat) — `InputRequestResponsePart`、`ChatInputRequest`、問題和答案值類型以及 `chat/input*` 操作變體。
+- [聊天通道](/specification/chat-channel) — 每個聊天輪次、活動輪次、工具呼叫和用戶端操作驗證。

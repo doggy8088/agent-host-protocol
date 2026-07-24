@@ -1,43 +1,47 @@
-# Connecting to Multiple Hosts
+# 連線到多個主機
 
-The Agent Host Protocol describes a single _client -> host_ connection. A real product often needs to talk to **two or more hosts at once**: a local sessions server and a tunnel-attached remote, a personal host and a teammate's, multiple project hosts in a desktop sidebar, and so on. The protocol itself does not say how to wire that up; it is a client SDK concern.
+代理主機協定描述單一_client -> host_連線。真正的產品通常需要同時與 **兩個或多個主機通訊**：本地工作階段伺服器和隧道連線的遠端主機、個人主機和隊友的主機、桌面側邊欄中的多個專案主機等等。協定本身並沒有說明如何連線它；這是一個用戶端 SDK問題。
 
-This page covers the Swift SDK's multi-host layer.
+本頁涵蓋了 Swift SDK 的多主機層。
 
-## Why a built-in abstraction?
+## 為什麼需要內建抽象？
 
-Without one, every consumer ends up writing the same things:
+如果沒有一個，每個消費者最終都會寫同樣的東西：
 
-- N independent `AHPClient` instances and their lifetimes
-- N transports plus reconnect supervisors with backoff and cancellation
-- A registry that keys per-host metadata (label, URL, connection state, last error, agents, `serverSeq`, subscriptions, default directory) for UX
-- A fan-in of inbound events tagged with which host produced them
-- Per-host scoping of channel URIs (`ahp-session:/s1` on Host A != `ahp-session:/s1` on Host B)
-- Persistence of `clientId` per host so reconnect identity survives restarts
-- A per-host root state mirror plus session summary cache so sidebars and inboxes do not degrade to "subscribe to everything"
+- N個獨立的`AHPClient`實例及其生命週期
+- N 個傳輸加上帶有退避和取消功能的重新連線主管
+- 一個註冊表，用於為 UX 鍵入每個主機元資料（標籤、URL、連線狀態、最後一個錯誤、代理、`serverSeq`、訂閱、預設目錄）
+- 入站事件的扇入，標記有產生事件的主機
+- 通道 URI 的每個主機範圍（主機 A 上的 `ahp-session:/s1`！= 主機 B 上的 `ahp-session:/s1`）
+- 每個主機保留 `clientId`，以便重新連線身分可以在重新啟動後繼續存在
+- 每個主機根狀態鏡像加上工作階段摘要緩存，因此側邊欄和收件匣不會降級為“訂閱所有內容”
 
-The Swift SDK ships a `MultiHostClient` actor that wraps all of this. **Single-host = N=1 of multi-host**, so the same API works either way.
+Swift SDK 提供了一個包含所有這些的 `MultiHostClient` actor。 **單主機 = N=1 多主機**，因此相同的 API 可以以任何方式運作。
 
-## Per-host UX surface
+## 每主機 UX 介面
 
-Every registered host appears as a `HostHandle` snapshot (a `Sendable` value type):
+每個註冊的主機均顯示為 `HostHandle` 快照（`Sendable` 值型別）：
 
-| Field | Notes |
+|領域|筆記|
 |---|---|
-| `id`, `label` | Stable identifier and human-readable display name |
-| `state` | `disconnected`, `connecting`, `connected`, `reconnecting(attempt:)`, `failed(reason:)` |
-| `lastError`, `lastConnectedAt` | Surface in your status bar / debug panel |
-| `protocolVersion`, `defaultDirectory`, `completionTriggerCharacters` | From `InitializeResult` |
-| `clientId` | The id actually sent on `initialize`/`reconnect` |
-| `serverSeq` | Highest `serverSeq` seen for this host |
-| `agents`, `activeSessions`, `terminals` | Mirrored from the host's `RootState` |
-| `subscriptions` | URIs the supervisor will (re-)subscribe to across reconnects |
-| `sessionSummaries` | Cached `[SessionSummary]` kept fresh by `listSessions` plus session-related notifications |
-| `generation` | Bumped on every (re)connect; used to invalidate stale client handles |
+| `id`，`label` |穩定的識別碼和人類可讀的顯示名稱 |
+| `state` | `disconnected`、`connecting`、`connected`、`reconnecting(attempt:)`、`failed(reason:)` |
+| `lastError`，`lastConnectedAt` |狀態列/調試面板中的表面 |
+| `protocolVersion`，`defaultDirectory`，`completionTriggerCharacters` |來自 `InitializeResult` |
+| `clientId` |在 `initialize`/`reconnect` | 上實際發送的 ID
+| `serverSeq` |此主機的最高 `serverSeq` |
+| `agents`，`activeSessions`，`terminals` |從主機的 `RootState` | 鏡像
+| `subscriptions` |主管將透過重新連結（重新）訂閱的 URI |
+| `sessionSummaries` |快取的 `[SessionSummary]` 透過 `listSessions` 以及與工作階段相關的通知保持最新 |
+| `generation` |每次（重新）連線時都會發生碰撞；用於使過時的用戶端句柄失效 |
 
-To observe changes, listen to `MultiHostClient.hostEvents()` for connection-state events, or use the observable streams below to bind directly into SwiftUI `@Observable` models.
+若要觀察更改，請偵聽 `MultiHostClient.hostEvents()` 的連線-狀態事件，或使用下面的可觀察流直接綁定到 SwiftUI `@Observable` 模型。
 
-## Single-host
+## 單主機
+
+
+
+
 
 ```swift
 import AgentHostProtocol
@@ -50,7 +54,12 @@ let (multi, handle) = try await MultiHostClient.single(config)
 print("connected to \(handle.label): \(handle.state)")
 ```
 
-## Multi-host
+
+## 多主機
+
+
+
+
 
 ```swift
 let multi = MultiHostClient(clientIdStore: FileClientIdStore(directory: appSupportURL))
@@ -62,11 +71,16 @@ for hosted in await multi.aggregatedSessions() {
 }
 ```
 
-`MultiHostClient` is an `actor` and runs off the main thread. Wrap it in your `@MainActor` `@Observable` store to bind into SwiftUI.
 
-## Reliable per-channel streams
+`MultiHostClient` 是一個 `actor`，並且在主執行緒之外運行。將其包裝在您的 `@MainActor` `@Observable` 儲存中以綁定到 SwiftUI。
 
-`events()` is **lossy by design** (`.bufferingNewest(1024)`) and is for advisory consumption only. Reducer-critical action envelopes must be consumed via the unbounded per-channel stream — runtime-owned and surviving reconnects (replayed envelopes are fanned in too):
+## 可靠的每通道流
+
+`events()` **設計有損** (`.bufferingNewest(1024)`)，僅供參考使用。 reducer-關鍵操作信封必須透過無限的每通道流來消耗 - 運行時擁有的和倖存的重新連線（重播的信封也被扇入）：
+
+
+
+
 
 ```swift
 guard let stream = await multi.events(host: "local", uri: RootResourceURI) else {
@@ -81,11 +95,16 @@ for await event in stream {
 }
 ```
 
-`MultiHostStateMirror` provides a host-aware reducer façade keyed by `HostedResourceKey { hostId; uri }` for the common case where channel URIs collide across hosts. Feed it from `events(host:uri:)` — never from the lossy `events()`.
 
-## Observable host streams
+`MultiHostStateMirror` 提供由 `HostedResourceKey { hostId; uri }` 鍵控的主機感知 reducer 外觀，用於通道 URI 跨主機衝突的常見情況。從 `events(host:uri:)` 饋送它，而不是從有損的 `events()` 饋送它。
 
-For SwiftUI / `@Observable` consumers, `MultiHostClient` exposes derived streams that yield a current value immediately and re-yield on changes. Both use `.bufferingNewest(1)` since only the latest snapshot matters to a UI consumer:
+## 可觀察的主機流
+
+對於 SwiftUI / `@Observable` 使用者，`MultiHostClient` 公開派生流，這些流立即產生當前值並在更改時重新生成。兩者都使用 `.bufferingNewest(1)`，因為只有最新快照對 UI 使用者來說才重要：
+
+
+
+
 
 ```swift
 guard let snapshots = await multi.hostSnapshots(host: "local") else { return }
@@ -99,13 +118,18 @@ for await list in summaries {
 }
 ```
 
-## Reconnect, generation, and ownership
 
-Each host runs in its own internal task — a `HostRuntime` — that owns the current `AHPClient`, retries per the configured `ReconnectPolicy`, and re-subscribes to known URIs across reconnects.
+## 重新連線、產生和所有權
 
-Every successful (re)connect bumps a per-host **generation** counter. Any `HostClientHandle` you obtained from a previous connection refuses to dispatch on the new one and throws `HostError.hostReconnected` — request a fresh handle in that case. This prevents subtle bugs where a handle held across a reconnect silently writes to a different connection.
+每個主機都在自己的內部任務（`HostRuntime`）中運行，該任務擁有當前的 `AHPClient`，根據配置的 `ReconnectPolicy` 重試，並在重新連線時重新訂閱已知的 URI。
 
-`MultiHostClient.reconnect(_:)` reconnects a single host; `reconnectAllUnavailable()` walks every host and reconnects those not in `.connected` or `.connecting` — handy for the iOS scene-phase pattern:
+每次成功的（重新）連線都會增加每個主機**代**計數器。您從上一個連線獲得的任何 `HostClientHandle` 都拒絕在新連線上分派並拋出 `HostError.hostReconnected` - 在這種情況下請求新的句柄。這可以防止出現微妙的錯誤，即重新連線時持有的句柄會默默地寫入不同的連線。
+
+`MultiHostClient.reconnect(_:)` 重新連線單一主機； `reconnectAllUnavailable()` 遍歷每個主機並重新連線不在 `.connected` 或 `.connecting` 中的主機 - 對於 iOS 場景階段模式很方便：
+
+
+
+
 
 ```swift
 .onChange(of: scenePhase) { _, phase in
@@ -115,27 +139,28 @@ Every successful (re)connect bumps a per-host **generation** counter. Any `HostC
 }
 ```
 
-## Stable `clientId` per host
 
-The protocol uses `clientId` to identify a logical client across reconnects. Each host gets its own `clientId`, generated by the SDK and stored in a pluggable `ClientIdStore`. The SDK ships two implementations:
+## 每個主機穩定的 `clientId`
 
-- `InMemoryClientIdStore` — default; session-stable but lost on restart. Fine for tests and ephemeral CLIs.
-- `FileClientIdStore(directory:)` — filesystem-backed; atomic writes, owner-only permissions on POSIX, percent-encoded filenames for arbitrary `HostId` strings. Cross-platform; recommended for command-line and desktop tools.
+該協定使用 `clientId` 來跨重新連線識別邏輯用戶端。每個主機都有自己的 `clientId`，由 SDK 產生並儲存在可插入的 `ClientIdStore` 中。 SDK 提供了兩種實作：
 
-iOS apps wanting a higher-security profile should wrap Keychain in a `ClientIdStore` (a few lines of Security.framework). The SDK does not ship a Keychain implementation to keep `AgentHostProtocolClient` free of a `Security.framework` dependency on cross-platform builds.
+- `InMemoryClientIdStore` — 預設；工作階段-穩定，但重啟後遺失。非常適合測試和臨時 CLI。
+- `FileClientIdStore(directory:)` — 檔案系統支援；原子寫入、POSIX 上的僅限擁有者權限、任意 `HostId` 字串的百分比編碼檔案名稱。跨平台；推薦用於命令列和桌面工具。
 
-## Task cancellation
+想要更高安全性的 iOS 應用程式應該將 Keychain 包裝在 `ClientIdStore` （Security.framework 的幾行）中。 SDK 未提供鑰匙串實作，以使 `AgentHostProtocolClient` 擺脫對跨平台建置的 `Security.framework` 依賴。
 
-`AHPClient.request` and `HostClientHandle.request` observe `Task.isCancelled`. Cancelling the surrounding `Task` throws `CancellationError()`; the local pending entry is removed so a late server response is harmlessly dropped. Cancellation only cancels the local wait — server-side execution isn't aborted (that's a higher-level concern).
+## 任務取消
 
-Useful for typeahead / debounced flows where you previously had to write request-key bookkeeping to ignore stale results.
+`AHPClient.request`和`HostClientHandle.request`觀察`Task.isCancelled`。取消周圍的 `Task` 會拋出 `CancellationError()`；本地待處理條目將被刪除，因此遲到的伺服器回應將被無害地丟棄。取消僅取消本地等待 - 伺服器端執行不會中止（這是一個更高層級的問題）。
 
-## Escape hatch for extension RPCs
+對於預先輸入/Go抖動流程很有用，您以前必須編寫請求鍵簿記以忽略過時的結果。
 
-For RPCs whose params or result types can't satisfy the typed `request<P, R>`'s `Sendable` constraint (e.g. when `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` makes synthesised `Codable` conformances inherit `@MainActor`), use the raw-bytes variants `AHPClient.requestRaw(method:paramsData:) -> Data` / `HostClientHandle.requestRaw`. Encode and decode JSON yourself.
+## 擴展 RPC 的逃生艙口
 
-## Choosing single-host vs multi-host
+對於參數或結果類型無法滿足類型化 `request<P, R>` 的 `Sendable` 約束的 RPC（例如，當 `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` 使合成的 `Codable` 一致性繼承 `@MainActor` 時），請使用原始位元組變體 `AHPClient.requestRaw(method:paramsData:) -> Data` / `HostClientHandle.requestRaw`。自己編碼和解碼 JSON。
 
-You don't choose. Single-host consumers use `MultiHostClient.single(...)` and never see registry concepts. The SDK imposes no per-host overhead beyond a single supervisor task, and there is no separate single-host API to learn.
+## 選擇單主機還是多主機
 
-See `clients/swift/AgentHostProtocol/Sources/AgentHostProtocolClient/Hosts/` and `Tests/AgentHostProtocolClientTests/` for the full surface, plus `MultiHostExample.runDemo()` for a runnable demo.
+你不選擇。單主機使用者使用 `MultiHostClient.single(...)` 並且永遠不會看到註冊表概念。除了單一管理程式任務之外，SDK 不會對每主機施加任何開銷，並且無需學習單獨的單主機 API。
+
+請參閱 `clients/swift/AgentHostProtocol/Sources/AgentHostProtocolClient/Hosts/` 和 `Tests/AgentHostProtocolClientTests/` 以了解完整內容，以及 `MultiHostExample.runDemo()` 以了解可運行的演示。

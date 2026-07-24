@@ -1,53 +1,62 @@
-# Chat Channel
+# 聊天通道
 
-A chat channel carries the full state of a single conversation thread: turns, streaming responses, tool calls, pending messages, and input requests. A chat always belongs to a [session](./session-channel); a session may contain one or many chats. Chats are independently subscribable so a client can observe a subset of activity without paying the bandwidth cost of every chat in the session.
+聊天通道承載單一對話執行緒的完整狀態：回合、串流回應、工具呼叫、待處理訊息和輸入請求。聊天總是屬於 [工作階段](./session-channel); 工作階段可能包含一個或多個聊天。聊天是可獨立訂閱的，因此用戶端可以觀察活動的子集，而無需支付工作階段中每個聊天的頻寬成本。
 
-## URI
+## 網址
+
+
+
+
 
 ```
 ahp-chat:/<uuid>
 ```
 
-The path is a server-unique identifier (typically a UUID) allocated by the server when the chat is created. The owning session URI is **not** encoded in the chat URI — the relationship is expressed via the session's [`chats`](/reference/session#sessionstate) catalog and each chat's [`origin`](/reference/chat#chatorigin).
 
-Multiple chat channels may be active simultaneously. Clients subscribe to each chat whose state they want to track.
+此路徑是建立聊天時由伺服器指派的伺服器唯一識別碼（通常是 UUID）。擁有的工作階段 URI **未** 在聊天 URI 中進行編碼 - 該關係透過工作階段的 [`chats`](/reference/session#sessionstate) 目錄和每個聊天的 [`origin`](/reference/chat#chatorigin) 來表達。
 
-## State
+多個聊天通道可以同時處於活動狀態。用戶端訂閱他們想要追蹤其狀態的每個聊天。
 
-Subscribers receive a [`ChatState`](/reference/chat#chatstate) snapshot. `ChatState` denormalizes the [`ChatSummary`](/reference/chat#chatsummary) fields directly onto itself (`resource`, `title`, `status`, `activity`, `modifiedAt`, `origin`, `workingDirectory`) and adds the conversation contents (history of completed turns, the active turn if any, pending messages, outstanding input requests, and the user's in-progress [`draft`](#drafts)). Producers MUST keep the chat's `ChatSummary` in the session catalog consistent with these inlined summary fields — typically by dispatching a matching [`session/chatUpdated`](/reference/session#actions) whenever any summary field on the chat changes. Refer to the [State Model guide](/guide/state-model) for a structural overview.
+## 狀態
 
-When a client subscribes with `view.turns`, the server MAY expose only a tail of
-the most recent completed turns in the initial snapshot. The requested number is
-advisory: the server MAY return more or fewer turns than requested. If
-`view.turns` is omitted, the server MUST return all retained turns. If older
-retained turns remain available, `ChatState.turnsNextCursor` is present. The
-client passes this opaque cursor to
-[`fetchTurns`](#commands-paramschannel--ahp-chatuuid) to ask the host to
-dispatch `chat/turnsLoaded`, which prepends older turns into the same reduced
-chat state and updates or clears `turnsNextCursor`.
+訂閱者收到 [`ChatState`](/reference/chat#chatstate) 快照。 `ChatState` 將 [`ChatSummary`](/reference/chat#chatsummary) 欄位直接非規範化到自身（`resource`、`title`、`status`、`activity`、`modifiedAt`、`origin`、`workingDirectory`）並新增對話內容（已完成回合的歷史記錄、活動（若有待處理）製作者必須保持工作階段目錄中聊天的 `ChatSummary` 與這些內聯摘要欄位一致 - 通常透過每當聊天中的任何摘要欄位發生變更時調度相符的 [`session/chatUpdated`](/reference/session#actions)。請參閱[狀態模型指南](/guide/state-model)以了解結構概述。
 
-Hosts MUST also eagerly load older turns into state before applying any
-operation that references a turn outside the currently loaded window (for
-example, a fork, side-chat source, chat attachment, or truncation targeting an
-older turn).
+當用戶端訂閱 `view.turns` 時，伺服器可能僅公開
+初始快照中最近完成的回合。請求的號碼是
+建議：伺服器可能會傳回比請求更多或更少的匝數。如果
+`view.turns` 被省略，伺服器必須傳回所有保留的回合。如果年紀大了
+保留的匝數仍然可用，`ChatState.turnsNextCursor` 存在。的
+用戶端將此不透明遊標傳遞給
+[`fetchTurns`](#commands-paramschannel--ahp-chatuuid) 要求主持人
+調度 `chat/turnsLoaded`，它將舊的轉變成相同的縮減
+聊天狀態並更新或清除 `turnsNextCursor`。
 
-### Drafts
+在應用任何之前，主機還必須急切地將較舊的回合載入到狀態中
+引用目前載入視窗之外的回合的操作（例如
+例如，分叉、旁聊來源、聊天附件或針對某個目標的截斷
+老轉）。
 
-[`ChatState.draft`](/reference/chat#chatstate) is the user's in-progress input for a chat — the [`Message`](/reference/chat#message) they are composing but have not sent yet, including its model/agent selection and attachments. Unlike the fields above, `draft` is state-only and is **not** mirrored onto [`ChatSummary`](/reference/chat#chatsummary).
+### 草稿
 
-Clients MAY periodically sync their local input state into the draft by dispatching [`chat/draftChanged`](/reference/chat#actions). Eager syncing is not required — clients SHOULD debounce and MAY sync only at convenient points (for example, on blur). When presenting input UI for an existing chat, clients SHOULD use any `draft` to initialize their input state. Dispatch `chat/draftChanged` with no `draft` to clear it once the message is sent.
+[`ChatState.draft`](/reference/chat#chatstate) 是使用者正在進行的聊天輸入 - 他們正在撰寫但尚未發送的 [`Message`](/reference/chat#message)，包括其模型/代理選擇和附件。與上面的欄位不同，`draft` 僅是狀態，並且 **不** 鏡像到 [`ChatSummary`](/reference/chat#chatsummary) 上。
 
-### Per-chat working directory
+用戶端可以透過調度 [`chat/draftChanged`](/reference/chat#actions) 定期將其本機輸入狀態同步到草稿中。不需要急於同步 - 用戶端應該Go抖並且可以僅在方便的點（例如，在模糊時）同步。當為現有聊天呈現輸入 UI 時，用戶端應使用任何 `draft` 來初始化其輸入狀態。發送訊息後，調度不帶 `draft` 的 `chat/draftChanged` 以將其清除。
 
-`ChatState.workingDirectory` (and its mirror on [`ChatSummary`](/reference/chat#chatsummary)) is **optional**. When absent, the chat inherits the session's [`workingDirectory`](/reference/session#sessionsummary). Hosts MAY set a per-chat working directory to give individual chats their own filesystem context — for example, allocating a separate git worktree per chat so multiple chats in the same session can make independent edits that the orchestrating chat later merges back. The session-level `workingDirectory` is then the default/primary location for chats that do not override it.
+### 每個聊天的工作目錄
 
-## Relationship to the session channel
+`ChatState.workingDirectory`（及其在 [`ChatSummary`](/reference/chat#chatsummary) 上的鏡像）是**可選**。當缺席時，聊天將繼承工作階段的 [`workingDirectory`](/reference/session#sessionsummary)。主機可以設定每個聊天的工作目錄，為各個聊天提供自己的檔案系統上下文 - 例如，為每個聊天分配一個單獨的 git 工作樹，以便同一工作階段中的多個聊天可以進行獨立的編輯，然後編排聊天將其合併回來。工作階段層級的 `workingDirectory` 是不覆蓋它的聊天的預設/主要位置。
 
-- A chat's [`ChatSummary`](/reference/chat#chatsummary) appears in the session's [`SessionState.chats`](/reference/session#sessionstate) catalog. The session reducer keeps that catalog in sync with the underlying chat lifecycle.
-- The session may also expose [`defaultChat`](/reference/session#sessionstate) as a UI routing hint for input that is addressed to the session as a whole. This is advisory only — chats remain equal peers at the protocol level.
-- Session-level fields such as [`status`](/reference/session#sessionsummary), `activity`, and `modifiedAt` are aggregates derived from the session's chats. See the [Session Channel specification](./session-channel#chat-aggregation) for the derivation rules.
+## 與工作階段通道的關係
 
-## Lifecycle
+- 聊天的 [`ChatSummary`](/reference/chat#chatsummary) 出現在工作階段的 [`SessionState.chats`](/reference/session#sessionstate) 目錄中。工作階段 reducer 使此目錄與底層聊天生命週期保持同步。
+- 工作階段也可以將 [`defaultChat`](/reference/session#sessionstate) 公開為整體尋址到工作階段的輸入的 UI 路由提示。這僅是建議性的——聊天在協定級別上保持平等。
+- 工作階段層級欄位，例如 [`status`](/reference/session#sessionsummary)、`activity` 和 `modifiedAt` 是從工作階段的聊天中派生的聚合。請參閱 [工作階段通道規格](./session-channel#chat-aggregation) 以了解推導規則。
+
+## 生命週期
+
+
+
+
 
 ```
 1. Client subscribes to the owning session URI (ahp-session:/<sid>)
@@ -57,180 +66,178 @@ Clients MAY periodically sync their local input state into the draft by dispatch
 5. Server streams chat actions over the chat channel until the chat (or its session) is disposed
 ```
 
-### Creation
 
-[`createChat`](/reference/chat#createchat) is a JSON-RPC request. Callers identify the owning session via the request's `channel` parameter (`ahp-session:/<sid>`) and MAY supply:
+### 創造
 
-- an `initialMessage` to start the first turn immediately — carrying its own [`model`](/reference/chat#message) / [`agent`](/reference/chat#message) selection — and
-- a `source` of type [`ChatSource`](/reference/chat#chatsource), either
-  `{ kind: "fork", chat, turnId }` or `{ kind: "sideChat", chat, turnId }`,
-  selecting a specific source turn. Side-chat sources MAY also carry
-  `selection: { text, responsePartId? }`, an immutable selected-text snapshot
-  captured when the host accepts `createChat`.
+[`createChat`](/reference/chat#createchat) 是 JSON-RPC 請求。呼叫者透過請求的 `channel` 參數 (`ahp-session:/<sid>`) 來識別擁有的工作階段，並且可以提供：
 
-The server allocates the chat URI and adds the chat to the session's catalog (`session/chatAdded` on the session channel) before returning.
+- 立即開始第一回合的 `initialMessage` — 攜帶自己的 [`model`](/reference/chat#message) / [`agent`](/reference/chat#message) 選擇 — 以及
+- 型別 [`ChatSource`](/reference/chat#chatsource) 的 `source`，或
+  `{ kind: "fork", chat, turnId }` 或 `{ kind: "sideChat", chat, turnId }`，
+  選擇特定的源輪次。邊聊來源也可能有
+  `selection: { text, responsePartId? }`，不可變的選定文字快照
+  當主機接受 `createChat` 時捕獲。
 
-Clients MUST gate source-based creation using the selected
-[`AgentInfo.capabilities.multipleChats`](/reference/root#multiplechatscapability):
+在傳回之前，伺服器指派聊天 URI 並將聊天新增至工作階段的目錄（工作階段通道上的 `session/chatAdded`）。
 
-- `fork: true` permits `source.kind: "fork"`.
-- `sideChat: true` permits `source.kind: "sideChat"`.
-Absence or `false` means the corresponding source form is unsupported. The host
-MUST reject an unsupported source. It MUST also reject a source chat outside the
-target session, an unknown source chat or turn, or a source that names the chat
-being created. For forks, the host MUST additionally reject any source whose
-`kind` is not `"fork"` — forks only target completed turns.
+用戶端必須使用所選的基於來源的建立進行門控
+[`AgentInfo.capabilities.multipleChats`](/reference/root#multiplechatscapability)：
 
-For side chats, `turnId` is a stable identity, not a lifecycle snapshot. Hosts
-and clients resolve it against the source chat's current `activeTurn` or its
-retained `turns` as needed. This keeps `/btw`-style side chats from the
-currently active turn working even though that same turn later moves into
-historical `turns` when it completes.
+- `fork: true` 允許 `source.kind: "fork"`。
+- `sideChat: true` 允許 `source.kind: "sideChat"`。
+缺少或`false`表示不支援對應的源形式。主持人
+必須拒絕不受支援的來源。它還必須拒絕外部的來源聊天
+目標工作階段，未知來源的聊天或回合，或命名聊天的來源
+正在被建立。對於分叉，主機必須另外拒絕任何其
+`kind` 不是 `"fork"` - 僅分叉目標已完成的回合。
 
-When `source.kind` is `"sideChat"` and `source.selection` is present, the host
-MUST snapshot that exact `selection.text` when it accepts `createChat`; it MUST
-be non-empty. Later source-turn edits or streaming deltas do not retroactively
-change the stored snapshot. `selection.responsePartId`, when present, is
-advisory provenance naming the response part that contained the text at snapshot
-time; it is **not** a live range, offset, or patch anchor.
+對於私聊，`turnId` 是一個穩定的身份，而不是生命週期快照。主辦單位
+並用戶端根據來源聊天的當前 `activeTurn` 或其
+根據需要保留 `turns`。這可以防止 `/btw` 式的側聊
+當前活動的回合正在工作，即使同一回合稍後進入
+完成式的歷史`turns`。
 
-Forks and side chats use the source differently:
+當 `source.kind` 為 `"sideChat"` 且存在 `source.selection` 時，主機
+當它接受 `createChat` 時，必須精確地產生 `selection.text` 的快照；它必須
+不能為空。稍後的來源轉編輯或串流增量不會追溯
+更改儲存的快照。 `selection.responsePartId`，當存在時，是
+諮詢出處命名包含快照文字的回應部分
+時間；它**不是**活動範圍、偏移或補丁錨點。
 
-- A **fork** copies source history through the referenced turn into the new
-  chat's visible `turns`, after which the chats diverge.
-- A **side chat** starts with its own empty visible history. The host supplies
-  source history through the referenced turn as agent context, but does not copy
-  that history into the side chat's `turns`. When the referenced `turnId`
-  resolves to the source chat's current `activeTurn`, the host snapshots the
-  source chat's retained history plus the active turn's current user message and
-  whatever assistant response parts are already available when accepting
-  `createChat`; later source-turn deltas do not retroactively change the side
-  chat's starting context. If `source.selection` is present, the host also
-  snapshots that exact selected text into the created chat's origin. An
-  `initialMessage`, when supplied, becomes the side chat's first visible turn.
+分岔和側聊使用源的方式不同：
 
-### Origin
+- **分叉**透過引用的轉折將來源歷史記錄複製到新的轉折中
+  聊天可見 `turns`，之後聊天會出現分歧。
+- **側聊**從自己的空可見歷史記錄開始。主機供應
+  透過引用的轉為代理上下文來源歷史記錄，但不複製
+  此歷史記錄進入側聊的`turns`。當引用 `turnId`
+  解析為來源聊天的目前 `activeTurn`，主機快照
+  來源聊天的保留歷史記錄加上活動回合的當前使用者訊息以及
+  接受時任何輔助響應部分已經可用
+  `createChat`；後來的源轉三角洲不會追溯改變側面
+  聊天的起始上下文。如果存在 `source.selection`，則主機也會
+  將所選文字精確到已建立的聊天來源的快照。安
+  `initialMessage`，當提供時，成為側邊聊天的第一個可見回合。
 
-Each chat advertises how it came into existence via [`ChatOrigin`](/reference/chat#chatorigin):
+### 起源
 
-| Kind | Meaning |
+每個聊天都透過 [`ChatOrigin`](/reference/chat#chatorigin) 宣傳它是如何存在的：
+
+|親切 |意義|
 |---|---|
-| `user` | User created the chat explicitly (e.g. via the host UI). |
-| `fork` | Forked from an existing chat at a specific completed turn — payload references the source chat URI and stable source `turnId`. |
-| `sideChat` | Created as an independent side conversation using context through a specific source turn — payload references the source chat URI and stable source `turnId`, which may have been active or historical when the chat was created, and MAY retain an immutable `selection` snapshot captured at create acceptance. |
-| `tool` | Spawned by a tool call running in another chat — payload references the source chat URI and tool call id (e.g. a sub-agent delegation). |
+| `user` |使用者明確建立聊天（例如透過主機 UI）。 |
+| `fork` |在特定的已完成回合中從現有聊天中分叉 - 有效負載引用源聊天 URI 和穩定源 `turnId`。 |
+| `sideChat` |透過特定來源回合使用上下文建立為獨立的側對話 - 有效負載引用來源聊天 URI 和穩定來源 `turnId`，在建立聊天時可能是活動的或歷史的，並且可以保留在建立接受時捕獲的不可變的 `selection` 快照。 |
+| `tool` |由另一個聊天中運行的工具呼叫產生 - 有效負載引用來源聊天 URI 和工具呼叫 ID（例如子代理委託）。 |
 
-Clients MAY use the origin to render contextual UI (parent indicators, fork markers, "spawned by tool" badges), but origin is **not** a hierarchy — every chat is equally addressable.
+用戶端可以使用原點來呈現上下文 UI（父指示器、分叉標記、「由工具產生」徽章），但原點**不是**層次結構 - 每個聊天都是同等可尋址的。
 
-A tool-spawned worker is described from both ends of the same edge. The worker chat carries the canonical record via its `tool` origin (the spawning chat URI and tool call id). The spawning tool call surfaces the same relationship forward through a [`ToolResultSubagentContent`](/reference/chat#toolresultsubagentcontent) block in its result, whose `resource` is the worker **chat** URI (`ahp-chat:/<cid>`, not a session URI). The tool call that emits that block is the one named by the worker chat's `origin.toolCallId`; hosts MUST keep the two consistent.
+工俱生成的工作者是從同一條邊的兩端來描述的。工作執行緒聊天透過其 `tool` 來源（產生的聊天 URI 和工具呼叫 ID）攜帶規範記錄。生成工具呼叫透過其結果中的 [`ToolResultSubagentContent`](/reference/chat#toolresultsubagentcontent) 區塊向前顯示相同的關係，其 `resource` 是工作執行緒 **chat** URI（`ahp-chat:/<cid>`，而不是工作階段 URI）。發出該區塊的工具呼叫是由工作聊天的 `origin.toolCallId` 命名的工具呼叫；主機必須保持兩者一致。
 
-#### Ancestry and nesting depth
+#### 祖先與築巢深度
 
-A `fork`, `sideChat`, or `tool` origin names only the chat's **immediate** source chat (by URI), together with the turn or tool call that produced it. A chat's ancestry is therefore not stored directly; it is the chain you reconstruct by following `origin.chat` from one chat to the next. Because a tool-spawned chat can itself run tools that spawn further chats, these chains can be arbitrarily deep.
+`fork`、`sideChat` 或 `tool` 來源僅命名聊天的**直接**來源聊天（透過 URI），以及產生它的回合或工具呼叫。因此，聊天的祖先不會直接儲存；這是您透過從一個聊天到下一個聊天跟隨 `origin.chat` 重建的鏈。由於工具產生的聊天本身可以運行產生更多聊天的工具，因此這些鏈可以是任意深度。
 
-- **No protocol-imposed depth limit.** AHP does not cap nesting depth or fan-out, and the wire carries no depth counter or maximum-depth field. Any bound is a host policy decision that the protocol neither enforces nor advertises; hosts SHOULD guard against runaway recursion or unbounded fan-out on their side.
-- **Ancestry is advisory and may be incomplete.** Every chat is a flat, equally-addressable peer in the session's [`chats`](/reference/session#sessionstate) catalog — `origin` is a rendering hint, not a structural parent link. A source chat MAY be pruned (`session/chatRemoved`) while a chat it spawned lives on, so an `origin.chat` URI is not guaranteed to resolve. Clients reconstructing ancestry MUST tolerate missing references and SHOULD guard against cycles and unbounded depth (for example, by capping how deep they walk or render).
+- **沒有協定強加的深度限制。 ** AHP 不限制巢狀深度或扇出，且線路不承載深度計數器或最大深度欄位。任何界限都是協定既不強制執行也不公佈的主機策略決定；主機應該防止失控遞歸或無界扇出。
+- **祖先是建議性的，可能不完整。 ** 每個聊天都是工作階段的 [`chats`](/reference/session#sessionstate) 目錄中的平面、同等可尋址的對等體 - `origin` 是呈現提示，而不是結構父連結。當來源聊天產生的聊天繼續存在時，來源聊天可能會被修剪 (`session/chatRemoved`)，因此不保證能夠解析 `origin.chat` URI。用戶端重建祖先必須容忍遺失的引用，並且應該防止循環和無限深度（例如，透過限制它們行走或渲染的深度）。
 
-### Pulling a chat into another chat
+### 將一個聊天拉入另一個聊天
 
-A message can attach a bounded transcript using a
-[`MessageChatAttachment`](/reference/chat#messagechatattachment). Its `resource`
-identifies another chat in the same session and `endTurn` identifies the last
-completed turn included in the transcript. The bound is required: later
-turns in the referenced chat MUST NOT retroactively change the context of an
-already-sent message.
+訊息可以使用以下方式附加有界轉錄本
+[`MessageChatAttachment`](/reference/chat#messagechatattachment)。它的`resource`
+標識同一工作階段中的另一個聊天，而 `endTurn` 標識最後一個聊天
+已完成的回合包含在成績單中。需要綁定：稍後
+引用的聊天回合不得追溯更改聊天的上下文
+已經發送的訊息。
 
-This is the standard way to pull a side-chat result back into its originating
-chat. It is not limited to that UX: any chat may attach another chat from the
-same session. No merge or chat-to-chat messaging action occurs; the attachment
-travels on the ordinary message in `chat/turnStarted`.
+這是將側聊結果拉回原始狀態的標準方法
+聊天。它不限於使用者體驗：任何聊天都可以附加來自
+相同的工作階段。不會發生合併或聊天間訊息傳遞操作；附件
+透過 `chat/turnStarted` 中的普通訊息傳送。
 
-When accepting the message, the host MUST resolve the referenced chat's retained
-transcript from its first turn through `endTurn`, inclusive, and supply it
-as model context. The host MUST reject an unknown chat, a cross-session chat, an
-unknown turn, or an active rather than completed turn. Chat attachments inside
-the referenced transcript MUST remain references and MUST NOT be recursively
-expanded, preventing cycles and unbounded context growth.
+接受訊息時，主持人必須解析引用的聊天保留
+從第一輪到 `endTurn` 的轉錄，包括在內，並提供它
+作為模型上下文。主機必須拒絕未知聊天、跨工作階段聊天、
+未知回合，或正在進行的回合而不是已完成的回合。裡面有聊天附件
+引用的轉錄本必須保持引用狀態且不能遞歸
+擴展，防止循環和無限的上下文增長。
 
-The attachment itself remains durable turn state. If the referenced chat is
-later pruned, clients SHOULD continue rendering the stored `label` and treat
-opening `resource` as best-effort. Pruning does not alter the model input that
-the host already materialized when it accepted the containing message.
+附件本身保持耐用轉動狀態。如果引用的聊天是
+稍後修剪，用戶端應該繼續渲染儲存的 `label` 並處理
+盡最大努力打開`resource`。修剪不會改變模型輸入
+當主機接受包含訊息時，它已經具體化了。
 
-### Active chat
+### 活躍聊天
 
-Once a chat exists and its session is `lifecycle: 'ready'`, the chat accepts turns. The wire shape mirrors the legacy single-chat session shape:
+一旦聊天存在並且其工作階段為 `lifecycle: 'ready'`，聊天就會接受回合。線形狀反映了傳統的單一聊天工作階段形狀：
 
-- The client dispatches `chat/turnStarted` to begin a turn.
-- The server streams `chat/delta`, `chat/responsePart`, `chat/toolCallStart`, `chat/toolCallReady`, and related actions.
-- The client dispatches `chat/toolCallConfirmed` / `chat/toolCallResultConfirmed` to approve or deny tool calls, or `chat/turnCancelled` to abort.
-- The server dispatches `chat/turnComplete` or `chat/error` when the turn ends.
-- The server MAY dispatch `chat/inputRequested` while a turn is active. Clients sync answer drafts with `chat/inputAnswerChanged` and finish the request with `chat/inputCompleted`.
+- 用戶端調度 `chat/turnStarted` 開始回合。
+- 伺服器流 `chat/delta`、`chat/responsePart`、`chat/toolCallStart`、`chat/toolCallReady` 和相關運算。
+- 用戶端調度 `chat/toolCallConfirmed` / `chat/toolCallResultConfirmed` 以批准或拒絕工具呼叫，或調度 `chat/turnCancelled` 以中止。
+- 當回合結束時，伺服器調度 `chat/turnComplete` 或 `chat/error`。
+- 當回合處於活動狀態時，伺服器可以調度 `chat/inputRequested`。用戶端與 `chat/inputAnswerChanged` 同步答覆草稿並使用 `chat/inputCompleted` 完成請求。
 
-All actions dispatched on this channel travel on `ActionEnvelope`s whose `channel` is the chat URI. Action payloads do NOT carry their own chat URI — the channel comes from the envelope.
+在此通道上分派的所有操作均在 `channel` 為聊天 URI 的 `ActionEnvelope` 上傳輸。操作有效負載不攜帶自己的聊天 URI — 通道來自信封。
 
-### Disposal
+### 處理
 
-A chat is implicitly disposed when its owning session is disposed. The protocol does not currently expose a `disposeChat` command; chats live for the life of their session unless the server prunes them. When a chat is removed (whether explicitly or because its session was torn down), the server MUST update the session's `chats` catalog via `session/chatRemoved` so subscribers can release their per-chat subscriptions.
+當聊天所屬的工作階段被處置時，聊天也會被隱式處置。該協定目前未公開 `disposeChat` 指令；聊天將在其工作階段的生命週期內持續存在，除非伺服器修剪它們。當聊天被刪除時（無論是明確的還是因為其工作階段被拆除），伺服器必須透過 `session/chatRemoved` 更新工作階段的 `chats` 目錄，以便訂閱者可以釋放其每聊天訂閱。
 
-## Methods and events on this channel
+## 該通道上的方法和事件
 
-This section lists wire methods that are interpreted in the context of a chat URI (`ahp-chat:/<uuid>`).
+本節列出了在聊天 URI (`ahp-chat:/<uuid>`) 上下文中解釋的連線方法。
 
-### Commands (`params.channel = "ahp-chat:/<uuid>"`)
+### 指令 (`params.channel = "ahp-chat:/<uuid>"`)
 
-| Method | Kind | Purpose |
+|方法|親切 |目的|
 |---|---|---|
-| `fetchTurns` | request | Ask the host to load older historical turns into this chat state. |
-| `completions` | request | Chat-scoped inline completions (e.g. user-message mentions). |
+| `fetchTurns` |請求 |請主持人將較舊的歷史回合載入到此聊天狀態。 |
+| `completions` |請求 |聊天範圍的內聯完成（例如使用者訊息提及）。 |
 
-`createChat` is dispatched against the owning session URI (`params.channel = "ahp-session:/<sid>"`).
+`createChat` 針對所擁有的工作階段 URI (`params.channel = "ahp-session:/<sid>"`) 進行分派。
 
-### Notifications (`params.channel = "ahp-chat:/<uuid>"`)
+### 通知 (`params.channel = "ahp-chat:/<uuid>"`)
 
-| Method | Kind | Meaning |
+|方法|親切 |意義|
 |---|---|---|
-| `action` | server → client notification | Chat action envelope (`chat/*` action payloads). |
-| `dispatchAction` | client → server notification | Dispatch client actions on this chat (`chat/turnStarted`, `chat/toolCallConfirmed`, ...). |
-| `unsubscribe` | client → server notification | Stop receiving messages for this chat channel. |
+| `action` | 伺服器 → 用戶端通知 |聊天操作信封（`chat/*` 操作負載）。 |
+| `dispatchAction`| 用戶端 → 伺服器通知 |在此聊天中調度用戶端操作（`chat/turnStarted`、`chat/toolCallConfirmed`、...）。 |
+| `unsubscribe` | 用戶端 → 伺服器通知 |停止接收此聊天通道的訊息。 |
 
-## Server Validation of Client Actions
+## 伺服器用戶端操作的驗證
 
-When the server receives a client-dispatched action on this channel, it MUST validate it before applying. Invalid actions MUST be echoed back with a `rejectionReason` on the `ActionEnvelope`. The validation rules mirror the legacy session validation table — substitute `chat/*` for `session/*`:
+當伺服器在此通道上收到用戶端分派的操作時，它必須在應用之前對其進行驗證。無效運算必須在 `ActionEnvelope` 上使用 `rejectionReason` 進行回顯。驗證規則鏡像舊版工作階段驗證表 — 以 `chat/*` 取代 `session/*`：
 
-| Action                                     | Condition                                                                                                                  | Server Behavior                                                                                  |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Any action referencing a non-existent chat | Channel URI not found                                                                                                      | Server MUST silently ignore the action (no echo)                                                 |
-| `chat/toolCallConfirmed`                   | Tool call not in `pending-confirmation` state                                                                              | Server MUST reject the action                                                                    |
-| `chat/turnCancelled`                       | No active turn                                                                                                             | Server MUST reject the action                                                                    |
-| `chat/inputAnswerChanged`                  | No input request with matching `requestId`                                                                                 | Server SHOULD reject the action                                                                  |
-| `chat/inputAnswerChanged`                  | `answer.state` requires a value but `answer.value` is absent, or `answer.value.kind` is missing the matching payload field | Server SHOULD reject the action                                                                  |
-| `chat/inputCompleted`                      | No input request with matching `requestId`                                                                                 | Server SHOULD reject the action                                                                  |
-| `chat/inputCompleted`                      | `response` is `'accept'` but required questions do not have submitted answers                                              | Server SHOULD reject the action                                                                  |
-| `chat/pendingMessageRemoved`               | No pending message with matching `id` and `kind`                                                                           | Server SHOULD reject the action                                                                  |
+|行動|狀況 | 伺服器行為 |
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |------------------------------------------------------------------------------------------------ |
+|任何引用不存在的聊天的操作 |未找到通道 URI | 伺服器必須默默地忽略該操作（無回顯）|| `chat/toolCallConfirmed` |工具呼叫不在 `pending-confirmation` 狀態 | 中伺服器必須拒絕該操作 |
+| `chat/turnCancelled` |沒有主動回合 | 伺服器必須拒絕該動作 |
+| `chat/inputAnswerChanged` |沒有符合 `requestId` | 的輸入請求伺服器應拒絕該操作 || `chat/inputAnswerChanged` | `answer.state` 需要一個值，但 `answer.value` 不存在，或 `answer.value.kind` 缺少匹配的有效負載欄位 | 伺服器應拒絕該操作 |
+| `chat/inputCompleted`|沒有符合 `requestId` | 的輸入請求伺服器應拒絕該操作 |
+| `chat/inputCompleted` | `response` 是 `'accept'`，但必填問題尚未提交答案 | 伺服器應拒絕該操作 || `chat/pendingMessageRemoved` |沒有符合 `id` 和 `kind` 的待處理訊息 | 伺服器應拒絕該動作 |
 
-## Pending Message Consumption
+## 待處理訊息消費
 
-Pending messages live on the chat, not the session. The consumption rules mirror the legacy session behavior:
+待處理訊息在聊天中即時顯示，而不是在工作階段中。消耗規則反映了舊的工作階段行為：
 
-### Queued Messages
+### 排隊訊息
 
-When a turn completes and `queuedMessages` is non-empty, the server SHOULD:
+當一輪完成且 `queuedMessages` 非空時，伺服器應：
 
-1. Dispatch `chat/pendingMessageRemoved` with `kind: 'queued'` for the first queued message.
-2. Dispatch `chat/turnStarted` with the queued message's `message` and `queuedMessageId` set to the message's `id`.
+1. 使用 `kind: 'queued'` 調度第一個排隊訊息的 `chat/pendingMessageRemoved`。
+2. 調度 `chat/turnStarted`，並將排隊訊息的 `message` 和 `queuedMessageId` 設定為訊息的 `id`。
 
-When a queued message is added while the chat is idle (no active turn), the server SHOULD immediately consume it using the same two-step sequence.
+當聊天空閒（無活動回合）時新增排隊訊息時，伺服器應立即使用相同的兩步驟序列使用它。
 
-### Steering Messages
+### 轉向訊息
 
-When a turn is active and `steeringMessages` is non-empty, the server MAY consume steering messages at its discretion. To consume a steering message, the server:
+當回合處於活動狀態且 `steeringMessages` 非空時，伺服器可以自行決定消耗轉向訊息。要使用轉向訊息，伺服器：
 
-1. Dispatches `chat/pendingMessageRemoved` with `kind: 'steering'`.
-2. Injects the message content into the model context (the injection mechanism is opaque to the protocol).
+1. 使用 `kind: 'steering'` 調度 `chat/pendingMessageRemoved`。
+2. 將訊息內容注入模型脈絡中（注入機制對協定來說是不透明的）。
 
-Steering messages added while idle are silently stored and consumed when a turn becomes active.
+空閒時新增的轉向訊息會在回合啟動時以靜默方式儲存和消耗。
 
-## Actions
+## 行動
 
-Refer to the [Chat Channel Reference](/reference/chat#actions) for the full per-action reference. All chat-scoped action envelopes carry `channel: "ahp-chat:/<uuid>"`.
+請參閱[聊天通道參考](/reference/chat#actions) 以取得完整的每個操作參考。所有聊天範圍的操作信封都帶有 `channel: "ahp-chat:/<uuid>"`。

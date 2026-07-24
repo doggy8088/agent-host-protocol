@@ -1,70 +1,77 @@
-# Go Client — Agent Guide
+# Go 用戶端 — 代理指南
 
-## Overview
+## 概述
 
-This directory contains the **Go** module for the Agent Host Protocol
-(AHP), published as
-`github.com/microsoft/agent-host-protocol/clients/go`.
+此目錄包含代理主機協定的 **Go** 模組
+(AHP)，發佈為
+`github.com/microsoft/agent-host-protocol/clients/go`。
 
-The module targets Go 1.22+ and is split into three packages that mirror
-the Rust client's three-crate split:
+本模組以 Go 1.22+ 為目標，並分為三個鏡像包
+Rust 用戶端的三箱分割：
 
-- `ahptypes/` — generated wire types only, no I/O.
-- `ahp/` — async `Client`, reducers, and pluggable `Transport`. Sub-
-  package `ahp/hosts/` carries the multi-host runtime.
-- `ahpws/` — WebSocket transport built on `github.com/coder/websocket`.
+- `ahptypes/` — 僅產生線路類型，無 I/O。
+- `ahp/` — 非同步 `Client`、reducer 和可插入 `Transport`。子
+  包 `ahp/hosts/` 攜帶多主機運行時。
+- `ahpws/` — 基於 `github.com/coder/websocket` 建構的 WebSocket 傳輸。
 
-## Code Generation
+## 程式碼生成
 
-The Go files under `ahptypes/` (except `common.go` and
-`discriminated_unions.go`) are **auto-generated** from the TypeScript
-definitions in `types/`. Do not edit these files directly. Generated
-files are committed to source control so the package is consumable via
-the Go module proxy without a code-generation toolchain.
+`ahptypes/` 下的 Go 檔案（`common.go` 和
+`discriminated_unions.go`) 是從 TypeScript **自動產生**
+`types/` 中的定義。不要直接編輯這些文件。產生
+文件已提交給原始碼管理，因此該套件可透過以下方式使用
+沒有程式碼產生工具鏈的 Go 模組代理程式。
 
-To regenerate after protocol changes:
+協定更改後重新生成：
+
+
+
+
 
 ```bash
 npm run generate:go    # runs: tsx scripts/generate.ts --go
 ```
 
-Generated files (all suffixed `.generated.go`): `version`, `state`,
-`actions`, `commands`, `notifications`, `messages`, `errors`. The
-generator runs `gofmt -w` on its output.
 
-CI verifies the committed generated files match the output of
-`npm run generate:go` and fails on drift.
+產生的檔案（全部後綴為`.generated.go`）：`version`、`state`、
+`actions`、`commands`、`notifications`、`messages`、`errors`。的
+生成器在其輸出上運行 `gofmt -w`。
 
-## Type mapping (TS → Go)
+CI 驗證提交的生成文件與輸出匹配
+`npm run generate:go` 並在漂移時失敗。
 
-| TypeScript                  | Go                                                                       |
-| --------------------------- | ------------------------------------------------------------------------ |
-| `string`                    | `string`                                                                 |
-| `number`                    | `int64` (TS contract: 64-bit ints)                                       |
-| `number` w/ `@format float` | `float64`                                                                |
-| `boolean`                   | `bool`                                                                   |
-| `unknown` / `object`        | `json.RawMessage`                                                        |
-| `T \| null`                 | `*T`                                                                     |
-| optional field              | `*T` + `json:"name,omitempty"`                                           |
-| `T[]` / `Array<T>`          | `[]T`                                                                    |
-| `Record<string, T>`         | `map[string]T`                                                           |
-| `Partial<T>`                | `PartialT` struct, every field a pointer                                 |
-| string enum                 | typed `string` + named constants                                         |
-| Bitset enum                 | typed `uint32` + flag constants + `Has`/`Or` helpers                     |
-| Interface struct            | `struct` with JSON tags                                                  |
-| Discriminated union         | wrapper struct + marker interface + custom `MarshalJSON`/`UnmarshalJSON` |
-| `URI`                       | `type URI = string`                                                      |
-| `StringOrMarkdown`          | struct w/ custom (un)marshal                                             |
-| Recursive struct            | pointer field in the recursive position                                  |
-| `_meta` field               | `Meta map[string]json.RawMessage` + `json:"_meta,omitempty"`             |
-| `snake_case` wire field     | PascalCase Go field + `json:"snake_case"`                                |
+## 型別映射（TS → Go）
 
-### Discriminated unions
+| TypeScript | Go |
+| ------------------------ | | ------------------------------------------------------------------------------------------------ |
+| `string` | `string` |
+| `number` | `int64`（TS 合約：64 位整數）|
+| `number` 與 `@format float` | `float64` |
+| `boolean` | `bool` |
+| `unknown` / `object` | `unknown` / `object` | `json.RawMessage` |
+| `T \| null` | `*T` |
+|可選欄位 | `*T` + `json:"name,omitempty"` || `T[]` / `Array<T>` | `T[]` / `Array<T>` | `[]T` |
+| `Record<string, T>` | `map[string]T` |
+| `Partial<T>` | `PartialT` 結構體，每個欄位都是指標 |
+|字串列舉 |輸入 `string` + 命名常數 |
+|位元集列舉 |輸入的 `uint32` + 標誌常數 + `Has`/`Or` 幫助程式 |
+|介面結構|帶有 JSON 標籤的 `struct` |
+|判別聯集|包裝結構 + 標記介面 + 自訂 `MarshalJSON`/`UnmarshalJSON` |
+| `URI` | `type URI = string` |
+| `StringOrMarkdown` |有自訂（un）marshal 的結構 ||遞歸結構|遞歸位置中的指標欄位 |
+| `_meta` 欄位 | `Meta map[string]json.RawMessage` + `json:"_meta,omitempty"` |
+| `snake_case` 線路欄位 | PascalCase Go 欄位 + `json:"snake_case"` |
 
-Each TS discriminated union is emitted as a concrete wrapper struct so
-that it can be used directly as a Go field type — `[]ResponsePart`,
-`StateAction`, etc. — without consumers having to call a custom
-unmarshaler at every use site:
+### 判別聯集
+
+每個 TS 判別聯集都作為具體的包裝結構發出，因此
+它可以直接用作 Go 欄位型別 - `[]ResponsePart`，
+`StateAction` 等 - 消費者無須呼叫自訂
+每個使用站點的解組器：
+
+
+
+
 
 ```go
 type ResponsePart struct {
@@ -75,65 +82,66 @@ func (r *ResponsePart) UnmarshalJSON(b []byte) error { /* dispatch on kind */ }
 func (r ResponsePart) MarshalJSON() ([]byte, error)  { return json.Marshal(r.Value) }
 ```
 
-Unknown variants surface as a `*VariantNameUnknown{ Raw json.RawMessage }`
-so a future server can speak a not-yet-known kind without breaking
-existing clients. Reducers treat them as no-ops.
 
-### Bitset enums
+未知變體表面為 `*VariantNameUnknown{ Raw json.RawMessage }`
+所以未來的伺服器可以說一种未知的語言而不會破壞
+現有的用戶端。reducer將它們視為無操作。
 
-`SessionStatus` is currently the only bitset enum. It's emitted as
-`type SessionStatus uint32` with named flag constants plus
-`(SessionStatus).Has(SessionStatus) bool` and
-`(SessionStatus).Or(SessionStatus) SessionStatus` helpers. Unknown
-future bits round-trip naturally.
+### 位元集列舉
 
-### `omitempty` policy
+`SessionStatus` 是目前唯一的位元集列舉。它被發射為
+`type SessionStatus uint32` 帶有命名標誌常數加上
+`(SessionStatus).Has(SessionStatus) bool` 和
+`(SessionStatus).Or(SessionStatus) SessionStatus` 助手。未知
+未來的比特自然會往返。
 
-Only **optional pointer fields** carry `,omitempty`. Required fields
-(including required slices, maps, and scalars) MUST NOT carry
-`omitempty` — Go's omitempty omits empty slices, zero ints, and `false`,
-which would break wire parity (e.g. `serverSeq: 0` on an `ActionEnvelope`,
-required empty `responseParts: []` arrays).
+### `omitempty` 政策
 
-## Library structure
+只有**可選指標欄位**攜帶`,omitempty`。必填欄位
+（包括所需的切片、映射和標量）不得攜帶
+`omitempty` — Go 的 omitempty 省略空切片、零整數和 `false`，
+這會破壞線路奇偶校驗（例如 `ActionEnvelope` 上的 `serverSeq: 0`，
+需要空 `responseParts: []` 陣列）。
 
-- `ahptypes/common.go` — hand-written primitives (`URI`, `StringOrMarkdown`,
-  `JSONObject`, marker interfaces).
-- `ahptypes/*.generated.go` — wire types from the protocol spec.
-- `ahp/client.go` — async `Client`, request correlation, subscription
-  fan-out, `dispatchAction` write-ahead.
-- `ahp/transport.go` — `Transport` interface, `TransportMessage`
-  variants, `BoxedTransport` for heterogeneous storage.
-- `ahp/reducers.go` — pure `Apply*` reducers ported from
-  `types/channels-*/reducer.ts`. Each accepts `state *State` and an
-  action and returns a `ReduceOutcome`.
-- `ahp/error.go` — `ClientError`, `TransportError` types implementing
-  Go's `error` interface; use `errors.Is` / `errors.As` to discriminate.
-- `ahp/hosts/` — `MultiHostClient`, `HostHandle`, `HostClientHandle`,
-  `ReconnectPolicy`, `ClientIDStore`, etc.
-- `ahpws/transport.go` — WebSocket transport that wraps a
-  `github.com/coder/websocket` connection.
+## 庫結構
 
-## Reducers
+- `ahptypes/common.go` — 手寫原語 (`URI`, `StringOrMarkdown`,
+  `JSONObject`，標記介面）。
+- `ahptypes/*.generated.go` — 協定規格中的線路類型。
+- `ahp/client.go` — 非同步 `Client`，請求關聯，訂閱
+  扇出，`dispatchAction` 預寫。
+- `ahp/transport.go` — `Transport` 接口，`TransportMessage`
+  變體，`BoxedTransport` 用於異質儲存。
+- `ahp/reducers.go` — 純 `Apply*` reducer移植自
+  `types/channels-*/reducer.ts`。每個接受 `state *State` 和一個
+  操作並傳回 `ReduceOutcome`。
+- `ahp/error.go` — `ClientError`、`TransportError` 類型實作
+  Go的`error`介面；使用 `errors.Is` / `errors.As` 來區分。
+- `ahp/hosts/` — `MultiHostClient`，`HostHandle`，`HostClientHandle`，
+  `ReconnectPolicy`、`ClientIDStore` 等
+- `ahpws/transport.go` — WebSocket 傳輸，包裝
+  `github.com/coder/websocket`連線。
 
-Reducers mutate `*State` in place to match the Rust client's
-`apply_action_to_*` semantics. The same fixtures from
-`types/test-cases/reducers/*.json` exercise the Go reducers via
-`ahp/reducers_fixture_test.go` so cross-language parity is enforced.
+## reducer
 
-## Tag namespace (release)
+reducer會就地改變 `*State` 以匹配 Rust 用戶端的
+`apply_action_to_*` 語意。相同的裝置來自
+`types/test-cases/reducers/*.json` 透過以下方式鍛鍊 Go reducer
+`ahp/reducers_fixture_test.go` 因此強制執行跨語言奇偶校驗。
 
-Go requires tags for sub-module releases to be prefixed with the
-sub-module's directory inside the repo. So the publish tag is
-**`clients/go/vX.Y.Z`** (not `go/vX.Y.Z` and not the bare `vX.Y.Z`
-reserved for Swift). The Go module proxy will pick the tag up
-automatically.
+## 標籤命名空間（發佈）
 
-## Out of scope (intentional)
+Go 要求子模組版本的標籤以前綴
+儲存庫內的子模組目錄。所以發布標籤是
+**`clients/go/vX.Y.Z`** （不是 `go/vX.Y.Z` 也不是裸露的 `vX.Y.Z`
+為Swift保留）。 Go 模組代理程式將擷取標籤
+自動。
 
-The current Go module ships **wire types, reducers, single- and multi-
-host client runtime, and a WebSocket transport**. The following are
-deferred:
+## 超出範圍（故意）
 
-- Example application beyond the small `examples/` snippets.
-- Kotlin Multiplatform-style cross-target build.
+目前的 Go 模組提供 ** 線路類型、reducer、單線和多線
+主機用戶端運行時和 WebSocket 傳輸**。以下是
+延後：
+
+- 除了小 `examples/` 片段之外的範例應用程式。
+- Kotlin 多平台風格的跨目標建構。
