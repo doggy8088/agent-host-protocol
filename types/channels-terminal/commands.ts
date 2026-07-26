@@ -1,5 +1,5 @@
 /**
- * Terminal Channel Commands — `createTerminal` and `disposeTerminal`.
+ * 終端機通道指令 — `createTerminal` 與 `disposeTerminal`。
  *
  * @module channels-terminal/commands
  */
@@ -11,44 +11,42 @@ import type { TerminalClaim } from './state.js';
 // ─── createTerminal ──────────────────────────────────────────────────────────
 
 /**
- * Creates a new terminal on the server.
+ * 在伺服器上建立新的終端機。
  *
- * After creation, the client should subscribe to the terminal URI to receive
- * state updates. The server dispatches `root/terminalsChanged` to update the
- * root terminal list.
+ * 建立後，用戶端應訂閱終端機 URI 以接收狀態更新。伺服器分派
+ * `root/terminalsChanged` 以更新根終端機清單。
  *
  * @category Commands
  * @method createTerminal
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  */
 export interface CreateTerminalParams extends BaseParams {
-  /** Terminal URI (client-chosen). */
+  /** 終端機 URI（由用戶端選擇）。 */
   channel: URI;
-  /** Initial owner of the terminal */
+  /** 終端機的初始擁有者 */
   claim: TerminalClaim;
-  /** Human-readable terminal name */
+  /** 人類可讀的終端機名稱 */
   name?: string;
-  /** Initial working directory URI */
+  /** 初始工作目錄 URI */
   cwd?: URI;
-  /** Initial terminal width in columns */
+  /** 初始終端機寬度（以欄為單位） */
   cols?: number;
-  /** Initial terminal height in rows */
+  /** 初始終端機高度（以列為單位） */
   rows?: number;
 }
 
 // ─── disposeTerminal ─────────────────────────────────────────────────────────
 
 /**
- * Disposes a terminal and kills its process if still running.
+ * 處置終端機，若其行程仍在執行則予以終止。
  *
- * The server dispatches `root/terminalsChanged` to remove the terminal from
- * the root terminal list.
+ * 伺服器分派 `root/terminalsChanged` 以從根終端機清單中移除該終端機。
  *
  * @category Commands
  * @method disposeTerminal
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  */

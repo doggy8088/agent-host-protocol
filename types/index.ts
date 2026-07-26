@@ -1,10 +1,9 @@
 /**
- * Agent Host Protocol — Type Definitions
+ * 代理主機協定 — 型別定義
  *
  * @module agent-host-protocol
- * @description Canonical TypeScript type definitions for the Agent Host Protocol.
- * These types are the source of truth from which documentation and JSON Schema
- * are generated.
+ * @description 代理主機協定的標準 TypeScript 型別定義。這些型別是產生文件
+ * 與 JSON Schema 的真實來源。
  */
 
 // State types

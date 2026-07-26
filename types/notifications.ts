@@ -1,7 +1,6 @@
 /**
- * Notification Types — Aggregator shim that re-exports channel-organized
- * notification declarations. New code should import directly from the
- * per-channel files under `types/common/` and `types/channels-root/`.
+ * 通知型別 — 重新匯出依通道組織之通知宣告的聚合器墊片。新程式碼應直接從
+ * `types/common/` 與 `types/channels-root/` 下的個別通道檔案匯入。
  *
  * @module notifications
  */

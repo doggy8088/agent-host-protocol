@@ -1,6 +1,6 @@
 /**
- * Chat Channel Reducer — Pure reducer for `ChatState`, including turn
- * lifecycle, tool call transitions, pending messages, and input requests.
+ * 聊天通道 Reducer — `ChatState` 的純 reducer，包含回合
+ * 生命週期、工具呼叫轉換、待處理訊息與輸入請求。
  *
  * @module channels-chat/reducer
  */
@@ -31,7 +31,7 @@ import { softAssertNever } from '../common/reducer-helpers.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Extracts the common base fields shared by all tool call lifecycle states. */
+/** 擷取所有工具呼叫生命週期狀態共用的基礎欄位。 */
 function tcBase(tc: ToolCallState) {
   return {
     toolCallId: tc.toolCallId,
@@ -50,7 +50,7 @@ function tcBaseWithMeta(tc: ToolCallState, meta: Record<string, unknown> | undef
   };
 }
 
-/** Resolves a selected option from the confirmation options array by ID. */
+/** 依 ID 從確認選項陣列中解析所選選項。 */
 function resolveSelectedOption(options: ConfirmationOption[] | undefined, id: string | undefined): ConfirmationOption | undefined {
   if (!id || !options) {
     return undefined;
@@ -59,9 +59,8 @@ function resolveSelectedOption(options: ConfirmationOption[] | undefined, id: st
 }
 
 /**
- * Returns `true` if the active turn has any tool call blocking on something
- * external to the turn itself — a pending confirmation/result-confirmation,
- * or a tool call paused on MCP authentication.
+ * 若活動回合有任何工具呼叫因回合本身外部的因素而阻塞，則傳回 `true` —
+ * 待處理的確認/結果確認，或暫停等待 MCP 驗證的工具呼叫。
  */
 function hasBlockingToolCall(state: ChatState): boolean {
   if (!state.activeTurn) {
@@ -75,7 +74,7 @@ function hasBlockingToolCall(state: ChatState): boolean {
   );
 }
 
-/** Returns whether the active turn contains an input request awaiting submission. */
+/** 傳回活動回合是否包含等待提交的輸入請求。 */
 function hasOpenInputRequest(state: ChatState): boolean {
   return state.activeTurn?.responseParts.some(part =>
     part.kind === ResponsePartKind.InputRequest && part.response === undefined,
@@ -98,15 +97,15 @@ function findOpenInputRequestPart(
   return part.kind === ResponsePartKind.InputRequest ? { index, part } : undefined;
 }
 
-/** Bitmask covering the mutually-exclusive activity bits (bits 0–4). */
+/** 涵蓋互斥活動位元（位元 0–4）的位元遮罩。 */
 const STATUS_ACTIVITY_MASK = (1 << 5) - 1;
 
-/** Sets or clears a metadata flag on a status value. */
+/** 在狀態值上設定或清除中繼資料旗標。 */
 function withStatusFlag(status: SessionStatus, flag: SessionStatus, set: boolean): SessionStatus {
   return set ? status | flag : status & ~flag;
 }
 
-/** Derives the summary status from live session work, preserving orthogonal flags. */
+/** 從即時工作階段工作衍生摘要狀態，並保留正交旗標。 */
 function summaryStatus(state: ChatState, terminalStatus?: SessionStatus.Error): SessionStatus {
   let activity: SessionStatus;
   if (terminalStatus) {
@@ -123,9 +122,8 @@ function summaryStatus(state: ChatState, terminalStatus?: SessionStatus.Error): 
 }
 
 /**
- * Returns a state with `status` recomputed. Use this after reducers
- * that change data which feeds into {@link summaryStatus} (e.g. tool call
- * lifecycle transitions that may enter or leave a pending-confirmation state).
+ * 傳回已重新計算 `status` 的狀態。在變更餵入 {@link summaryStatus} 之資料的 reducer
+ * 之後使用此函式（例如可能進入或離開待處理確認狀態的工具呼叫生命週期轉換）。
  */
 function refreshSummaryStatus(state: ChatState): ChatState {
   const status = summaryStatus(state);
@@ -136,10 +134,10 @@ function refreshSummaryStatus(state: ChatState): ChatState {
 }
 
 /**
- * Ends the active turn, finalizing it into a completed turn record.
+ * 結束活動回合，將它最終化為已完成回合記錄。
  *
- * Tool call parts with non-terminal states are forced to cancelled.
- * Pending permissions are stripped from tool call parts.
+ * 具有非終端狀態的工具呼叫部分會被強制變為已取消。
+ * 待處理權限會從工具呼叫部分中移除。
  */
 function endTurn(
   state: ChatState,
@@ -231,9 +229,7 @@ function upsertInputRequestPart(state: ChatState, request: InputRequestResponseP
 }
 
 /**
- * Immutably updates the tool call inside a `ToolCall` response part in the
- * active turn's `responseParts` array. Returns `state` unchanged if the
- * active turn or tool call doesn't match.
+ * 不可變地更新活動回合 `responseParts` 陣列中 `ToolCall` 回應部分內的工具呼叫。若活動回合或工具呼叫不符，則傳回未變更的 `state`。
  */
 function updateToolCallInParts(
   state: ChatState,
@@ -270,9 +266,9 @@ function updateToolCallInParts(
 }
 
 /**
- * Immutably updates a response part by `partId` in the active turn.
- * For markdown/reasoning parts, matches on `id`. For tool call parts,
- * matches on `toolCall.toolCallId`.
+ * 依 `partId` 不可變地更新活動回合中的回應部分。
+ * 對於 markdown/reasoning 部分，以 `id` 比對。對於工具呼叫部分，
+ * 以 `toolCall.toolCallId` 比對。
  */
 function updateResponsePart(
   state: ChatState,
@@ -313,7 +309,7 @@ function updateResponsePart(
 // ─── Chat Reducer ────────────────────────────────────────────────────────────
 
 /**
- * Pure reducer for chat state. Handles all {@link ChatAction} variants.
+ * 聊天狀態的純 reducer。處理所有 {@link ChatAction} 變體。
  */
 export function chatReducer(state: ChatState, action: ChatAction, log?: (msg: string) => void): ChatState {
   switch (action.type) {

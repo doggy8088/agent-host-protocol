@@ -1,5 +1,5 @@
 /**
- * Terminal Channel Reducer — Pure reducer for `TerminalState`.
+ * 終端機通道 Reducer — `TerminalState` 的純 reducer。
  *
  * @module channels-terminal/reducer
  */
@@ -10,7 +10,7 @@ import type { TerminalAction } from '../action-origin.generated.js';
 import { softAssertNever } from '../common/reducer-helpers.js';
 
 /**
- * Pure reducer for terminal state. Handles all {@link TerminalAction} variants.
+ * 終端機狀態的純 reducer。處理所有 {@link TerminalAction} 變體。
  */
 export function terminalReducer(state: TerminalState, action: TerminalAction, log?: (msg: string) => void): TerminalState {
   switch (action.type) {

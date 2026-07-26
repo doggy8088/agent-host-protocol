@@ -1,5 +1,5 @@
 /**
- * Chat Channel Actions — Mutations of an `ahp-chat:` channel's state.
+ * 聊天通道操作 — `ahp-chat:` 通道狀態的變動。
  *
  * @module channels-chat/actions
  */
@@ -29,24 +29,21 @@ import {
 // ─── Tool Call Action Base ───────────────────────────────────────────────────
 
 /**
- * Base interface for all tool-call-scoped actions, carrying the common turn
- * and tool call identifiers. The owning chat URI is identified by the
- * enclosing {@link ActionEnvelope}'s `channel` field.
+ * 所有工具呼叫範圍操作的基礎介面，帶有共同的回合與工具呼叫識別碼。擁有者聊天 URI 由封閉的 {@link ActionEnvelope} 的 `channel` 欄位識別。
  *
  * @category Chat Actions
  */
 interface ToolCallActionBase {
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
-  /** Tool call identifier */
+  /** 工具呼叫識別碼 */
   toolCallId: string;
   /**
-   * Additional provider-specific metadata for this tool call.
+   * 此工具呼叫的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI.
-   * For example, a `ptyTerminal` key with `{ input: string; output: string }`
-   * indicates the tool operated on a terminal (both `input` and `output` may
-   * contain escape sequences).
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI。
+   * 例如，帶有 `{ input: string; output: string }` 的 `ptyTerminal` 鍵
+   * 表示該工具在終端機上操作（`input` 與 `output` 都可能包含跳脫序列）。
    */
   _meta?: Record<string, unknown>;
 }
@@ -55,9 +52,9 @@ interface ToolCallActionBase {
 // ─── Chat Actions ───────────────────────────────────────────────────────────
 
 /**
- * A new message has been sent to the agent, and a new turn starts.
+ * 新訊息已傳送給代理程式，且新回合開始。
  *
- * A client is only allowed to send {@link MessageKind.User} messages.
+ * 用戶端僅被允許傳送 {@link MessageKind.User} 訊息。
  *
  * @category Chat Actions
  * @version 1
@@ -65,165 +62,138 @@ interface ToolCallActionBase {
  */
 export interface ChatTurnStartedAction {
   type: ActionType.ChatTurnStarted;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
-  /** ISO 8601 timestamp when this turn started. */
+  /** 此回合開始時的 ISO 8601 時間戳記。 */
   startedAt: string;
-  /** The new message */
+  /** 新訊息 */
   message: Message;
-  /** If this turn was auto-started from a queued message, the ID of that message */
+  /** 若此回合是從佇列訊息自動啟動，該訊息的 ID */
   queuedMessageId?: string;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Streaming text chunk from the assistant, appended to a specific response part.
+ * 來自助理的串流文字區塊，附加到特定回應部分。
  *
- * The server MUST first emit a `chat/responsePart` to create the target
- * part (markdown or reasoning), then use this action to append text to it.
+ * 伺服器 MUST 先發出 `chat/responsePart` 以建立目標部分（markdown 或推理），再使用此操作將文字附加到它。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatDeltaAction {
   type: ActionType.ChatDelta;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
-  /** Identifier of the response part to append to */
+  /** 要附加到的回應部分識別碼 */
   partId: string;
-  /** Text chunk */
+  /** 文字區塊 */
   content: string;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Structured content appended to the response.
+ * 附加到回應的結構化內容。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatResponsePartAction {
   type: ActionType.ChatResponsePart;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
-  /** Response part (markdown or content ref) */
+  /** 回應部分（markdown 或內容參照） */
   part: ResponsePart;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * A tool call begins — parameters are streaming from the LM.
+ * 工具呼叫開始 — 參數正從 LM 串流傳入。
  *
- * The server sets {@link ToolCallContributor | `contributor`} to identify
- * the origin of the tool. For client-provided tools, the named client is
- * responsible for executing the tool once it reaches the `running` state
- * and dispatching `chat/toolCallComplete`. For MCP-served tools, the
- * server executes the call against the named `McpServerCustomization`.
+ * 伺服器設定 {@link ToolCallContributor | `contributor`} 以識別工具的起源。對於用戶端提供的工具，具名用戶端負責在工具到達 `running` 狀態時執行它，並分派 `chat/toolCallComplete`。對於 MCP 伺服器提供的工具，伺服器會針對具名的 `McpServerCustomization` 執行呼叫。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatToolCallStartAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallStart;
-  /** Internal tool name (for debugging/logging) */
+  /** 內部工具名稱（用於除錯/日誌） */
   toolName: string;
-  /** Human-readable tool name */
+  /** 人類可讀的工具名稱 */
   displayName: string;
-  /** Human-readable description of what the tool invocation intends to do */
+  /** 工具呼叫意圖執行之動作的人類可讀描述 */
   intention?: string;
   /**
-   * Reference to the contributor of the tool being called. Absent for
-   * server-side tools that are not contributed by a client or MCP server.
+   * 所呼叫工具之貢獻者的參照。對於非由用戶端或 MCP 伺服器貢獻的伺服器端工具則不存在。
    */
   contributor?: ToolCallContributor;
 }
 
 /**
- * Streaming partial parameters for a tool call.
+ * 工具呼叫的串流部分參數。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatToolCallDeltaAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallDelta;
-  /** Partial parameter content to append */
+  /** 要附加的部分參數內容 */
   content: string;
-  /** Updated progress message */
+  /** 更新的進度訊息 */
   invocationMessage?: StringOrMarkdown;
 }
 
 /**
- * Tool call parameters are complete, or a running tool requires re-confirmation.
+ * 工具呼叫參數已完成，或執行中的工具需要重新確認。
  *
- * When dispatched for a `streaming` tool call, transitions to `pending-confirmation`
- * or directly to `running` if `confirmed` is set.
+ * 當針對 `streaming` 工具呼叫分派時，會轉換到 `pending-confirmation`，或若設定了 `confirmed` 則直接轉換到 `running`。
  *
- * When dispatched for a `running` tool call (e.g. mid-execution permission needed),
- * transitions back to `pending-confirmation`. The `invocationMessage` and `_meta`
- * SHOULD be updated to describe the specific confirmation needed. Clients use the
- * standard `chat/toolCallConfirmed` flow to approve or deny.
+ * 當針對 `running` 工具呼叫分派時（例如執行中途需要權限），會轉換回 `pending-confirmation`。`invocationMessage` 與 `_meta` SHOULD 被更新以描述所需的特定確認。用戶端使用標準 `chat/toolCallConfirmed` 流程來核准或拒絕。
  *
- * For client-provided tools, the server typically sets `confirmed` to
- * `'not-needed'` so the tool transitions directly to `running`, where the
- * owning client can begin execution immediately.
+ * 對於用戶端提供的工具，伺服器通常會將 `confirmed` 設為 `'not-needed'`，讓工具直接轉換到 `running`，讓擁有用戶端能立即開始執行。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatToolCallReadyAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallReady;
-  /** Message describing what the tool will do or what confirmation is needed */
+  /** 描述工具將執行之動作或所需確認的訊息 */
   invocationMessage: StringOrMarkdown;
-  /** Raw tool input */
+  /** 原始工具輸入 */
   toolInput?: string;
-  /** Short title for the confirmation prompt (e.g. `"Run in terminal"`, `"Write file"`) */
+  /** 確認提示的簡短標題（例如 `"Run in terminal"`、`"Write file"`） */
   confirmationTitle?: StringOrMarkdown;
-  /** Risk assessment that informed the confirmation requirement. */
+  /** 促成確認需求的風險評估。 */
   riskAssessment?: ToolCallRiskAssessment;
-  /** File edits that this tool call will perform, for preview before confirmation */
+  /** 此工具呼叫將執行的檔案編輯，用於確認前的預覽 */
   edits?: { items: FileEdit[] };
-  /** Whether the agent host allows the client to edit the tool's input parameters before confirming */
+  /** 代理主機是否允許用戶端在確認前編輯工具的輸入參數 */
   editable?: boolean;
-  /** If set, the tool was auto-confirmed and transitions directly to `running` */
+  /** 若設定，工具已自動確認並直接轉換到 `running` */
   confirmed?: ToolCallConfirmationReason;
   /**
-   * Options the server offers for this confirmation. When present, the client
-   * SHOULD render these instead of a plain approve/deny UI. Each option
-   * belongs to a {@link ConfirmationOptionGroup} so the client can still
-   * categorise the choices.
+   * 伺服器為此確認提供的選項。若存在，用戶端 SHOULD 改為渲染這些選項，而非單純的核准/拒絕 UI。每個選項屬於一個 {@link ConfirmationOptionGroup}，讓用戶端仍能將選擇分類。
    */
   options?: ConfirmationOption[];
 }
 
 /**
- * Client approves a pending tool call. The tool transitions to `running`.
+ * 用戶端核准待處理的工具呼叫。工具轉換到 `running`。
  *
  * @category Chat Actions
  * @version 1
@@ -231,21 +201,20 @@ export interface ChatToolCallReadyAction extends ToolCallActionBase {
  */
 export interface ChatToolCallApprovedAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallConfirmed;
-  /** The tool call was approved */
+  /** 工具呼叫已核准 */
   approved: true;
-  /** How the tool was confirmed */
+  /** 工具確認的方式 */
   confirmed: ToolCallConfirmationReason;
-  /** Edited tool input parameters, if the client modified them before confirming */
+  /** 已編輯的工具輸入參數，若用戶端在確認前修改了它們 */
   editedToolInput?: string;
-  /** ID of the selected confirmation option, if the server provided options */
+  /** 所選確認選項的 ID，若伺服器提供了選項 */
   selectedOptionId?: string;
 }
 
 /**
- * Client denies a pending tool call. The tool transitions to `cancelled`.
+ * 用戶端拒絕待處理的工具呼叫。工具轉換到 `cancelled`。
  *
- * For client-provided tools, the owning client MUST dispatch this if it does
- * not recognize the tool or cannot execute it.
+ * 對於用戶端提供的工具，若擁有用戶端無法識別該工具或無法執行它，MUST 分派此操作。
  *
  * @category Chat Actions
  * @version 1
@@ -253,20 +222,20 @@ export interface ChatToolCallApprovedAction extends ToolCallActionBase {
  */
 export interface ChatToolCallDeniedAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallConfirmed;
-  /** The tool call was denied */
+  /** 工具呼叫已被拒絕 */
   approved: false;
-  /** Why the tool was cancelled */
+  /** 工具取消的原因 */
   reason: ToolCallCancellationReason.Denied | ToolCallCancellationReason.Skipped;
-  /** What the user suggested doing instead */
+  /** 使用者建議改為執行的動作 */
   userSuggestion?: Message;
-  /** Optional explanation for the denial */
+  /** 拒絕的選用說明 */
   reasonMessage?: StringOrMarkdown;
-  /** ID of the selected confirmation option, if the server provided options */
+  /** 所選確認選項的 ID，若伺服器提供了選項 */
   selectedOptionId?: string;
 }
 
 /**
- * Client confirms or denies a pending tool call.
+ * 用戶端確認或拒絕待處理的工具呼叫。
  *
  * @category Chat Actions
  * @version 1
@@ -277,33 +246,21 @@ export type ChatToolCallConfirmedAction =
   | ChatToolCallDeniedAction;
 
 /**
- * Tool execution finished. Transitions to `completed` or `pending-result-confirmation`
- * if `requiresResultConfirmation` is `true`.
+ * 工具執行完成。若 `requiresResultConfirmation` 為 `true`，轉換到 `completed` 或 `pending-result-confirmation`。
  *
- * For client-provided tools (whose tool call state carries a client
- * `ToolCallContributor` with a `clientId`), the owning client dispatches this
- * action with the execution result. The server SHOULD reject this action if the
- * dispatching client does not match the contributor's `clientId`.
+ * 對於用戶端提供的工具（其工具呼叫狀態帶有含 `clientId` 的用戶端
+ * `ToolCallContributor`），擁有用戶端會帶著執行結果分派此操作。若分派的用戶端與貢獻者的 `clientId` 不符，伺服器 SHOULD 拒絕此操作。
  *
- * Servers waiting on a client tool call MAY time out after a reasonable duration
- * if the implementing client disconnects or becomes unresponsive, and dispatch
- * this action with `result.success = false` and an appropriate error.
+ * 等待用戶端工具呼叫的伺服器 MAY 在實作用戶端中斷連線或變得無回應後，於合理持續時間後逾時，並帶著 `result.success = false` 與適當錯誤分派此操作。
  *
- * A client MAY also dispatch this action with a **failed** result (
- * `result.success: false`) for a tool call currently in `auth-required`
- * status, to cancel that invocation without completing the pending MCP
- * authentication challenge. This always transitions the tool call straight
- * to `completed`, preserving the fields it had before pausing for auth;
- * `requiresResultConfirmation` is ignored for this transition; the
- * cancellation can never enter `pending-result-confirmation`, since there is
- * no real result to review.
+ * 用戶端 MAY 也針對目前處於 `auth-required`
+ * 狀態的工具呼叫，以 **失敗** 的結果（`result.success: false`）分派此操作，以在不完成待處理 MCP
+ * 驗證挑戰的情況下取消該呼叫。這永遠會將工具呼叫直接轉換到 `completed`，保留它在暫停以進行驗證前的欄位；
+ * `requiresResultConfirmation` 在此轉換會被忽略；取消永遠無法進入
+ * `pending-result-confirmation`，因為沒有可檢閱的實際結果。
  *
- * A **successful** result (`result.success: true`) is invalid for a tool
- * call in `auth-required` status — execution never resumed after the
- * challenge, so there's nothing that could have produced it. The reducer
- * MUST reject/ignore it as a no-op, leaving the tool call in
- * `auth-required`. The client must resolve the auth challenge
- * (`chat/toolCallAuthResolved`) before completing successfully.
+ * **成功** 的結果（`result.success: true`）對處於 `auth-required` 狀態的工具呼叫是無效的 — 執行在挑戰後從未恢復，因此沒有任何事物能產生它。reducer
+ * MUST 將其作為 no-op 拒絕/忽略，讓工具呼叫留在 `auth-required`。用戶端必須在成功完成前先解決驗證挑戰（`chat/toolCallAuthResolved`）。
  *
  * @category Chat Actions
  * @version 1
@@ -311,16 +268,16 @@ export type ChatToolCallConfirmedAction =
  */
 export interface ChatToolCallCompleteAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallComplete;
-  /** Execution result */
+  /** 執行結果 */
   result: ToolCallResult;
-  /** If true, the result requires client approval before finalizing */
+  /** 若為 true，結果在完成前需要用戶端核准 */
   requiresResultConfirmation?: boolean;
 }
 
 /**
- * Client approves or denies a tool's result.
+ * 用戶端核准或拒絕工具的結果。
  *
- * If `approved` is `false`, the tool transitions to `cancelled` with reason `result-denied`.
+ * 若 `approved` 為 `false`，工具會以原因 `result-denied` 轉換到 `cancelled`。
  *
  * @category Chat Actions
  * @version 1
@@ -328,22 +285,18 @@ export interface ChatToolCallCompleteAction extends ToolCallActionBase {
  */
 export interface ChatToolCallResultConfirmedAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallResultConfirmed;
-  /** Whether the result was approved */
+  /** 結果是否已核准 */
   approved: boolean;
 }
 
 /**
- * Partial content produced while a tool is still executing.
+ * 工具仍在執行時產生的部分內容。
  *
- * Replaces the `content` array on the running tool call state. Clients can
- * use this to display live feedback (e.g. a terminal reference) before the
- * tool completes.
+ * 取代執行中工具呼叫狀態上的 `content` 陣列。用戶端可使用它在工具完成前顯示即時回饋（例如終端機參照）。
  *
- * For client-provided tools (whose tool call state carries a client
- * `ToolCallContributor` with a `clientId`), the owning client dispatches this
- * action to stream intermediate content while executing. The server SHOULD
- * reject this action if the dispatching client does not match the contributor's
- * `clientId`.
+ * 對於用戶端提供的工具（其工具呼叫狀態帶有含 `clientId` 的用戶端
+ * `ToolCallContributor`），擁有用戶端會在執行時分派此操作以串流傳入中繼內容。若分派的用戶端與貢獻者的
+ * `clientId` 不符，伺服器 SHOULD 拒絕此操作。
  *
  * @category Chat Actions
  * @version 1
@@ -351,42 +304,34 @@ export interface ChatToolCallResultConfirmedAction extends ToolCallActionBase {
  */
 export interface ChatToolCallContentChangedAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallContentChanged;
-  /** The current partial content for the running tool call */
+  /** 執行中工具呼叫的目前部分內容 */
   content: ToolResultContent[];
 }
 
 /**
- * A running tool call is paused pending MCP authentication. Transitions the
- * tool call from `running` to `auth-required`.
+ * 執行中的工具呼叫已暫停，等待 MCP 驗證。將工具呼叫從 `running` 轉換到 `auth-required`。
  *
- * The server dispatches this when the MCP server backing the call responds
- * with a 401/403 challenge mid-execution (see
- * {@link McpAuthRequirement.reason | `insufficientScope`}). The host SHOULD
- * pair this with `session/inputNeededSet` (kind `toolAuthentication`) so the
- * block is visible at the session-summary level, mirroring
- * {@link McpServerAuthRequiredState}'s own `InputNeeded` guidance.
+ * 伺服器在支援呼叫的 MCP 伺服器於執行中途以 401/403 挑戰回應時分派此操作（見
+ * {@link McpAuthRequirement.reason | `insufficientScope`}）。主機 SHOULD
+ * 將此與 `session/inputNeededSet`（kind `toolAuthentication`）配對，讓區塊在工作階段摘要層級可見，鏡像
+ * {@link McpServerAuthRequiredState} 自身的 `InputNeeded` 指引。
  *
- * Only valid for tool calls contributed by an MCP server — the reducer is a
- * no-op if the tool call's `contributor` is not
- * {@link ToolCallContributorKind.MCP | MCP-kind}.
+ * 僅對由 MCP 伺服器貢獻的工具呼叫有效 — 若工具呼叫的 `contributor` 不是
+ * {@link ToolCallContributorKind.MCP | MCP-kind}，reducer 為 no-op。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatToolCallAuthRequiredAction extends ToolCallActionBase {
   type: ActionType.ChatToolCallAuthRequired;
-  /** The authentication challenge blocking this invocation. */
+  /** 阻擋此呼叫的驗證挑戰。 */
   auth: McpAuthRequirement;
 }
 
 /**
- * The authentication challenge blocking a tool call has been resolved (the
- * client pushed a token via `authenticate` and the host validated it).
- * Transitions the tool call from `auth-required` back to `running`,
- * preserving the fields it had before pausing.
+ * 阻擋工具呼叫的驗證挑戰已解決（用戶端透過 `authenticate` 推送權杖且主機已驗證它）。將工具呼叫從 `auth-required` 轉換回 `running`，保留它在暫停前的欄位。
  *
- * The host SHOULD remove the corresponding `session/inputNeededSet` entry
- * (kind `toolAuthentication`) once this is dispatched.
+ * 主機 SHOULD 在此分派後移除對應的 `session/inputNeededSet` 項目（kind `toolAuthentication`）。
  *
  * @category Chat Actions
  * @version 1
@@ -396,36 +341,29 @@ export interface ChatToolCallAuthResolvedAction extends ToolCallActionBase {
 }
 
 /**
- * Turn finished — the assistant is idle.
+ * 回合完成 — 助理已閒置。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatTurnCompleteAction {
   type: ActionType.ChatTurnComplete;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
   /**
-   * Elapsed turn duration in milliseconds, measured by the producer's own
-   * clock. Clients MUST NOT derive this by subtracting timestamps — cross-
-   * client clocks may differ — and MUST treat it as opaque, producer-supplied
-   * data.
+   * 以毫秒為單位的回合經過持續時間，由產生者自身的時鐘測量。用戶端 MUST NOT 透過相減時間戳記來推導此值 — 跨用戶端時鐘可能不同 — 且 MUST 將它視為不透明的、產生者提供的資料。
    */
   duration: number;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Turn was aborted; server stops processing.
+ * 回合已中止；伺服器停止處理。
  *
  * @category Chat Actions
  * @version 1
@@ -433,86 +371,62 @@ export interface ChatTurnCompleteAction {
  */
 export interface ChatTurnCancelledAction {
   type: ActionType.ChatTurnCancelled;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
   /**
-   * Elapsed turn duration in milliseconds, measured by the producer's own
-   * clock. Clients MUST NOT derive this by subtracting timestamps — cross-
-   * client clocks may differ — and MUST treat it as opaque, producer-supplied
-   * data.
+   * 以毫秒為單位的回合經過持續時間，由產生者自身的時鐘測量。用戶端 MUST NOT 透過相減時間戳記來推導此值 — 跨用戶端時鐘可能不同 — 且 MUST 將它視為不透明的、產生者提供的資料。
    */
   duration: number;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Error during turn processing.
+ * 回合處理期間發生錯誤。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatErrorAction {
   type: ActionType.ChatError;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
   /**
-   * Elapsed turn duration in milliseconds, measured by the producer's own
-   * clock. Clients MUST NOT derive this by subtracting timestamps — cross-
-   * client clocks may differ — and MUST treat it as opaque, producer-supplied
-   * data.
+   * 以毫秒為單位的回合經過持續時間，由產生者自身的時鐘測量。用戶端 MUST NOT 透過相減時間戳記來推導此值 — 跨用戶端時鐘可能不同 — 且 MUST 將它視為不透明的、產生者提供的資料。
    */
   duration: number;
-  /** Error details */
+  /** 錯誤詳細資料 */
   error: ErrorInfo;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * The activity description of this chat changed.
+ * 此聊天的活動描述已變更。
  *
- * Dispatched by the server to indicate what the chat is currently doing
- * (e.g. running a tool, thinking). Clear activity by omitting it or setting it
- * to `undefined`.
- * Producers SHOULD also update the parent session's chat catalog with
- * `session/chatUpdated` so `ChatSummary.activity` stays in sync.
+ * 由伺服器分派以指出聊天目前正在做什麼（例如執行工具、思考）。透過省略它或將它設為 `undefined` 來清除活動。產生者 SHOULD 也以 `session/chatUpdated` 更新父工作階段的聊天目錄，讓 `ChatSummary.activity` 保持同步。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatActivityChangedAction {
   type: ActionType.ChatActivityChanged;
-  /** Human-readable description of current activity; omit or set `undefined` to clear */
+  /** 目前活動的人類可讀描述；省略或設為 `undefined` 以清除 */
   activity?: string;
 }
 
 /**
- * A working directory was added to this chat's
- * {@link ChatState.workingDirectories} subset.
+ * 工作目錄已新增到此聊天的 {@link ChatState.workingDirectories} 子集。
  *
- * Membership semantics keyed by the directory URI: the reducer appends
- * `directory` when the chat's subset does not already contain it (creating the
- * subset if absent) and is a no-op when it is already present. `directory` MUST
- * be one of the owning session's {@link SessionState.workingDirectories}; a host
- * MUST reject a directory that is not. Only valid when the agent advertises
- * {@link AgentCapabilities.multipleWorkingDirectories}.
+ * 以目錄 URI 為鍵的成員資格語意：當聊天的子集尚未包含 `directory` 時，reducer 會附加它（若不存在則建立子集），且當它已存在時為 no-op。`directory` MUST 是所屬工作階段 {@link SessionState.workingDirectories} 之一；主機 MUST 拒絕非如此的目錄。僅在代理程式公告 {@link AgentCapabilities.multipleWorkingDirectories} 時有效。
  *
  * @category Chat Actions
  * @version 1
@@ -520,17 +434,14 @@ export interface ChatActivityChangedAction {
  */
 export interface ChatWorkingDirectorySetAction {
   type: ActionType.ChatWorkingDirectorySet;
-  /** The working directory to add to this chat's subset. */
+  /** 要新增到此聊天子集的工作目錄。 */
   directory: URI;
 }
 
 /**
- * A working directory was removed from this chat's
- * {@link ChatState.workingDirectories} subset.
+ * 工作目錄已從此聊天的 {@link ChatState.workingDirectories} 子集中移除。
  *
- * Removes `directory` from the chat's subset; a no-op when it is not present.
- * Idempotent, mirroring `session/workingDirectoryRemoved`. Only affects the
- * chat's subset — the directory remains in the session's set.
+ * 從聊天的子集中移除 `directory`；當它不存在時為 no-op。具冪等性，鏡像 `session/workingDirectoryRemoved`。僅影響聊天的子集 — 目錄仍保留在工作階段的集合中。
  *
  * @category Chat Actions
  * @version 1
@@ -538,59 +449,50 @@ export interface ChatWorkingDirectorySetAction {
  */
 export interface ChatWorkingDirectoryRemovedAction {
   type: ActionType.ChatWorkingDirectoryRemoved;
-  /** The working directory to remove from this chat's subset. */
+  /** 要從此聊天子集中移除的工作目錄。 */
   directory: URI;
 }
 
 /**
- * Token usage report for a turn.
+ * 回合的權杖使用量報告。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatUsageAction {
   type: ActionType.ChatUsage;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
-  /** Token usage data */
+  /** 權杖使用量資料 */
   usage: UsageInfo;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Reasoning/thinking text from the model, appended to a specific reasoning response part.
+ * 來自模型的推理/思考文字，附加到特定推理回應部分。
  *
- * The server MUST first emit a `chat/responsePart` to create the target
- * reasoning part, then use this action to append text to it.
+ * 伺服器 MUST 先發出 `chat/responsePart` 以建立目標推理部分，再使用此操作將文字附加到它。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatReasoningAction {
   type: ActionType.ChatReasoning;
-  /** Turn identifier */
+  /** 回合識別碼 */
   turnId: string;
-  /** Identifier of the reasoning response part to append to */
+  /** 要附加到的推理回應部分識別碼 */
   partId: string;
-  /** Reasoning text chunk */
+  /** 推理文字區塊 */
   content: string;
   /**
-   * Additional provider-specific metadata for this action.
+   * 此操作的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry per-event context that does not fit any
-   * other field — for example, attributing the event to a specific agent
-   * (such as a sub-agent acting within the turn). Mirrors the MCP `_meta`
-   * convention.
+   * 用戶端 MAY 在此尋找已知鍵以提供增強的 UI，且代理主機 MAY 用它來承載不適合任何其他欄位的個別事件上下文 — 例如，將事件歸因於特定代理程式（例如在回合內運作的子代理程式）。沿用 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
@@ -599,15 +501,12 @@ export interface ChatReasoningAction {
 // ─── Truncation ──────────────────────────────────────────────────────────────
 
 /**
- * Truncates a session's history. If `turnId` is provided, all turns after that
- * turn are removed and the specified turn is kept. If `turnId` is omitted, all
- * turns are removed.
+ * 截斷工作階段的歷史。若提供 `turnId`，該回合之後的所有回合都會被移除，且保留指定的回合。若省略 `turnId`，所有回合都會被移除。
  *
- * If there is an active turn it is silently dropped and the chat status
- * returns to `idle`.
+ * 若有活動回合，它會被靜默捨棄，且聊天狀態回到 `idle`。
  *
- * Common use-case: truncate old data then dispatch a new
- * `chat/turnStarted` with an edited message.
+ * 常見使用案例：截斷舊資料，然後以編輯過的訊息分派新的
+ * `chat/turnStarted`。
  *
  * @category Chat Actions
  * @version 1
@@ -615,42 +514,34 @@ export interface ChatReasoningAction {
  */
 export interface ChatTruncatedAction {
   type: ActionType.ChatTruncated;
-  /** Keep turns up to and including this turn. Omit to clear all turns. */
+  /** 保留到並包含此回合為止的回合。省略以清除所有回合。 */
   turnId?: string;
 }
 
 /**
- * Loads older completed turns into this chat's state.
+ * 將較舊的已完成回合載入此聊天的狀態。
  *
- * Hosts dispatch this before responding to `fetchTurns`, and before applying
- * any operation that references a turn older than the currently loaded window.
- * `turns` is ordered oldest-first and is prepended to the current `turns`
- * window. `turnsNextCursor` replaces the state's cursor; omit it when all
- * retained turns are now loaded.
+ * 主機在回應 `fetchTurns` 之前，以及在套用任何參照比目前載入視窗更舊之回合的操作之前，分派此操作。`turns` 依最舊優先排序，並前置到目前的 `turns` 視窗。`turnsNextCursor` 取代狀態的游標；當所有保留回合現在都已載入時，省略它。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatTurnsLoadedAction {
   type: ActionType.ChatTurnsLoaded;
-  /** Older completed turns loaded into the state, ordered oldest-first. */
+  /** 載入狀態的較舊已完成回合，依最舊優先排序。 */
   turns: Turn[];
-  /** Opaque cursor for loading the next older page, if one remains. */
+  /** 用於載入下一個較舊頁面的不透明游標，若還有剩餘。 */
   turnsNextCursor?: string;
 }
 
 // ─── Pending Message Actions ─────────────────────────────────────────────────
 
 /**
- * A pending message was set (upsert semantics: creates or replaces).
+ * 待處理訊息已設定（upsert 語意：建立或取代）。
  *
- * For steering messages, this always replaces the single steering message.
- * For queued messages, if a message with the given `id` already exists it is
- * updated in place; otherwise it is appended to the queue. If the chat is
- * idle when a queued message is set, the server SHOULD immediately consume it
- * and start a new turn.
+ * 對於引導訊息，這永遠會取代單一引導訊息。對於佇列訊息，若具有給定 `id` 的訊息已存在，它會就地更新；否則會附加到佇列。若設定佇列訊息時聊天處於閒置狀態，伺服器 SHOULD 立即取用它並開始新回合。
  *
- * A client is only allowed to send {@link MessageKind.User} messages.
+ * 用戶端僅被允許傳送 {@link MessageKind.User} 訊息。
  *
  * @category Chat Actions
  * @version 1
@@ -658,20 +549,18 @@ export interface ChatTurnsLoadedAction {
  */
 export interface ChatPendingMessageSetAction {
   type: ActionType.ChatPendingMessageSet;
-  /** Whether this is a steering or queued message */
+  /** 這是引導訊息還是佇列訊息 */
   kind: PendingMessageKind;
-  /** Unique identifier for this pending message */
+  /** 此待處理訊息的唯一識別碼 */
   id: string;
-  /** The message content */
+  /** 訊息內容 */
   message: Message;
 }
 
 /**
- * A pending message was removed (steering or queued).
+ * 待處理訊息已移除（引導或佇列）。
  *
- * Dispatched by clients to cancel a pending message, or by the server when
- * it consumes a message (e.g. starting a turn from a queued message or
- * injecting a steering message into the current turn).
+ * 由用戶端分派以取消待處理訊息，或由伺服器在它取用訊息時分派（例如從佇列訊息開始回合，或將引導訊息注入目前回合）。
  *
  * @category Chat Actions
  * @version 1
@@ -679,20 +568,16 @@ export interface ChatPendingMessageSetAction {
  */
 export interface ChatPendingMessageRemovedAction {
   type: ActionType.ChatPendingMessageRemoved;
-  /** Whether this is a steering or queued message */
+  /** 這是引導訊息還是佇列訊息 */
   kind: PendingMessageKind;
-  /** Identifier of the pending message to remove */
+  /** 要移除的待處理訊息識別碼 */
   id: string;
 }
 
 /**
- * Reorder the queued messages.
+ * 重新排序佇列訊息。
  *
- * The `order` array contains the IDs of queued messages in their new
- * desired order. IDs not present in the current queue are ignored.
- * Queued messages whose IDs are absent from `order` are appended at
- * the end in their original relative order (so a client with a stale
- * view of the queue never silently drops messages).
+ * `order` 陣列包含佇列訊息的 ID，依其新的所需順序排列。不存在於目前佇列中的 ID 會被忽略。ID 不在 `order` 中的佇列訊息會以原始相對順序附加到結尾（讓具有過時佇列檢視的用戶端永遠不會靜默捨棄訊息）。
  *
  * @category Chat Actions
  * @version 1
@@ -700,24 +585,22 @@ export interface ChatPendingMessageRemovedAction {
  */
 export interface ChatQueuedMessagesReorderedAction {
   type: ActionType.ChatQueuedMessagesReordered;
-  /** Queued message IDs in the desired order */
+  /** 依所需順序排列的佇列訊息 ID */
   order: string[];
 }
 
 // ─── Draft Actions ───────────────────────────────────────────────────────────
 
 /**
- * The chat's draft input changed.
+ * 聊天的草稿輸入已變更。
  *
- * Clients MAY periodically sync their local input state — the message the user
- * is composing, including its {@link Message.model | model} /
- * {@link Message.agent | agent} selection and attachments — into the chat's
- * {@link ChatState.draft | `draft`} so it survives reloads and is visible to
- * other clients viewing the same chat. Eager syncing is **not** required;
- * clients SHOULD debounce and MAY sync only at convenient points. Set `draft`
- * to `undefined` to clear it (e.g. once the message is sent).
+ * 用戶端 MAY 定期將其本地輸入狀態 — 使用者正在撰寫的訊息，包括其 {@link Message.model | 模型} /
+ * {@link Message.agent | 代理程式} 選擇與附件 — 同步到聊天的
+ * {@link ChatState.draft | `draft`}，讓它在重新載入後仍留存，且對檢視相同聊天的其他用戶端可見。積極同步 **not** 必要；
+ * 用戶端 SHOULD 去抖動，且 MAY 僅在方便的時刻同步。將 `draft`
+ * 設為 `undefined` 以清除它（例如訊息傳送後）。
  *
- * A client is only allowed to draft {@link MessageKind.User} messages.
+ * 用戶端僅被允許草擬 {@link MessageKind.User} 訊息。
  *
  * @category Chat Actions
  * @version 1
@@ -725,32 +608,30 @@ export interface ChatQueuedMessagesReorderedAction {
  */
 export interface ChatDraftChangedAction {
   type: ActionType.ChatDraftChanged;
-  /** New draft message, or `undefined` to clear it */
+  /** 新的草稿訊息，或 `undefined` 以清除它 */
   draft?: Message;
 }
 
 // ─── Session Input Actions ──────────────────────────────────────────────────
 
 /**
- * A session requested input from the user.
+ * 工作階段向使用者請求輸入。
  *
- * Creates an unresolved {@link InputRequestResponsePart} in the active turn,
- * or replaces the unresolved part with the same request `id`. Answer drafts
- * are preserved unless `request.answers` is provided.
+ * 在活動回合中建立未解決的 {@link InputRequestResponsePart}，或以具有相同請求 `id` 的未解決部分取代它。除非提供 `request.answers`，否則答案草稿會被保留。
  *
  * @category Chat Actions
  * @version 1
  */
 export interface ChatInputRequestedAction {
   type: ActionType.ChatInputRequested;
-  /** Input request to create or replace */
+  /** 要建立或取代的輸入請求 */
   request: ChatInputRequest;
 }
 
 /**
- * A client updated, submitted, skipped, or removed a single in-progress answer.
+ * 用戶端已更新、提交、跳過或移除單一進行中的答案。
  *
- * Dispatching with `answer: undefined` removes that question's answer draft.
+ * 以 `answer: undefined` 分派會移除該問題的答案草稿。
  *
  * @category Chat Actions
  * @version 1
@@ -758,20 +639,18 @@ export interface ChatInputRequestedAction {
  */
 export interface ChatInputAnswerChangedAction {
   type: ActionType.ChatInputAnswerChanged;
-  /** Input request identifier */
+  /** 輸入請求識別碼 */
   requestId: string;
-  /** Question identifier within the input request */
+  /** 輸入請求中的問題識別碼 */
   questionId: string;
-  /** Updated answer, or `undefined` to clear an answer draft */
+  /** 已更新的答案，或 `undefined` 以清除答案草稿 */
   answer?: ChatInputAnswer;
 }
 
 /**
- * A client submitted an accept, decline, or cancel response to an input request.
+ * 用戶端已提交對輸入請求的接受、拒絕或取消回應。
  *
- * If accepted, the server uses `answers` (when provided) plus the request's
- * synced answer state to resume the blocked operation. The reducer records the
- * response and final answers on the existing {@link InputRequestResponsePart}.
+ * 若接受，伺服器會使用 `answers`（若提供）加上請求的同步答案狀態來恢復受阻的操作。reducer 會在現有的 {@link InputRequestResponsePart} 上記錄回應與最終答案。
  *
  * @category Chat Actions
  * @version 1
@@ -779,11 +658,11 @@ export interface ChatInputAnswerChangedAction {
  */
 export interface ChatInputCompletedAction {
   type: ActionType.ChatInputCompleted;
-  /** Input request identifier */
+  /** 輸入請求識別碼 */
   requestId: string;
-  /** Completion outcome */
+  /** 完成結果 */
   response: ChatInputResponseKind;
-  /** Optional final answer replacement, keyed by question ID */
+  /** 選用的最終答案取代，以問題 ID 為鍵 */
   answers?: Record<string, ChatInputAnswer>;
 }
 

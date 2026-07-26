@@ -38,17 +38,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section ref="root" class="wt" aria-label="How the Agent Host Protocol works">
+  <section ref="root" class="wt" aria-label="代理主機協定如何運作">
     <div class="wt-inner">
       <header class="wt-head wt-reveal">
         <span class="wt-eyebrow">
           <span class="codicon codicon-compass" aria-hidden="true"></span>
-          How it works
+          運作方式
         </span>
-        <h2 class="wt-title">One agent session. Any client.</h2>
+        <h2 class="wt-title">一個代理程式工作階段，任何用戶端皆可使用。</h2>
         <p class="wt-lead">
-          AHP turns an agent session into a <strong>shared, synchronized resource</strong> that any
-          number of clients can attach to at once. Here's the journey, from the problem to the wire.
+          AHP 將代理程式工作階段轉變為一個<strong>共享、同步的資源</strong>，讓任意數量的用戶端都能同時連結。以下是從問題到線路的完整旅程。
         </p>
       </header>
 
@@ -58,14 +57,11 @@ onBeforeUnmount(() => {
           <span class="wt-step-num">01</span>
           <span class="wt-kicker wt-kicker-red">
             <span class="codicon codicon-lock" aria-hidden="true"></span>
-            The problem
+            問題
           </span>
-          <h3>An agent session is stuck wherever it started.</h3>
+          <h3>代理程式工作階段受困於它起始的位置。</h3>
           <p>
-            The conversation, the turns, the pending tool approvals — they're tied to a single app or
-            harness. Switch to another client, device, or automation and you can't pick up the same
-            live session. AHP makes a session a <strong>shared resource</strong>, so it can live
-            once and be driven from anywhere.
+            對話、回合、待處理的工具核准 — 全都綁定在單一應用程式或控制框架上。一旦切換到其他用戶端、裝置或自動化流程，就無法接續同一個即時工作階段。AHP 將工作階段變成一個<strong>共享資源</strong>，讓它只需存在一次，就能從任何地方驅動。
           </p>
         </div>
 
@@ -76,11 +72,11 @@ onBeforeUnmount(() => {
               <div class="winbody">
                 <span class="sess-chip">
                   <span class="codicon codicon-lock" aria-hidden="true"></span>
-                  agent session
+                  代理程式工作階段
                 </span>
               </div>
             </div>
-            <p class="cap">Stuck in one app</p>
+            <p class="cap">受困於單一應用程式</p>
           </div>
 
           <span class="wt-arrow codicon codicon-arrow-right" aria-hidden="true"></span>
@@ -94,7 +90,7 @@ onBeforeUnmount(() => {
             <div class="syncrail"></div>
             <p class="cap">
               <span class="codicon codicon-sync wt-green" aria-hidden="true"></span>
-              One live session, shared across clients
+              一個即時工作階段，跨用戶端共享
             </p>
           </div>
         </div>
@@ -106,13 +102,11 @@ onBeforeUnmount(() => {
           <span class="wt-step-num">02</span>
           <span class="wt-kicker wt-kicker-blue">
             <span class="codicon codicon-circuit-board" aria-hidden="true"></span>
-            The shape
+            架構
           </span>
-          <h3>One host sits between many clients and many agents.</h3>
+          <h3>一個主機居中，連接多個用戶端與多個代理程式。</h3>
           <p>
-            In the lineage of LSP and DAP, the host owns the authoritative session state. Clients
-            speak AHP; agent backends integrate directly. Any client can drive any agent — and every
-            client stays in sync.
+            承襲 LSP 與 DAP 的血統，主機持有權威的工作階段狀態。用戶端使用 AHP 溝通；代理程式後端則直接整合。任何用戶端都能驅動任何代理程式 — 而且每個用戶端都保持同步。
           </p>
         </div>
 
@@ -151,18 +145,18 @@ onBeforeUnmount(() => {
               <span class="codicon codicon-vm" aria-hidden="true"></span>IDE
             </div>
             <div class="chip chip-client" style="left:37.5%;top:0">
-              <span class="codicon codicon-globe" aria-hidden="true"></span>Web
+              <span class="codicon codicon-globe" aria-hidden="true"></span>網頁
             </div>
             <div class="chip chip-client" style="left:62.5%;top:0">
               <span class="codicon codicon-terminal" aria-hidden="true"></span>CLI
             </div>
             <div class="chip chip-client" style="left:87.5%;top:0">
-              <span class="codicon codicon-device-mobile" aria-hidden="true"></span>Mobile
+              <span class="codicon codicon-device-mobile" aria-hidden="true"></span>行動
             </div>
 
             <div class="host">
-              <span class="host-label">AGENT HOST</span>
-              <span class="host-sub">authoritative state · sequencing · reconciliation</span>
+              <span class="host-label">代理主機</span>
+              <span class="host-sub">權威狀態 · 排序 · 協調</span>
             </div>
 
             <div class="chip chip-agent" style="left:12.5%;bottom:0">
@@ -187,13 +181,11 @@ onBeforeUnmount(() => {
           <span class="wt-step-num">03</span>
           <span class="wt-kicker wt-kicker-green">
             <span class="codicon codicon-broadcast" aria-hidden="true"></span>
-            On the wire
+            線路傳輸
           </span>
-          <h3>Every change is one envelope, totally ordered.</h3>
+          <h3>每次變更都是一個信封，且完全排序。</h3>
           <p>
-            The host stamps each mutation with a monotonic
-            sequence and broadcasts it to every subscribed client. That
-            single ordered stream is what keeps every window in sync.
+            主機為每次變動蓋上單調遞增的序號，並廣播給每個已訂閱的用戶端。這條單一有序的串流，就是讓每個視窗保持同步的關鍵。
           </p>
         </div>
 
@@ -201,37 +193,37 @@ onBeforeUnmount(() => {
           <div class="wire">
             <div class="wire-head">
               <span class="state-badge">
-                <span class="codicon codicon-server-process" aria-hidden="true"></span>Host
+                <span class="codicon codicon-server-process" aria-hidden="true"></span>主機
               </span>
               <span class="codicon codicon-arrow-right wt-green" aria-hidden="true"></span>
-              <span class="wire-head-note">broadcast to every client</span>
+              <span class="wire-head-note">廣播到每個用戶端</span>
             </div>
 
             <div class="wire-rail">
               <div class="wire-line" style="--i:0">
                 <span class="seq">41</span>
                 <span class="evt evt-blue">chat/turnStarted</span>
-                <span class="payload">"Add retry logic to the API client"</span>
+                <span class="payload">"為 API 用戶端加入重試邏輯"</span>
               </div>
               <div class="wire-line" style="--i:1">
                 <span class="seq">42</span>
                 <span class="evt evt-blue">chat/delta</span>
-                <span class="payload">"Sure — I'll wrap the fetch call…"</span>
+                <span class="payload">"好的 — 我會包裝 fetch 呼叫…"</span>
               </div>
               <div class="wire-line" style="--i:2">
                 <span class="seq">43</span>
                 <span class="evt evt-orange">chat/toolCallStart</span>
-                <span class="payload">Edit file · <span class="mono">src/api.ts</span></span>
+                <span class="payload">編輯檔案 · <span class="mono">src/api.ts</span></span>
               </div>
               <div class="wire-line" style="--i:3">
                 <span class="seq">46</span>
                 <span class="evt evt-orange">chat/toolCallComplete</span>
-                <span class="payload"><span class="wt-green">ok</span> · 1 file changed</span>
+                <span class="payload"><span class="wt-green">ok</span> · 1 個檔案變更</span>
               </div>
               <div class="wire-line" style="--i:4">
                 <span class="seq">47</span>
                 <span class="evt evt-green">chat/turnComplete</span>
-                <span class="payload">turn <span class="mono">t_8c1</span> done</span>
+                <span class="payload">回合 <span class="mono">t_8c1</span> 完成</span>
               </div>
             </div>
           </div>
@@ -244,24 +236,22 @@ onBeforeUnmount(() => {
           <span class="wt-step-num">04</span>
           <span class="wt-kicker wt-kicker-purple">
             <span class="codicon codicon-git-merge" aria-hidden="true"></span>
-            Reconciliation
+            協調
           </span>
-          <h3>Apply optimistically. Reconcile when the echo returns.</h3>
+          <h3>樂觀套用，待回應傳回時再協調。</h3>
           <p>
-            A client applies its own action locally <em>right away</em>, then matches the server's
-            echo — stamped with <code class="wt-code">origin</code> — back to its optimistic copy.
-            Concurrent edits from other clients fold into the same ordered stream.
+            用戶端會<em>立即</em>在本地套用自己的操作，再將伺服器的回應 — 蓋有 <code class="wt-code">origin</code> 戳記 — 與其樂觀副本比對。來自其他用戶端的並行編輯，會折疊進同一條有序串流中。
           </p>
         </div>
 
         <div class="wt-step-visual">
           <div class="recon">
             <div class="recon-col">
-              <span class="recon-label"><span class="codicon codicon-edit" aria-hidden="true"></span> Client</span>
+              <span class="recon-label"><span class="codicon codicon-edit" aria-hidden="true"></span> 用戶端</span>
               <div class="recon-card recon-optimistic">
-                <span class="recon-tag">optimistic</span>
+                <span class="recon-tag">樂觀</span>
                 <code>dispatch(turnStarted)</code>
-                <span class="recon-meta">clientSeq <b>7</b> · applied locally</span>
+                <span class="recon-meta">clientSeq <b>7</b> · 已在本機套用</span>
               </div>
             </div>
 
@@ -271,11 +261,11 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="recon-col">
-              <span class="recon-label"><span class="codicon codicon-server" aria-hidden="true"></span> Host</span>
+              <span class="recon-label"><span class="codicon codicon-server" aria-hidden="true"></span> 主機</span>
               <div class="recon-card recon-confirmed">
-                <span class="recon-tag recon-tag-green">confirmed</span>
+                <span class="recon-tag recon-tag-green">已確認</span>
                 <code>serverSeq 41</code>
-                <span class="recon-meta">origin <b>{ ide, 7 }</b> · reconciled</span>
+                <span class="recon-meta">origin <b>{ ide, 7 }</b> · 已協調</span>
               </div>
             </div>
           </div>
@@ -283,11 +273,11 @@ onBeforeUnmount(() => {
       </article>
 
       <div class="wt-cta wt-reveal">
-        <a class="wt-btn wt-btn-brand" href="/agent-host-protocol/guide/what-is-ahp">
-          Read the guide
+        <a class="wt-btn wt-btn-brand" href="/guide/what-is-ahp">
+          閱讀指南
         </a>
-        <a class="wt-btn wt-btn-alt" href="/agent-host-protocol/specification/overview">
-          View the specification
+        <a class="wt-btn wt-btn-alt" href="/specification/overview">
+          檢視規格
         </a>
       </div>
     </div>

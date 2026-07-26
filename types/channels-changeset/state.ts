@@ -1,6 +1,6 @@
 /**
- * Changeset State Types — Catalogue and per-changeset state for file-change
- * views exposed on the `ahp-changeset:` channel.
+ * 變更集狀態類型 — 在 `ahp-changeset:` 通道上公開的檔案變更檢視之
+ * 目錄與每個變更集的狀態。
  *
  * @module channels-changeset/state
  */
@@ -10,267 +10,246 @@ import type { StringOrMarkdown, FileEdit, ErrorInfo } from '../common/state.js';
 // ─── Changesets ──────────────────────────────────────────────────────────────
 
 /**
- * Catalogue entry describing one changeset the server can produce for a
- * session.
+ * 目錄項目，描述伺服器可為工作階段產生的單一變更集。
  *
- * Catalogue entries are intentionally lightweight — just enough to render a
- * chip or list row without subscribing. Full per-changeset detail
- * ({@link ChangesetState}) lives on the subscribable URI obtained by
- * expanding {@link uriTemplate}.
+ * 目錄項目刻意保持輕量 — 僅足以在未訂閱的情況下呈現晶片或清單列。
+ * 完整的每個變更集詳情（{@link ChangesetState}）位於可透過展開
+ * {@link uriTemplate} 取得的可訂閱 URI 上。
  *
  * @category Changesets
  */
 export interface Changeset {
-  /** Human-readable label, e.g. `"Uncommitted Changes"`. */
+  /** 人類可讀的標籤，例如 `"Uncommitted Changes"`。 */
   label: string;
   /**
-   * RFC 6570 URI template. Clients parse the variables directly out of the
-   * template using the standard `{name}` syntax — they are not redeclared
-   * here.
+   * RFC 6570 URI 樣板。用戶端使用標準的 `{name}` 語法直接從樣板中
+   * 解析變數 — 變數不在此重新宣告。
    *
-   * Only the following template shapes are defined by this protocol; any
-   * other variable name MUST be ignored by clients (there is no
-   * protocol-defined way to obtain values for unknown variables):
+   * 本協定僅定義以下樣板形式；任何其他變數名稱 MUST 被用戶端忽略
+   * （沒有協定定義的方式可取得未知變數的值）：
    *
-   * | Variables in template                       | Meaning                                                                              |
+   * | 樣板中的變數                                 | 意義                                                                                |
    * | ------------------------------------------- | ------------------------------------------------------------------------------------ |
-   * | _(none)_                                    | A static, session-wide changeset. The template is itself a subscribable URI.         |
-   * | `{turnId}`                                  | Per-turn slice. Expand with a `Turn.id` from the session.                            |
-   * | `{originalTurnId}` and `{modifiedTurnId}`   | Diff between two turns. Both variables MUST be present.                              |
+   * | _(無)_                                      | 靜態的、整個工作階段範圍的變更集。樣板本身即為可訂閱的 URI。                          |
+   * | `{turnId}`                                  | 每回合切片。以工作階段中的 `Turn.id` 展開。                                          |
+   * | `{originalTurnId}` 與 `{modifiedTurnId}`    | 兩個回合間的差異。兩個變數 MUST 同時存在。                                            |
    *
-   * Future protocol versions MAY add new well-known variables.
+   * 未來的協定版本 MAY 新增新的已知變數。
    */
   uriTemplate: string;
-  /** Optional longer description. */
+  /** 選用的較長描述。 */
   description?: string;
   /**
-   * Advisory hint describing what kind of changeset this is, so clients can
-   * group, sort, or render an appropriate icon without parsing
-   * {@link uriTemplate}. Recognized values include:
+   * 建議性提示，描述此變更集的種類，讓用戶端可以在不解析
+   * {@link uriTemplate} 的情況下分組、排序或呈現適當的圖示。已知的值包含：
    *
-   * - `'session'`: a static, session-wide changeset covering all changes the
-   *   agent has produced in this session.
-   * - `'branch'`: changes relative to a base branch (e.g. a feature branch
-   *   diffed against `main`).
-   * - `'uncommitted'`: the workspace's current uncommitted changes.
-   * - `'turn'`: changes produced by a single turn. Typically paired with a
-   *   `{turnId}` variable in {@link uriTemplate}.
-   * - `'compare-turns'`: a diff between two turns. Typically paired with
-   *   `{originalTurnId}` and `{modifiedTurnId}` variables in
-   *   {@link uriTemplate}.
+   * - `'session'`：靜態的、整個工作階段範圍的變更集，涵蓋代理程式
+   *   在此工作階段中產生的所有變更。
+   * - `'branch'`：相對於基準分支的變更（例如將功能分支與 `main` 做
+   *   差異比對）。
+   * - `'uncommitted'`：工作區當前未提交的變更。
+   * - `'turn'`：由單一回合產生的變更。通常與 {@link uriTemplate} 中的
+   *   `{turnId}` 變數搭配。
+   * - `'compare-turns'`：兩個回合間的差異。通常與 {@link uriTemplate} 中的
+   *   `{originalTurnId}` 與 `{modifiedTurnId}` 變數搭配。
    *
-   * Implementations MAY provide additional values; clients SHOULD fall back
-   * to a reasonable default when an unknown value is encountered.
+   * 實作 MAY 提供額外的值；當遇到未知值時，用戶端 SHOULD 退回到
+   * 合理的預設值。
    */
   changeKind: string;
   /**
-   * Optional capability declarations for this changeset. Absent (or an empty
-   * object) means the changeset advertises no optional capabilities.
+   * 此變更集的選用能力宣告。不存在（或為空物件）表示此變更集未公告任何
+   * 選用能力。
    *
-   * Because the catalogue entry is delivered up-front on
-   * {@link ChangesetState | the session's changeset list}, clients can decide
-   * whether to surface capability-gated UI (such as review checkboxes) without
-   * first subscribing to the changeset URI. Mirrors the presence-flag
-   * convention of `ClientCapabilities`.
+   * 由於目錄項目會預先隨 {@link ChangesetState | 工作階段的變更集清單}
+   * 傳遞，用戶端可在未先訂閱變更集 URI 的情況下決定是否呈現受能力閘控的
+   * UI（例如審核勾選框）。這反映了 `ClientCapabilities` 的
+   * 存在旗標慣例。
    */
   capabilities?: ChangesetCapabilities;
 }
 
 /**
- * Optional capabilities a changeset advertises on its catalogue
- * {@link Changeset} entry.
+ * 變更集在其目錄 {@link Changeset} 項目上公告的選用能力。
  *
- * Each field is a presence flag: an empty object `{}` means "supported",
- * absence means "not supported". Sub-fields on individual capabilities are
- * reserved for future per-capability options.
+ * 每個欄位都是一個存在旗標：空物件 `{}` 表示「支援」，
+ * 不存在表示「不支援」。個別能力上的子欄位保留供未來的個別能力選項使用。
  *
  * @category Changesets
  */
 export interface ChangesetCapabilities {
   /**
-   * The changeset supports the per-file **review** workflow. When declared,
-   * clients MAY surface a GitHub-style "Viewed" toggle per file and dispatch
-   * {@link ChangesetFilesReviewChangedAction | `changeset/filesReviewChanged`} to
-   * set each file's {@link ChangesetFile.reviewed} flag. Clients that omit
-   * handling MUST treat the changeset as non-reviewable.
+   * 此變更集支援每檔案的 **審核** 工作流程。宣告後，用戶端 MAY 對每個檔案
+   * 呈現 GitHub 風格的 "Viewed" 切換器，並分派
+   * {@link ChangesetFilesReviewChangedAction | `changeset/filesReviewChanged`}
+   * 來設定每個檔案的 {@link ChangesetFile.reviewed} 旗標。未處理此項的
+   * 用戶端 MUST 將此變更集視為不可審核。
    */
   review?: Record<string, never>;
 }
 
 /**
- * Computation lifecycle of a {@link ChangesetState}.
+ * {@link ChangesetState} 的運算生命週期。
  *
  * @category Changesets
  */
 export const enum ChangesetStatus {
-  /** The server is still computing the contents of this changeset. */
+  /** 伺服器仍在運算此變更集的內容。 */
   Computing = 'computing',
-  /** The changeset has been fully computed and is up-to-date. */
+  /** 此變更集已完整運算且為最新狀態。 */
   Ready = 'ready',
   /**
-   * Computation failed. The cause is described by
-   * {@link ChangesetState.error}.
+   * 運算失敗。原因由
+   * {@link ChangesetState.error} 描述。
    */
   Error = 'error',
 }
 
 /**
- * Full state for a single changeset, returned when a client subscribes to
- * an expanded changeset URI.
+ * 單一變更集的完整狀態，於用戶端訂閱展開後的變更集 URI 時回傳。
  *
- * The client already knows the URI it subscribed to, so this state does
- * not redundantly carry it (or the catalogue's `id`, `label`, etc.).
- * Aggregate counts (`additions`, `deletions`, `files`) are likewise
- * omitted: clients trivially compute them from `files[].edit.diff`.
+ * 用戶端已知其訂閱的 URI，因此此狀態不會冗餘地攜帶它（或目錄的
+ * `id`、`label` 等）。彙總計數（`additions`、`deletions`、`files`）
+ * 也同樣省略：用戶端可輕易地從 `files[].edit.diff` 計算它們。
  *
  * @category Changesets
  */
 export interface ChangesetState {
-  /** Computation lifecycle. */
+  /** 運算生命週期。 */
   status: ChangesetStatus;
-  /** Present iff `status === ChangesetStatus.Error`. */
+  /** 若且唯若 `status === ChangesetStatus.Error` 時存在。 */
   error?: ErrorInfo;
-  /** Files in this changeset, keyed by {@link ChangesetFile.id}. */
+  /** 此變更集中的檔案，以 {@link ChangesetFile.id} 為鍵。 */
   files: ChangesetFile[];
   /**
-   * Operations the client may invoke against this changeset. Omit when no
-   * operations are available.
+   * 用戶端可對此變更集叫用的操作。當沒有可用操作時省略。
    */
   operations?: ChangesetOperation[];
 }
 
 /**
- * One file entry within a {@link ChangesetState}.
+ * {@link ChangesetState} 內的單一檔案項目。
  *
  * @category Changesets
  */
 export interface ChangesetFile {
   /**
-   * Stable identifier within the changeset. Typically `after.uri`
-   * (or `before.uri` for deletions).
+   * 變更集內的穩定識別碼。通常為 `after.uri`
+   * （刪除時則為 `before.uri`）。
    */
   id: string;
   /**
-   * Reuses the existing {@link FileEdit} shape. Clients derive line
-   * additions, deletions, and rename/create/delete semantics from this.
+   * 重用既有的 {@link FileEdit} 形狀。用戶端從中推導出新增行、刪除行，
+   * 以及重新命名/建立/刪除的語意。
    */
   edit: FileEdit;
   /**
-   * Whether a reviewer has marked this file as reviewed (the GitHub-style
-   * "Viewed" checkbox). Absent is equivalent to `false` — clients MUST treat
-   * a missing value as not-yet-reviewed.
+   * 審核者是否已將此檔案標記為已審核（GitHub 風格的 "Viewed" 勾選框）。
+   * 不存在等同於 `false` — 用戶端 MUST 將缺少的值視為尚未審核。
    *
-   * Requires the changeset to advertise {@link ChangesetCapabilities.review}.
-   * Clients toggle it by dispatching
-   * {@link ChangesetFilesReviewChangedAction | `changeset/filesReviewChanged`};
-   * the server MAY also originate it (e.g. an agent self-reviewing its own
-   * output).
+   * 需要變更集公告 {@link ChangesetCapabilities.review}。用戶端透過分派
+   * {@link ChangesetFilesReviewChangedAction | `changeset/filesReviewChanged`}
+   * 來切換它；伺服器 MAY 也自行產生它（例如代理程式自我審核其自身的
+   * 輸出）。
    *
-   * There is no content version in the protocol, so review is **not** reset
-   * automatically when a file's contents change under a stable id. The server,
-   * which is the authority on what changed, resets review explicitly — either
-   * by re-emitting the file (via {@link ChangesetFileSetAction} or
-   * {@link ChangesetContentChangedAction}) without `reviewed: true`, or by
-   * dispatching `changeset/filesReviewChanged` with `reviewed: false`.
+   * 協定中沒有內容版本，因此當檔案內容在穩定識別碼下變更時，審核 **不會**
+   * 自動重設。伺服器是變更內容的權威者，會明確地重設審核 — 作法是
+   * 重新發出檔案（透過 {@link ChangesetFileSetAction} 或
+   * {@link ChangesetContentChangedAction}）而不帶 `reviewed: true`，或是
+   * 分派 `changeset/filesReviewChanged` 並帶 `reviewed: false`。
    */
   reviewed?: boolean;
   /**
-   * Server-defined opaque metadata, surfaced to operations and tooling
-   * but not interpreted by the protocol.
+   * 伺服器定義的不透明中繼資料，會呈現給操作與工具，
+   * 但不會由協定詮釋。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Execution lifecycle of a {@link ChangesetOperation}.
+ * {@link ChangesetOperation} 的執行生命週期。
  *
- * An operation is invoked imperatively via `invokeChangesetOperation`, but
- * its progress and outcome are reflected back into changeset state so that
- * every subscriber observes a consistent view (e.g. a spinner on a "Create
- * Pull Request" button, or an inline error after a failed "revert").
+ * 操作是透過 `invokeChangesetOperation` 命令式地叫用，但其進度與結果
+ * 會反映回變更集狀態，讓每個訂閱者都觀察到一致的檢視（例如
+ * "Create Pull Request" 按鈕上的旋轉圖示，或失敗 "revert" 後的內嵌錯誤）。
  *
  * @category Changesets
  */
 export const enum ChangesetOperationStatus {
   /**
-   * The operation is ready to be invoked. This is the default when
-   * {@link ChangesetOperation.status} is omitted.
+   * 此操作已就緒可被叫用。當 {@link ChangesetOperation.status} 省略時，
+   * 這是預設值。
    */
   Idle = 'idle',
-  /** An invocation of this operation is currently in flight. */
+  /** 此操作的叫用目前正在進行中。 */
   Running = 'running',
   /**
-   * The most recent invocation failed. The cause is described by
-   * {@link ChangesetOperation.error}.
+   * 最近一次叫用失敗。原因由
+   * {@link ChangesetOperation.error} 描述。
    */
   Error = 'error',
   /**
-   * The operation is currently disabled and cannot be invoked.
+   * 此操作目前已停用且無法被叫用。
    */
   Disabled = 'disabled',
 }
 
 /**
- * Where a {@link ChangesetOperation} can be invoked.
+ * {@link ChangesetOperation} 可被叫用的位置。
  *
  * @category Changesets
  */
 export const enum ChangesetOperationScope {
-  /** Applies to the whole changeset. */
+  /** 套用至整個變更集。 */
   Changeset = 'changeset',
-  /** Applies to a single file within the changeset. */
+  /** 套用至變更集內的單一檔案。 */
   Resource = 'resource',
-  /** Applies to a line range within a single file. */
+  /** 套用至單一檔案內的行範圍。 */
   Range = 'range',
 }
 
 /**
- * A server-declared invokable verb the client can run against a
- * changeset, a file, or a range — `"stage"`, `"revert"`, `"create-pr"`,
- * and so on.
+ * 伺服器宣告、用戶端可對變更集、檔案或範圍執行的可叫用動詞 —
+ * `"stage"`、`"revert"`、`"create-pr"` 等等。
  *
- * The term "operation" is used deliberately to avoid colliding with the
- * protocol-level [Actions](/guide/actions) that mutate state.
+ * 刻意使用「操作」一詞，以避免與協定層級中變動狀態的
+ * [操作](/guide/actions) 衝突。
  *
  * @category Changesets
  */
 export interface ChangesetOperation {
-  /** Stable identifier, unique within this changeset. */
+  /** 穩定識別碼，在此變更集內唯一。 */
   id: string;
-  /** Human-readable button/menu label. */
+  /** 人類可讀的按鈕/選單標籤。 */
   label: string;
-  /** Optional longer description shown on hover or in tooltips. */
+  /** 選用的較長描述，於滑鼠停留或工具提示時顯示。 */
   description?: string;
-  /** Where this operation can be invoked. */
+  /** 此操作可被叫用的位置。 */
   scopes: ChangesetOperationScope[];
   /**
-   * Optional confirmation prompt to show before invoking. When present,
-   * the client MUST display this message to the user (typically in a
-   * confirmation dialog) and only invoke the operation after the user
-   * accepts. The presence of this field also signals that the operation
-   * is destructive — clients SHOULD style the affirmative button
-   * accordingly (e.g. with a warning colour).
+   * 叫用前顯示的選用確認提示。存在時，用戶端 MUST 將此訊息顯示給
+   * 使用者（通常在確認對話框中），且僅在使用者接受後才叫用此操作。
+   * 此欄位的存在也表示此操作具破壞性 — 用戶端 SHOULD 據此為確認
+   * 按鈕套用樣式（例如使用警告色彩）。
    */
   confirmation?: StringOrMarkdown;
-  /** Optional generic icon hint, e.g. `"check"`, `"trash"`. */
+  /** 選用的通用圖示提示，例如 `"check"`、`"trash"`。 */
   icon?: string;
-  /** Optional group identifier, used to group related operations together. */
+  /** 選用的群組識別碼，用於將相關操作分組在一起。 */
   group?: string;
   /**
-   * Current execution status. The server sets
-   * {@link ChangesetOperationStatus.Running | Running} while an invocation
-   * is in flight, {@link ChangesetOperationStatus.Error | Error} when the
-   * most recent invocation failed, and
-   * {@link ChangesetOperationStatus.Idle | Idle} otherwise.
+   * 目前的執行狀態。當叫用正在進行時，伺服器會設定為
+   * {@link ChangesetOperationStatus.Running | Running}；當最近一次叫用
+   * 失敗時設為 {@link ChangesetOperationStatus.Error | Error}；其餘情況
+   * 設為 {@link ChangesetOperationStatus.Idle | Idle}。
    *
-   * Clients SHOULD reflect this state in the UI — e.g. disabling the
-   * control or showing a spinner while `Running`, and surfacing
-   * {@link error} while `Error`.
+   * 用戶端 SHOULD 在 UI 中反映此狀態 — 例如在 `Running` 時停用控制項
+   * 或顯示旋轉圖示，並在 `Error` 時呈現 {@link error}。
    */
   status: ChangesetOperationStatus;
   /**
-   * Cause of failure. Present iff
-   * `status === ChangesetOperationStatus.Error`; otherwise omitted.
+   * 失敗原因。若且唯若
+   * `status === ChangesetOperationStatus.Error` 時存在；否則省略。
    */
   error?: ErrorInfo;
 }

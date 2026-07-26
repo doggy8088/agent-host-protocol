@@ -1,5 +1,5 @@
 /**
- * Version Registry — Maps action types and features to protocol versions.
+ * 版本登錄 — 將操作類型與功能對應至協定版本。
  *
  * @module version/registry
  */
@@ -11,27 +11,26 @@ import type { ServerNotificationMap } from '../messages.js';
 // ─── Protocol Version Constants ──────────────────────────────────────────────
 
 /**
- * The current protocol version that new code speaks.
+ * 新程式碼所使用的目前協定版本。
  *
- * Formatted as a [SemVer](https://semver.org) `MAJOR.MINOR.PATCH` string.
+ * 格式為 [SemVer](https://semver.org) `MAJOR.MINOR.PATCH` 字串。
  */
 export const PROTOCOL_VERSION = '0.7.0';
 
 /**
- * Every protocol version a client built from this source tree is willing
- * to negotiate via the `initialize` handshake. Ordered **most preferred
- * first** so a server picking the first acceptable entry honors the
- * client's preference (see [versioning](../../docs/specification/versioning.md)).
+ * 從此原始碼樹建置的用戶端願意透過 `initialize` 握手協商的
+ * 每個協定版本。依**最偏好者在前**排序，讓挑選第一個可接受
+ * 項目的伺服器能遵循用戶端的偏好（見
+ * [versioning](../../docs/specification/versioning.md)）。
  *
- * The first entry MUST equal {@link PROTOCOL_VERSION} — the version
- * "new code speaks" is by definition the most preferred one. Older
- * versions may be appended if a client retains the ability to fall back
- * to them; today only one version is advertised.
+ * 第一個項目 MUST 等於 {@link PROTOCOL_VERSION}——「新程式碼
+ * 所使用」的版本依定義即為最偏好者。若用戶端保留回退至舊
+ * 版本的能力，則可附加舊版本；目前僅公告一個版本。
  *
- * Every generated client (Rust, Kotlin, Swift) re-exports this constant
- * verbatim. The TypeScript client consumes it directly. The per-client
- * `release-metadata.json` files are validated against this list by
- * `scripts/verify-release-metadata.ts`.
+ * 每個產生的用戶端（Rust、Kotlin、Swift）原樣重新匯出此常數。
+ * TypeScript 用戶端直接取用它。各用戶端的
+ * `release-metadata.json` 檔案由 `scripts/verify-release-metadata.ts`
+ * 對照此清單驗證。
  */
 export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = Object.freeze([
   '0.7.0',
@@ -43,11 +42,11 @@ export const SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = Object.freeze([
 // ─── SemVer Comparison ───────────────────────────────────────────────────────
 
 /**
- * Parses a `MAJOR.MINOR.PATCH` SemVer string into its three numeric
- * components. Pre-release and build metadata are not supported and MUST NOT
- * be present in protocol version strings.
+ * 將 `MAJOR.MINOR.PATCH` SemVer 字串解析為其三個數值組成。
+ * 不支援 pre-release 與 build metadata，且 MUST NOT 出現於協定
+ * 版本字串中。
  *
- * Throws if `version` is not a well-formed `MAJOR.MINOR.PATCH` string.
+ * 若 `version` 不是格式正確的 `MAJOR.MINOR.PATCH` 字串則擲回。
  */
 function parseSemver(version: string): readonly [number, number, number] {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
@@ -58,10 +57,10 @@ function parseSemver(version: string): readonly [number, number, number] {
 }
 
 /**
- * Compares two `MAJOR.MINOR.PATCH` SemVer strings.
+ * 比較兩個 `MAJOR.MINOR.PATCH` SemVer 字串。
  *
- * Returns a negative number if `a < b`, zero if `a === b`, and a positive
- * number if `a > b`.
+ * 若 `a < b` 則回傳負數，若 `a === b` 則回傳零，若 `a > b` 則
+ * 回傳正數。
  */
 export function compareProtocolVersions(a: string, b: string): number {
   const [aMajor, aMinor, aPatch] = parseSemver(a);
@@ -72,10 +71,10 @@ export function compareProtocolVersions(a: string, b: string): number {
 // ─── Exhaustive Action → Version Map ─────────────────────────────────────────
 
 /**
- * Maps every action type to the protocol version that introduced it.
- * Adding a new action to `StateAction` without adding it here is a compile error.
+ * 將每個操作類型對應至引入它的協定版本。
+ * 將新操作加入 `StateAction` 但未加入此處是編譯錯誤。
  *
- * Versions are SemVer `MAJOR.MINOR.PATCH` strings (see `PROTOCOL_VERSION`).
+ * 版本為 SemVer `MAJOR.MINOR.PATCH` 字串（見 `PROTOCOL_VERSION`）。
  */
 export const ACTION_INTRODUCED_IN: { readonly [K in StateAction['type']]: string } = {
   [ActionType.RootAgentsChanged]: '0.1.0',
@@ -166,7 +165,7 @@ export const ACTION_INTRODUCED_IN: { readonly [K in StateAction['type']]: string
 };
 
 /**
- * Returns whether the given action type is known to the specified protocol version.
+ * 回傳給定的操作類型是否為指定的協定版本所知。
  */
 export function isActionKnownToVersion(action: StateAction, clientVersion: string): boolean {
   return compareProtocolVersions(ACTION_INTRODUCED_IN[action.type], clientVersion) <= 0;
@@ -175,19 +174,18 @@ export function isActionKnownToVersion(action: StateAction, clientVersion: strin
 // ─── Exhaustive Notification Method → Version Map ──────────────────────────
 
 /**
- * Server → client notification method names that are part of the AHP
- * protocol surface. The set is a subset of {@link ServerNotificationMap}
- * keys that excludes `action` (the action envelope) since action versions
- * are tracked via {@link ACTION_INTRODUCED_IN}.
+ * 屬於 AHP 協定表面的伺服器 → 用戶端通知方法名稱。此集合為
+ * {@link ServerNotificationMap} 鍵的子集，排除 `action`（操作
+ * 信封），因為操作版本透過 {@link ACTION_INTRODUCED_IN} 追蹤。
  */
 export type ProtocolNotificationMethod = Exclude<keyof ServerNotificationMap, 'action'>;
 
 /**
- * Maps every server → client protocol notification method to the protocol
- * version that introduced it. Adding a new notification method to
- * {@link ServerNotificationMap} without adding it here is a compile error.
+ * 將每個伺服器 → 用戶端協定通知方法對應至引入它的協定版本。
+ * 將新通知方法加入 {@link ServerNotificationMap} 但未加入此處
+ * 是編譯錯誤。
  *
- * Versions are SemVer `MAJOR.MINOR.PATCH` strings (see `PROTOCOL_VERSION`).
+ * 版本為 SemVer `MAJOR.MINOR.PATCH` 字串（見 `PROTOCOL_VERSION`）。
  */
 export const NOTIFICATION_INTRODUCED_IN: { readonly [K in ProtocolNotificationMethod]: string } = {
   'root/sessionAdded': '0.1.0',
@@ -201,8 +199,7 @@ export const NOTIFICATION_INTRODUCED_IN: { readonly [K in ProtocolNotificationMe
 };
 
 /**
- * Returns whether the given notification method is known to the specified
- * protocol version.
+ * 回傳給定的通知方法是否為指定的協定版本所知。
  */
 export function isNotificationKnownToVersion(method: ProtocolNotificationMethod, clientVersion: string): boolean {
   return compareProtocolVersions(NOTIFICATION_INTRODUCED_IN[method], clientVersion) <= 0;

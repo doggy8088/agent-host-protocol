@@ -1,10 +1,9 @@
 /**
- * Message Types — Fully typed JSON-RPC message definitions for the AHP wire protocol.
+ * 訊息類型 — AHP 線路協定的完整型別化 JSON-RPC 訊息定義。
  *
  * @module common/messages
- * @description Typed JSON-RPC request, response, and notification types for all
- * AHP methods. Narrowing on the `method` field gives fully typed `params` and
- * result types.
+ * @description 為所有 AHP 方法提供型別化的 JSON-RPC 請求、回應與通知類型。
+ * 對 `method` 欄位縮窄即可得到完整型別化的 `params` 與 result 類型。
  */
 
 import type {
@@ -88,7 +87,7 @@ import type { AhpError } from './errors.js';
 
 // ─── JSON-RPC Base Types ─────────────────────────────────────────────────────
 
-/** A JSON-RPC request: has both `method` and `id`. */
+/** JSON-RPC 請求：同時具有 `method` 與 `id`。 */
 export interface JsonRpcRequest {
   readonly jsonrpc: '2.0';
   readonly id: number;
@@ -96,14 +95,14 @@ export interface JsonRpcRequest {
   readonly params?: unknown;
 }
 
-/** A JSON-RPC success response. */
+/** JSON-RPC 成功回應。 */
 export interface JsonRpcSuccessResponse {
   readonly jsonrpc: '2.0';
   readonly id: number;
   readonly result: unknown;
 }
 
-/** A JSON-RPC error response. */
+/** JSON-RPC 錯誤回應。 */
 export interface JsonRpcErrorResponse {
   readonly jsonrpc: '2.0';
   readonly id: number;
@@ -115,9 +114,9 @@ export interface JsonRpcErrorResponse {
 }
 
 /**
- * A typed JSON-RPC error response whose error object is a fully typed
- * {@link AhpError}. Useful when the caller knows the response is an AHP
- * application error and wants `data` narrowed by `code`.
+ * 一個型別化的 JSON-RPC 錯誤回應，其錯誤物件為完整型別化的
+ * {@link AhpError}。當呼叫端知道該回應是 AHP 應用錯誤，且希望 `data` 依
+ * `code` 縮窄時，此型別相當實用。
  */
 export interface AhpErrorResponse {
   readonly jsonrpc: '2.0';
@@ -125,10 +124,10 @@ export interface AhpErrorResponse {
   readonly error: AhpError;
 }
 
-/** A JSON-RPC response (success or error). */
+/** JSON-RPC 回應（成功或錯誤）。 */
 export type JsonRpcResponse = JsonRpcSuccessResponse | JsonRpcErrorResponse;
 
-/** A JSON-RPC notification: has `method` but no `id`. */
+/** JSON-RPC 通知：具有 `method` 但沒有 `id`。 */
 export interface JsonRpcNotification {
   readonly jsonrpc: '2.0';
   readonly method: string;
@@ -138,11 +137,10 @@ export interface JsonRpcNotification {
 // ─── Command Map ─────────────────────────────────────────────────────────────
 
 /**
- * Registry mapping each command method name to its params and result types.
+ * 將每個指令 method 名稱對應到其 params 與 result 類型的登錄。
  *
- * `CommandMap` covers methods that the client sends to the server. Methods
- * that may also be initiated by the server are duplicated in
- * {@link ServerCommandMap}; the entries in the two maps are kept identical.
+ * `CommandMap` 涵蓋由用戶端傳送給伺服器的 method。也可能由伺服器發起的
+ * method 會重複出現在 {@link ServerCommandMap} 中；兩份對應中的項目保持一致。
  *
  * @category Commands
  */
@@ -177,16 +175,13 @@ export interface CommandMap {
 }
 
 /**
- * Registry mapping each server → client request method to its params and
- * result types.
+ * 將每個伺服器 → 用戶端請求 method 對應到其 params 與 result 類型的登錄。
  *
- * The `resource*` family is symmetrical: every method that appears in
- * {@link CommandMap} also appears here with the identical params/result
- * shape, and the receiver decides whether to allow, deny, or prompt for
- * the requested operation regardless of which peer initiated. Hosts use
- * the reverse direction to read from client-published URIs (e.g.
- * `virtual://my-client/...` plugins) and to drive per-session filesystem
- * providers without the client having to re-implement the wire schema.
+ * `resource*` 家族是對稱的：每個出現在 {@link CommandMap} 中的 method 也會
+ * 以相同的 params／result 形狀出現在此處，而無論由哪一端發起，接收端都會決定
+ * 要允許、拒絕或針對所請求的操作提示使用者。主機使用反向方向來讀取用戶端發佈的
+ * URI（例如 `virtual://my-client/...` 外掛），並驅動各工作階段的檔案系統提供者，
+ * 而用戶端無需重新實作線路結構描述。
  *
  * @category Commands
  */
@@ -206,11 +201,10 @@ export interface ServerCommandMap {
 // ─── Notification Maps ───────────────────────────────────────────────────────
 
 /**
- * Registry mapping each client → server notification method to its params type.
+ * 將每個用戶端 → 伺服器通知 method 對應到其 params 類型的登錄。
  *
- * Every notification's params MUST carry a top-level `channel: URI` so that
- * the server can route the message to the correct subscription. See
- * {@link UnsubscribeParams} for the canonical "base" shape.
+ * 每個通知的 params MUST 帶有頂層的 `channel: URI`，以便伺服器能將訊息路由到
+ * 正確的訂閱。關於標準的「基底」形狀，請參見 {@link UnsubscribeParams}。
  *
  * @category Notifications
  */
@@ -220,10 +214,10 @@ export interface ClientNotificationMap {
 }
 
 /**
- * Registry mapping each server → client notification method to its params type.
+ * 將每個伺服器 → 用戶端通知 method 對應到其 params 類型的登錄。
  *
- * Every notification's params MUST carry a top-level `channel: URI` so that
- * the client can dispatch the message to the right subscription.
+ * 每個通知的 params MUST 帶有頂層的 `channel: URI`，以便用戶端能將訊息分派到
+ * 正確的訂閱。
  *
  * @category Notifications
  */
@@ -242,9 +236,9 @@ export interface ServerNotificationMap {
 // ─── Typed Requests ──────────────────────────────────────────────────────────
 
 /**
- * A fully typed JSON-RPC request for a specific AHP command.
+ * 針對特定 AHP 指令的完整型別化 JSON-RPC 請求。
  *
- * When used as a union (default generic), narrowing on `method` gives typed `params`:
+ * 當作為聯集使用時（預設泛型），對 `method` 縮窄即可得到型別化的 `params`：
  *
  * ```ts
  * function handle(req: AhpRequest) {
@@ -254,8 +248,8 @@ export interface ServerNotificationMap {
  * }
  * ```
  *
- * Defaults to client → server requests ({@link CommandMap}). Use
- * {@link AhpServerRequest} for server → client requests.
+ * 預設為用戶端 → 伺服器請求（{@link CommandMap}）。請使用
+ * {@link AhpServerRequest} 來處理伺服器 → 用戶端請求。
  */
 export type AhpRequest<M extends keyof CommandMap = keyof CommandMap> =
   M extends unknown ? {
@@ -266,8 +260,8 @@ export type AhpRequest<M extends keyof CommandMap = keyof CommandMap> =
   } : never;
 
 /**
- * A fully typed JSON-RPC request initiated by the server. Identical in shape
- * to {@link AhpRequest} but parameterised over {@link ServerCommandMap}.
+ * 由伺服器發起的完整型別化 JSON-RPC 請求。形狀與 {@link AhpRequest} 相同，
+ * 但以 {@link ServerCommandMap} 參數化。
  */
 export type AhpServerRequest<M extends keyof ServerCommandMap = keyof ServerCommandMap> =
   M extends unknown ? {
@@ -280,10 +274,10 @@ export type AhpServerRequest<M extends keyof ServerCommandMap = keyof ServerComm
 // ─── Typed Responses ─────────────────────────────────────────────────────────
 
 /**
- * A fully typed JSON-RPC success response for a specific AHP command.
+ * 針對特定 AHP 指令的完整型別化 JSON-RPC 成功回應。
  *
- * Since JSON-RPC responses do not carry `method`, use this with an explicit
- * generic parameter when you know the method from the associated request:
+ * 由於 JSON-RPC 回應不帶有 `method`，當您從關聯的請求得知 method 時，
+ * 請搭配明確的泛型參數使用此型別：
  *
  * ```ts
  * const result: AhpSuccessResponse<'listSessions'> = ...;
@@ -297,14 +291,14 @@ export type AhpSuccessResponse<M extends keyof CommandMap = keyof CommandMap> =
     readonly result: CommandMap[M]['result'];
   } : never;
 
-/** Typed JSON-RPC response (success with known result type, or error). */
+/** 型別化的 JSON-RPC 回應（帶有已知 result 類型的成功回應，或錯誤回應）。 */
 export type AhpResponse<M extends keyof CommandMap = keyof CommandMap> =
   | AhpSuccessResponse<M>
   | JsonRpcErrorResponse;
 
 /**
- * A fully typed JSON-RPC success response for a server → client request
- * ({@link ServerCommandMap}).
+ * 針對伺服器 → 用戶端請求（{@link ServerCommandMap}）的完整型別化
+ * JSON-RPC 成功回應。
  */
 export type AhpServerSuccessResponse<M extends keyof ServerCommandMap = keyof ServerCommandMap> =
   M extends unknown ? {
@@ -313,14 +307,14 @@ export type AhpServerSuccessResponse<M extends keyof ServerCommandMap = keyof Se
     readonly result: ServerCommandMap[M]['result'];
   } : never;
 
-/** Typed JSON-RPC response to a server → client request. */
+/** 針對伺服器 → 用戶端請求的型別化 JSON-RPC 回應。 */
 export type AhpServerResponse<M extends keyof ServerCommandMap = keyof ServerCommandMap> =
   | AhpServerSuccessResponse<M>
   | JsonRpcErrorResponse;
 
 // ─── Typed Notifications ─────────────────────────────────────────────────────
 
-/** A client → server notification. */
+/** 用戶端 → 伺服器通知。 */
 export type AhpClientNotification<M extends keyof ClientNotificationMap = keyof ClientNotificationMap> =
   M extends unknown ? {
     readonly jsonrpc: '2.0';
@@ -328,7 +322,7 @@ export type AhpClientNotification<M extends keyof ClientNotificationMap = keyof 
     readonly params: ClientNotificationMap[M]['params'];
   } : never;
 
-/** A server → client notification. */
+/** 伺服器 → 用戶端通知。 */
 export type AhpServerNotification<M extends keyof ServerNotificationMap = keyof ServerNotificationMap> =
   M extends unknown ? {
     readonly jsonrpc: '2.0';
@@ -337,25 +331,25 @@ export type AhpServerNotification<M extends keyof ServerNotificationMap = keyof 
   } : never;
 
 /**
- * A fully typed JSON-RPC notification — either direction.
+ * 完整型別化的 JSON-RPC 通知 — 任一方向皆可。
  *
- * The client → server `dispatchAction` method and the server → client
- * `action` method are distinct entries in the registries; their params have
- * unrelated shapes ({@link DispatchActionParams} vs {@link ActionEnvelope}).
+ * 用戶端 → 伺服器的 `dispatchAction` method 與伺服器 → 用戶端的
+ * `action` method 是登錄中兩個不同的項目；其 params 具有不相關的形狀
+ *（{@link DispatchActionParams} 與 {@link ActionEnvelope}）。
  */
 export type AhpNotification = AhpClientNotification | AhpServerNotification;
 
 // ─── Protocol Message Union ──────────────────────────────────────────────────
 
 /**
- * Discriminated union of all AHP protocol messages.
+ * 所有 AHP 協定訊息的判別聯集。
  *
- * Narrow using standard JSON-RPC structure:
- * - Has `method` + `id` → request ({@link AhpRequest} or {@link AhpServerRequest})
- * - Has `method`, no `id` → notification ({@link AhpNotification})
- * - Has `result` or `error` + `id` → response ({@link AhpResponse})
+ * 使用標準 JSON-RPC 結構來縮窄：
+ * - 帶有 `method` + `id` → 請求（{@link AhpRequest} 或 {@link AhpServerRequest}）
+ * - 帶有 `method`、無 `id` → 通知（{@link AhpNotification}）
+ * - 帶有 `result` 或 `error` + `id` → 回應（{@link AhpResponse}）
  *
- * Then narrow on `method` for fully typed params:
+ * 接著對 `method` 縮窄以取得完整型別化的 params：
  *
  * ```ts
  * function dispatch(msg: ProtocolMessage) {

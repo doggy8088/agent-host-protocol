@@ -1,5 +1,5 @@
 /**
- * Session State Types — Per-session coordination state exposed on `ahp-session:` channels.
+ * 工作階段狀態類型 — 在 `ahp-session:` 通道上公開的每個工作階段協調狀態。
  *
  * @module channels-session/state
  */
@@ -25,7 +25,7 @@ import type {
 // ─── Session State ───────────────────────────────────────────────────────────
 
 /**
- * Session initialization state.
+ * 工作階段初始化狀態。
  *
  * @category Session State
  */
@@ -36,194 +36,178 @@ export const enum SessionLifecycle {
 }
 
 /**
- * Bitset of summary-level session status flags.
+ * 摘要層級工作階段狀態旗標的位元集。
  *
- * Use bitwise checks instead of equality for non-terminal activity. For example,
- * `status & SessionStatus.InProgress` matches both ordinary in-progress turns
- * and turns that are paused waiting for input.
+ * 對非終結活動使用位元檢查而非相等性檢查。例如，
+ * `status & SessionStatus.InProgress` 同時比對普通的進行中回合與
+ * 暫停等待輸入的回合。
  *
  * @category Session State
  */
 export const enum SessionStatus {
-  /** Session is idle — no turn is active. */
+  /** 工作階段閒置 — 沒有進行中的回合。 */
   Idle = 1,
-  /** Session ended with an error. */
+  /** 工作階段以錯誤結束。 */
   Error = 1 << 1,
-  /** A turn is actively streaming. */
+  /** 回合正在串流。 */
   InProgress = 1 << 3,
-  /** A turn is in progress but blocked waiting for user input or tool confirmation. */
+  /** 回合進行中但因等待使用者輸入或工具確認而阻塞。 */
   InputNeeded = (1 << 3) | (1 << 4),
-  /** The client has viewed this session since its last modification. */
+  /** 用戶端自上次修改後已檢視此工作階段。 */
   IsRead = 1 << 5,
-  /** The session has been archived by the client. */
+  /** 工作階段已被用戶端封存。 */
   IsArchived = 1 << 6,
 }
 
 /**
- * Metadata shared between the full {@link SessionState} (delivered when a
- * client subscribes to a session's URI) and the lightweight
- * {@link SessionSummary} (carried in the root-channel session catalog).
+ * 完整 {@link SessionState}（當用戶端訂閱工作階段 URI 時傳遞）與輕量級
+ * {@link SessionSummary}（承載於根通道工作階段目錄中）之間共用的中繼
+ * 資料。
  *
- * These fields describe the session at a glance and appear in both places.
- * `SessionState` owns the authoritative values for a subscribed session;
- * `SessionSummary` mirrors them into the catalog so clients that only render a
- * session list don't have to subscribe to every session URI. The host keeps
- * the catalog in sync via `root/sessionSummaryChanged`.
+ * 這些欄位一覽地描述工作階段，且同時出現於兩處。
+ * `SessionState` 擁有已訂閱工作階段的權威值；
+ * `SessionSummary` 將其鏡射至目錄中，讓僅呈現工作階段清單的用戶端不必
+ * 訂閱每個工作階段 URI。主機透過 `root/sessionSummaryChanged` 保持目錄
+ * 同步。
  *
  * @category Session State
  */
 export interface SessionMetadata {
-  /** Agent provider ID */
+  /** 代理程式提供者 ID */
   provider: string;
-  /** Session title */
+  /** 工作階段標題 */
   title: string;
-  /** Current session status */
+  /** 目前工作階段狀態 */
   status: SessionStatus;
-  /** Human-readable description of what the session is currently doing */
+  /** 工作階段目前正在做什麼的人類可讀描述 */
   activity?: string;
-  /** Server-owned project for this session */
+  /** 此工作階段的伺服器擁有專案 */
   project?: ProjectInfo;
   /**
-   * The working directories the session's agent has tool access to, as
-   * maintained by the `session/workingDirectorySet` /
-   * `session/workingDirectoryRemoved` actions. Directories are **equal peers** —
-   * the session has no primary. Individual chats MAY restrict to a subset via
-   * {@link ChatSummary.workingDirectories | their own `workingDirectories`} and
-   * designate one of their own directories as primary (see
-   * {@link ChatState.primaryWorkingDirectory}); a chat that sets no subset
-   * operates against this full set.
+   * 工作階段代理程式具有工具存取權的工作目錄，由
+   * `session/workingDirectorySet` / `session/workingDirectoryRemoved` 操作
+   * 維護。目錄為**平等的同儕** — 工作階段沒有主要目錄。個別聊天 MAY
+   * 透過 {@link ChatSummary.workingDirectories | 其自身的 `workingDirectories`} 限制為子集，並將其自身的某個目錄指定為主要目錄（見
+   * {@link ChatState.primaryWorkingDirectory}）；未設定子集的聊天會對此完整集合運作。
    */
   workingDirectories?: URI[];
   /**
-   * Lightweight summary of this session's inline annotations channel
-   * (`ahp-session:/<uuid>/annotations`). Surfaced so badge UI can render
-   * annotation / entry counts without subscribing. Absent when the session
-   * does not expose an annotations channel.
+   * 此工作階段內嵌註解通道（`ahp-session:/<uuid>/annotations`）的
+   * 輕量級摘要。公開以便徽章 UI 無需訂閱即可呈現註解/項目計數。
+   * 當工作階段未公開註解通道時不存在。
    */
   annotations?: AnnotationsSummary;
 }
 
 /**
- * Full state for a single session, loaded when a client subscribes to the session's URI.
+ * 單一工作階段的完整狀態，當用戶端訂閱工作階段 URI 時載入。
  *
- * Inlines (denormalizes) every {@link SessionMetadata} field directly onto
- * itself so subscribers receive one flat object instead of a nested summary.
- * The lightweight catalog representation is {@link SessionSummary}, surfaced on
- * the root channel; the host keeps the two in sync via
- * `root/sessionSummaryChanged`.
+ * 將每個 {@link SessionMetadata} 欄位直接內嵌（反正規化）至自身，讓
+ * 訂閱者收到一個扁平物件而非巢狀摘要。輕量級目錄表示法為
+ * {@link SessionSummary}，公開於根通道；主機透過
+ * `root/sessionSummaryChanged` 保持兩者同步。
  *
  * @category Session State
  */
 export interface SessionState extends SessionMetadata {
-  /** Session initialization state */
+  /** 工作階段初始化狀態 */
   lifecycle: SessionLifecycle;
-  /** Error details if creation failed */
+  /** 建立失敗時的錯誤詳細資訊 */
   creationError?: ErrorInfo;
-  /** Tools provided by the server (agent host) for this session */
+  /** 伺服器（代理主機）為此工作階段提供的工具 */
   serverTools?: ToolDefinition[];
   /**
-   * The clients currently providing tools and interactive capabilities to this
-   * session. If multiple tools or customizations are provided by the same
-   * active client, an agent host MAY deduplicate them when exposed to a model,
-   * with a preference given to the client that started the turn.
+   * 目前為此工作階段提供工具與互動能力的用戶端。若同一作用中用戶端
+   * 提供多個工具或自訂，代理主機 MAY 在公開給模型時對其去重，並優先
+   * 採用起始回合的用戶端。
    *
-   * Membership is host-managed: clients add (or refresh) themselves with
-   * `session/activeClientSet`, and the host removes them with
-   * `session/activeClientRemoved` when they unsubscribe, disconnect without
-   * reconnecting in time, or reconnect without resubscribing to the session.
+   * 成員資格由主機管理：用戶端以 `session/activeClientSet` 新增（或重新
+   * 整理）自身，且主機在其取消訂閱、未及時重新連線的斷線，或重新連線
+   * 但未重新訂閱工作階段時，以 `session/activeClientRemoved` 移除它們。
    */
   activeClients: SessionActiveClient[];
-  /** Catalog of chats in this session. */
+  /** 此工作階段中的聊天目錄。 */
   chats: ChatSummary[];
   /**
-   * The chat that receives input when the user addresses the session without
-   * selecting a specific chat. This is a UI routing hint, not a hierarchy
-   * marker — chats remain equal peers at the protocol level. Hosts MAY change
-   * this over the session's lifetime.
+   * 當使用者在不選取特定聊天的情況下對工作階段發話時，接收輸入的
+   * 聊天。這是 UI 路由提示，而非階層標記 — 在協定層級聊天仍是平等的
+   * 同儕。主機 MAY 在工作階段生命週期中變更此值。
    */
   defaultChat?: URI;
-  /** Session configuration schema and current values */
+  /** 工作階段設定綱要與目前值 */
   config?: SessionConfigState;
   /**
-   * Top-level customizations active in this session.
+   * 此工作階段中作用中的頂層自訂。
    *
-   * Always one of the {@link Customization} variants:
+   * 永遠是 {@link Customization} 變體之一：
    *
-   * - Container customizations ({@link PluginCustomization},
-   *   {@link DirectoryCustomization}) whose children — agents, skills,
-   *   prompts, rules, hooks, MCP servers — live in each container's
-   *   {@link ContainerCustomizationBase.children | `children`} array.
-   * - Top-level {@link McpServerCustomization} entries the host
-   *   surfaces directly (for example a globally-configured MCP server
-   *   that isn't bundled in a plugin or directory). MCP servers may
-   *   also appear as children of a container.
+   * - 容器自訂（{@link PluginCustomization}、
+   *   {@link DirectoryCustomization}），其子項 — 代理程式、技能、
+   *   提示、規則、掛鉤、MCP 伺服器 — 存在於每個容器的
+   *   {@link ContainerCustomizationBase.children | `children`} 陣列中。
+   * - 主機直接公開的頂層 {@link McpServerCustomization} 項目（例如
+   *   全域設定的 MCP 伺服器，未隨附於外掛或目錄中）。MCP 伺服器也可
+   *   作為容器的子項出現。
    *
-   * Client-published plugins arrive via
+   * 用戶端發布的外掛透過
    * {@link SessionActiveClient.customizations | `activeClients[].customizations`}
-   * and the host propagates them into this list (typically with the
-   * container's `clientId` set and `children` populated). Clients
-   * publish in container shape only; bare MCP servers at the top level
-   * are server-originated.
+   * 抵達，主機將其傳播至此清單（通常會設定容器的 `clientId` 並填入
+   * `children`）。用戶端僅以容器形式發布；頂層的單獨 MCP 伺服器為
+   * 伺服器發起。
    */
   customizations?: Customization[];
   /**
-   * Catalogue of changesets the server can produce for this session. Each
-   * entry advertises a subscribable view of file changes (uncommitted,
-   * session-wide, per-turn, etc.) and the URI template the client expands
-   * before subscribing. See {@link Changeset} for the full shape and
-   * {@link /guide/changesets | Changesets} for an overview of the model.
+   * 伺服器可為此工作階段產生的變更集目錄。每個項目通告一個可訂閱的
+   * 檔案變更檢視（未提交、工作階段範圍、每回合等）以及用戶端在訂閱前
+   * 展開的 URI 範本。完整形狀見 {@link Changeset}，模型概覽見
+   * {@link /guide/changesets | Changesets}。
    */
   changesets?: Changeset[];
   /**
-   * Outstanding input the session is blocked on, aggregated across every chat
-   * so a client can discover and answer it from the session channel alone,
-   * without subscribing to individual chats.
+   * 工作階段受阻的待處理輸入，跨每個聊天彙總，讓用戶端能單從工作
+   * 階段通道發現並回答，而無需訂閱個別聊天。
    *
-   * Each entry is self-sufficient: it carries the owning chat's URI plus every
-   * identifier the client needs to respond. A client answers by dispatching the
-   * ordinary `chat/*` action to that chat's channel — see
-   * {@link SessionInputRequest} for the per-variant response path. A present,
-   * non-empty list implies {@link SessionStatus.InputNeeded} on
-   * {@link SessionSummary.status}.
+   * 每個項目皆自足：它承載擁有聊天的 URI 加上用戶端回應所需的所有
+   * 識別碼。用戶端透過將普通的 `chat/*` 操作分派至該聊天的通道來回答
+   * — 各變體的回應路徑見 {@link SessionInputRequest}。存在且非空的
+   * 清單隱含 {@link SessionSummary.status} 上的
+   * {@link SessionStatus.InputNeeded}。
    *
-   * Host-managed: the host upserts entries with `session/inputNeededSet` as
-   * chats raise requests and removes them with `session/inputNeededRemoved`
-   * once the underlying request resolves.
+   * 主機管理：主機以 `session/inputNeededSet` 在聊天提出請求時 upsert
+   * 項目，並在底層請求解決後以 `session/inputNeededRemoved` 移除它們。
    */
   inputNeeded?: SessionInputRequest[];
   /**
-   * Additional provider-specific metadata for this session.
+   * 此工作階段的額外提供者特定中繼資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI.
-   * For example, a `git` key may provide extra git metadata about the session's
-   * working directories.
+   * 用戶端 MAY 在此尋找知名鍵以提供增強的 UI。例如，`git` 鍵可提供
+   * 關於工作階段工作目錄的額外 git 中繼資料。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * A client currently providing tools and interactive capabilities to a session.
+ * 目前為工作階段提供工具與互動能力的用戶端。
  *
- * A session MAY have several active clients at once; entries in
- * {@link SessionState.activeClients} are keyed by `clientId`. The server SHOULD
- * automatically remove an active client when that client disconnects.
+ * 一個工作階段 MAY 同時有多個作用中用戶端；{@link SessionState.activeClients}
+ * 中的項目以 `clientId` 為鍵。伺服器 SHOULD 在該用戶端斷線時自動移除
+ * 作用中用戶端。
  *
  * @category Session State
  */
 export interface SessionActiveClient {
-  /** Client identifier (matches `clientId` from `initialize`) */
+  /** 用戶端識別碼（與 `initialize` 中的 `clientId` 相符） */
   clientId: string;
-  /** Human-readable client name (e.g. `"VS Code"`) */
+  /** 人類可讀的用戶端名稱（例如 `"VS Code"`） */
   displayName?: string;
-  /** Tools this client provides to the session */
+  /** 此用戶端為工作階段提供的工具 */
   tools: ToolDefinition[];
   /**
-   * Plugin customizations this client contributes to the session.
+   * 此用戶端為工作階段貢獻的外掛自訂。
    *
-   * Clients publish in [Open Plugins](https://open-plugins.com/) format
-   * — i.e. always container-shaped plugins. They MAY synthesize virtual
-   * plugins in memory and rely on the host to expand them into concrete
-   * children inside {@link SessionState.customizations}.
+   * 用戶端以 [Open Plugins](https://open-plugins.com/) 格式發布 — 即
+   * 永遠為容器形式的外掛。它們 MAY 在記憶體中合成虛擬外掛，並依賴
+   * 主機將其展開為 {@link SessionState.customizations} 內的具體子項。
    */
   customizations?: ClientPluginCustomization[];
 }
@@ -231,153 +215,148 @@ export interface SessionActiveClient {
 // ─── Session Input Requests ──────────────────────────────────────────────────
 
 /**
- * Discriminant for the kinds of outstanding input a session can surface in
- * {@link SessionState.inputNeeded}.
+ * 工作階段可在 {@link SessionState.inputNeeded} 中公開之待處理輸入種類的
+ * 判別欄位。
  *
- * This is a general/typological union (not a lifecycle), so the discriminant is
- * a `*Kind`.
+ * 這是一般/分類型聯集（非生命週期），因此判別欄位為
+ * `*Kind`。
  *
  * @category Session Input Types
  */
 export const enum SessionInputRequestKind {
-  /** A user-facing elicitation mirrored from an unresolved chat response part. */
+  /** 從未解決聊天回應部分鏡射而來的面向使用者引出。 */
   ChatInput = 'chatInput',
-  /** A tool call awaiting parameter- or result-confirmation. */
+  /** 等待參數或結果確認的工具呼叫。 */
   ToolConfirmation = 'toolConfirmation',
-  /** A running tool the session wants an active client to execute. */
+  /** 工作階段希望作用中用戶端執行的執行中工具。 */
   ToolClientExecution = 'toolClientExecution',
-  /** A tool call blocked on MCP authentication mid-execution. */
+  /** 執行中途因 MCP 驗證而阻塞的工具呼叫。 */
   ToolAuthentication = 'toolAuthentication',
 }
 
 /**
- * Fields common to every {@link SessionInputRequest} variant.
+ * 每個 {@link SessionInputRequest} 變體共用的欄位。
  *
  * @category Session Input Types
  */
 interface SessionInputRequestBase {
   /**
-   * Stable key for this entry, unique within the session's
-   * {@link SessionState.inputNeeded} list. The host derives it however it likes
-   * (for example from the chat URI plus the underlying request or tool-call
-   * id); consumers MUST treat it as opaque. It is the key for the
-   * `session/inputNeededSet` / `session/inputNeededRemoved` upsert convention.
+   * 此項目的穩定鍵，在工作階段的 {@link SessionState.inputNeeded} 清單中
+   * 唯一。主機以任何其偏好方式推導（例如從聊天 URI 加上底層請求或
+   * 工具呼叫 id）；消費者 MUST 將其視為不透明。它是
+   * `session/inputNeededSet` / `session/inputNeededRemoved` upsert 慣例的
+   * 鍵。
    */
   id: string;
   /**
-   * The chat the underlying request lives in. This is the channel a client
-   * dispatches its response to — it does not need to have subscribed to that
-   * chat first.
+   * 底層請求所在的聊天。這是用戶端將其回應分派至的通道 — 它不需要先
+   * 訂閱該聊天。
    */
   chat: URI;
 }
 
 /**
- * A user-input elicitation surfaced at the session level, mirroring the request
- * from an unresolved {@link InputRequestResponsePart} in the owning chat.
+ * 在工作階段層級公開的使用者輸入引出，鏡射自擁有聊天中未解決的
+ * {@link InputRequestResponsePart} 請求。
  *
- * Respond by dispatching `chat/inputCompleted` (or syncing drafts with
- * `chat/inputAnswerChanged`) to {@link SessionInputRequestBase.chat | `chat`},
- * keyed by {@link ChatInputRequest.id | `request.id`}.
+ * 透過分派 `chat/inputCompleted`（或以 `chat/inputAnswerChanged` 同步草稿）
+ * 至 {@link SessionInputRequestBase.chat | `chat`} 來回應，以
+ * {@link ChatInputRequest.id | `request.id`} 為鍵。
  *
  * @category Session Input Types
  */
 export interface SessionChatInputRequest extends SessionInputRequestBase {
   kind: SessionInputRequestKind.ChatInput;
-  /** The mirrored chat input request. */
+  /** 鏡射的聊天輸入請求。 */
   request: ChatInputRequest;
 }
 
 /**
- * A tool call blocked on confirmation — either parameter confirmation before
- * execution or result confirmation after — surfaced at the session level.
+ * 因確認而阻塞的工具呼叫 — 可能是執行前的參數確認或之後的結果確認 —
+ * 在工作階段層級公開。
  *
- * Respond by dispatching `chat/toolCallConfirmed` (for
- * {@link ToolCallPendingConfirmationState}) or `chat/toolCallResultConfirmed`
- * (for {@link ToolCallPendingResultConfirmationState}) to
- * {@link SessionInputRequestBase.chat | `chat`}, keyed by `turnId` and
- * `toolCall.toolCallId`.
+ * 透過分派 `chat/toolCallConfirmed`（對
+ * {@link ToolCallPendingConfirmationState}）或
+ * `chat/toolCallResultConfirmed`（對
+ * {@link ToolCallPendingResultConfirmationState}）至
+ * {@link SessionInputRequestBase.chat | `chat`} 來回應，以 `turnId` 與
+ * `toolCall.toolCallId` 為鍵。
  *
  * @category Session Input Types
  */
 export interface SessionToolConfirmationRequest extends SessionInputRequestBase {
   kind: SessionInputRequestKind.ToolConfirmation;
-  /** The turn the tool call belongs to. */
+  /** 工具呼叫所屬的回合。 */
   turnId: string;
-  /** The tool call awaiting confirmation. */
+  /** 等待確認的工具呼叫。 */
   toolCall: ToolCallConfirmationState;
 }
 
 /**
- * A running tool whose execution is delegated to an active client. Surfaced so
- * a client that provides the tool can pick up the work without subscribing to
- * the owning chat.
+ * 執行委派給作用中用戶端的執行中工具。公開以便提供該工具的用戶端能
+ * 接手工作而無需訂閱擁有聊天。
  *
- * The {@link toolCall} is always a {@link ToolCallRunningState} (a
- * {@link ToolCallState} in `running` status) whose
- * {@link ToolCallRunningState.contributor | `contributor`} is a client
- * {@link ToolCallClientContributor} whose `clientId` matches the denormalized
- * {@link clientId} here. Execute and report the result by dispatching
- * `chat/toolCallComplete` (and optionally streaming with
- * `chat/toolCallContentChanged`) to {@link SessionInputRequestBase.chat |
- * `chat`}, keyed by `turnId` and `toolCall.toolCallId`.
+ * {@link toolCall} 永遠是 {@link ToolCallRunningState}（處於 `running`
+ * 狀態的 {@link ToolCallState}），其
+ * {@link ToolCallRunningState.contributor | `contributor`} 為用戶端
+ * {@link ToolCallClientContributor}，其 `clientId` 與此處反正規化的
+ * {@link clientId} 相符。透過分派 `chat/toolCallComplete`（並選擇性地以
+ * `chat/toolCallContentChanged` 串流）至 {@link SessionInputRequestBase.chat |
+ * `chat`} 來執行並回報結果，以 `turnId` 與 `toolCall.toolCallId` 為鍵。
  *
  * @category Session Input Types
  */
 export interface SessionToolClientExecutionRequest extends SessionInputRequestBase {
   kind: SessionInputRequestKind.ToolClientExecution;
-  /** The turn the tool call belongs to. */
+  /** 工具呼叫所屬的回合。 */
   turnId: string;
   /**
-   * The `clientId` expected to execute the tool. Matches the `clientId` of the
-   * tool call's client {@link ToolCallContributor}.
+   * 預期執行該工具的 `clientId`。與工具呼叫之用戶端
+   * {@link ToolCallContributor} 的 `clientId` 相符。
    */
   clientId: string;
   /**
-   * The running tool call the session wants the owning client to execute. The
-   * host only ever populates this with a {@link ToolCallRunningState} (i.e. a
-   * {@link ToolCallState} in `running` status).
+   * 工作階段希望擁有用戶端執行的執行中工具呼叫。主機僅會以
+   * {@link ToolCallRunningState}（即處於 `running` 狀態的
+   * {@link ToolCallState}）填入此欄位。
    */
   toolCall: ToolCallState;
 }
 
 /**
- * A tool call blocked on MCP authentication mid-execution, surfaced at the
- * session level.
+ * 執行中途因 MCP 驗證而阻塞的工具呼叫，在工作階段層級公開。
  *
- * The {@link toolCall} is always a {@link ToolCallAuthRequiredState} (a
- * {@link ToolCallState} in `auth-required` status). Unlike
- * {@link SessionToolConfirmationRequest}, this is **not** answered by
- * dispatching a `chat/*` action directly: the client obtains a token for
- * {@link ToolCallAuthRequiredState.auth | `toolCall.auth`}`.resource` and
- * pushes it via the existing `authenticate` command (see
- * {@link /specification/authentication | Authentication}). The host resumes
- * the tool call and dispatches `chat/toolCallAuthResolved` once the token is
- * accepted, at which point it also removes this entry with
- * `session/inputNeededRemoved`.
+ * {@link toolCall} 永遠是 {@link ToolCallAuthRequiredState}（處於
+ * `auth-required` 瀑態的 {@link ToolCallState}）。與
+ * {@link SessionToolConfirmationRequest} 不同，這**不是**透過直接分派
+ * `chat/*` 操作來回答：用戶端為
+ * {@link ToolCallAuthRequiredState.auth | `toolCall.auth`}`.resource` 取得
+ * 權杖，並透過現有的 `authenticate` 指令推送（見
+ * {@link /specification/authentication | Authentication}）。主機在權杖被
+ * 接受後恢復工具呼叫並分派 `chat/toolCallAuthResolved`，此時它也會以
+ * `session/inputNeededRemoved` 移除此項目。
  *
  * @category Session Input Types
  */
 export interface SessionToolAuthenticationRequest extends SessionInputRequestBase {
   kind: SessionInputRequestKind.ToolAuthentication;
-  /** The turn the tool call belongs to. */
+  /** 工具呼叫所屬的回合。 */
   turnId: string;
-  /** The tool call awaiting authentication. */
+  /** 等待驗證的工具呼叫。 */
   toolCall: ToolCallAuthRequiredState;
 }
 
 /**
- * One outstanding piece of input a session is blocked on, aggregated across all
- * chats in {@link SessionState.inputNeeded}.
+ * 工作階段受阻的單一待處理輸入，跨 {@link SessionState.inputNeeded} 中
+ * 所有聊天彙總。
  *
- * Each entry is self-sufficient: it carries the owning
- * {@link SessionInputRequestBase.chat | `chat`} URI plus every identifier needed
- * to construct the response, so a client can answer by dispatching the ordinary
- * `chat/*` action (`chat/inputCompleted`, `chat/toolCallConfirmed`,
- * `chat/toolCallComplete`, …) to that chat's channel **without having subscribed
- * to the chat** — except {@link SessionToolAuthenticationRequest}, which is
- * resolved via the `authenticate` command instead. The host removes the entry
- * with `session/inputNeededRemoved` once the underlying request resolves.
+ * 每個項目皆自足：它承載擁有的
+ * {@link SessionInputRequestBase.chat | `chat`} URI 加上建構回應所需的所有
+ * 識別碼，讓用戶端能透過將普通的 `chat/*` 操作（`chat/inputCompleted`、
+ * `chat/toolCallConfirmed`、`chat/toolCallComplete`、…）分派至該聊天的
+ * 通道來回答，**而無需先訂閱該聊天** — {@link SessionToolAuthenticationRequest}
+ * 除外，它改為透過 `authenticate` 指令解決。主機在底層請求解決後以
+ * `session/inputNeededRemoved` 移除該項目。
  *
  * @category Session Input Types
  */
@@ -388,181 +367,170 @@ export type SessionInputRequest =
   | SessionToolAuthenticationRequest;
 
 /**
- * Server-owned project metadata for a session.
+ * 工作階段的伺服器擁有專案中繼資料。
  *
  * @category Session State
  */
 export interface ProjectInfo {
-  /** Project URI */
+  /** 專案 URI */
   uri: URI;
-  /** Human-readable project name */
+  /** 人類可讀的專案名稱 */
   displayName: string;
 }
 
 /**
- * Lightweight catalog entry summarizing one session. Surfaced via
- * {@link RootChannelCommands.listSessions | `root/listSessions`} and
- * `root/sessionAdded`/`root/sessionSummaryChanged` notifications.
+ * 摘要單一工作階段的輕量級目錄項目。透過
+ * {@link RootChannelCommands.listSessions | `root/listSessions`} 與
+ * `root/sessionAdded`/`root/sessionSummaryChanged` 通知公開。
  *
- * **Aggregation across chats.** Once a session contains more than one chat,
- * several `SessionSummary` fields are derived from the underlying
- * {@link SessionState.chats | chat catalog}. Producers SHOULD follow these
- * rules so clients that only consume the session summary (e.g. a session
- * list) still see meaningful state:
+ * **跨聊天彙總。** 一旦工作階段包含多個聊天，若干 `SessionSummary` 欄位
+ * 衍生自底層的 {@link SessionState.chats | 聊天目錄}。生產者 SHOULD 遵循
+ * 這些規則，讓僅消費工作階段摘要的用戶端（例如工作階段清單）仍能看到
+ * 有意義的狀態：
  *
- * - `status`: take the activity bits (`Idle` / `InProgress` / `InputNeeded` /
- *   `Error` — bits 0–4) from the
- *   {@link SessionState.defaultChat | default chat} when present, else from
- *   the most recently modified chat. **Promote** `InputNeeded` whenever any
- *   chat in the session needs input, and **promote** `Error` whenever any
- *   chat is in an error state — both override the default-chat bits. The
- *   orthogonal flag bits (`IsRead`, `IsArchived`) remain session-scoped.
- * - `activity`: mirror the activity string of the default chat, or of the
- *   chat currently driving the promoted status bits when a non-default chat
- *   wins (e.g. the chat that raised `InputNeeded`).
- * - `modifiedAt`: the max of all chats' `modifiedAt`.
- * - `workingDirectories`: the session-level set. Individual chats MAY restrict
- *   to a subset via {@link ChatSummary.workingDirectories}; aggregating these
- *   up is meaningless and SHOULD NOT be attempted.
- * - `changes`: optional roll-up across all chats. Producers MAY sum the
- *   per-chat changeset stats or report the most expensive chat's stats —
- *   whichever is cheaper for the host to compute.
+ * - `status`：當 {@link SessionState.defaultChat | 預設聊天}存在時取其活動
+ *   位元（`Idle` / `InProgress` / `InputNeeded` / `Error` — 位元 0–4），
+ *   否則取最近修改的聊天。當工作階段中任何聊天需要輸入時**提升**為
+ *   `InputNeeded`，且當任何聊天處於錯誤狀態時**提升**為 `Error` — 兩者皆
+ *   覆寫預設聊天位元。正交旗標位元（`IsRead`、`IsArchived`）保持工作
+ *   階段範圍。
+ * - `activity`：鏡射預設聊天的活動字串，或當非預設聊天勝出時（例如
+ *   引發 `InputNeeded` 的聊天）鏡射目前驅動已提升狀態位元之聊天的活動
+ *   字串。
+ * - `modifiedAt`：所有聊天 `modifiedAt` 的最大值。
+ * - `workingDirectories`：工作階段層級集合。個別聊天 MAY 透過
+ *   {@link ChatSummary.workingDirectories} 限制為子集；將這些向上彙總毫無
+ *   意義，且 SHOULD NOT 嘗試。
+ * - `changes`：跨所有聊天的選用彙總。生產者 MAY 對每個聊天的變更集
+ *   統計加總，或回報最昂貴聊天的統計 — 視何者對主機計算更便宜而定。
  *
- * Sessions with a single chat trivially satisfy all of the above (the chat's
- * values pass through unchanged). The rules only matter once a session
- * carries multiple chats.
+ * 具有單一聊天的工作階段會簡單滿足上述所有條件（聊天的值原樣通過）。
+ * 這些規則僅在工作階段帶有多個聊天時才有意義。
  *
  * @category Session State
  */
 export interface SessionSummary extends SessionMetadata {
-  /** Session URI */
+  /** 工作階段 URI */
   resource: URI;
-  /** Creation timestamp (ISO 8601, e.g. `"2025-03-10T18:42:03.123Z"`) */
+  /** 建立時間戳記（ISO 8601，例如 `"2025-03-10T18:42:03.123Z"`） */
   createdAt: string;
-  /** Last modification timestamp (ISO 8601, e.g. `"2025-03-10T18:42:03.123Z"`) */
+  /** 上次修改時間戳記（ISO 8601，例如 `"2025-03-10T18:42:03.123Z"`） */
   modifiedAt: string;
   /**
-  * Aggregate summary of file changes associated with this session. Servers
-  * may populate this to give clients a quick at-a-glance view of the
-  * session's footprint (e.g., for list rendering) without requiring the
-  * client to subscribe to a changeset.
+  * 與此工作階段關聯之檔案變更的彙總摘要。伺服器 MAY 填入此欄位以
+  * 提供用戶端工作階段足跡的快速一覽檢視（例如用於清單呈現），而
+  * 無需用戶端訂閱變更集。
   */
   changes?: ChangesSummary;
   /**
-   * Lightweight server-defined metadata clients may use for the session
-   * presentation. The protocol does not interpret these values; producers
-   * SHOULD keep the payload small because summaries appear in session lists
-   * and session notifications.
-   */
+  * 伺服器定義的輕量級中繼資料，用戶端可用於工作階段呈現。協定不
+  * 解譯這些值；生產者 SHOULD 保持有效負載小巧，因為摘要出現於
+  * 工作階段清單與工作階段通知中。
+  */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Aggregate counts describing the file changes associated with a session.
+ * 描述與工作階段關聯之檔案變更的彙總計數。
  *
- * All fields are optional so servers can populate only the metrics they
- * cheaply have available.
+ * 所有欄位皆為選用，讓伺服器能僅填入其成本低廉可得的指標。
  *
  * @category Session State
  */
 export interface ChangesSummary {
-  /** Total number of inserted lines across all changed files. */
+  /** 跨所有變更檔案的新增行總數。 */
   additions?: number;
-  /** Total number of deleted lines across all changed files. */
+  /** 跨所有變更檔案的刪除行總數。 */
   deletions?: number;
-  /** Number of files that have changes. */
+  /** 有變更的檔案數。 */
   files?: number;
 }
 
 // ─── Agent Selection ─────────────────────────────────────────────────────────
 
 /**
- * A selected custom agent for a session.
+ * 工作階段的已選自訂代理程式。
  *
- * The `uri` identifies a specific custom agent (matching an
- * {@link AgentCustomization.uri | `AgentCustomization.uri`} exposed via
- * the session's effective customizations). Consumers resolve the agent's
- * display name by looking up `uri` in the session's customization tree.
+ * `uri` 識別特定的自訂代理程式（與透過工作階段有效自訂公開的
+ * {@link AgentCustomization.uri | `AgentCustomization.uri`} 相符）。消費者
+ * 透過在工作階段的自訂樹中查找 `uri` 來解析代理程式的顯示名稱。
  *
- * A message with no `agent` selected uses the provider's default behavior.
+ * 未選取 `agent` 的訊息使用提供者的預設行為。
  *
  * @category Session State
  */
 export interface AgentSelection {
-  /** Stable agent URI (matches an {@link AgentCustomization.uri}). */
+  /** 穩定的代理程式 URI（與 {@link AgentCustomization.uri} 相符）。 */
   uri: URI;
 }
 
 // ─── Session Config Types ────────────────────────────────────────────────────
 
 /**
- * A session configuration property descriptor.
+ * 工作階段設定屬性描述器。
  *
- * Extends the generic {@link ConfigPropertySchema} with session-specific
- * display extensions.
+ * 以工作階段特定的顯示延伸擴充通用的 {@link ConfigPropertySchema}。
  *
  * @category Session Config Types
  */
 export interface SessionConfigPropertySchema extends ConfigPropertySchema {
   /**
-   * Display extension: when `true`, the full set of allowed values is too large
-   * to enumerate statically. The client SHOULD use `sessionConfigCompletions`
-   * to fetch matching values based on user input. Any values in `enum` are
-   * seed/recent values for initial display.
+   * 顯示延伸：為 `true` 時，完整允許值集合過大而無法靜態列舉。用戶端
+   * SHOULD 使用 `sessionConfigCompletions` 根據使用者輸入取得相符值。
+   * `enum` 中的任何值為初始顯示用的種子/近期值。
    */
   enumDynamic?: boolean;
-  /** When `true`, the user may change this property after session creation */
+  /** 為 `true` 時，使用者可在工作階段建立後變更此屬性 */
   sessionMutable?: boolean;
 }
 
 /**
- * A JSON Schema object describing available session configuration metadata.
+ * 描述可用工作階段設定中繼資料的 JSON Schema 物件。
  *
  * @category Session Config Types
  */
 export interface SessionConfigSchema {
-  /** JSON Schema: always `'object'` */
+  /** JSON Schema：永遠為 `'object'` */
   type: 'object';
-  /** JSON Schema: property descriptors keyed by property id */
+  /** JSON Schema：以屬性 id 為鍵的屬性描述器 */
   properties: Record<string, SessionConfigPropertySchema>;
-  /** JSON Schema: list of required property ids */
+  /** JSON Schema：必要屬性 id 的清單 */
   required?: string[];
 }
 
 /**
- * Live session configuration metadata.
+ * 即時工作階段設定中繼資料。
  *
- * The schema describes the available configuration properties and the values
- * contain the current value for each resolved property.
+ * 綱要描述可用設定屬性，而 values 包含每個已解析屬性的目前值。
  *
  * @category Session Config Types
  */
 export interface SessionConfigState {
-  /** JSON Schema describing available configuration properties */
+  /** 描述可用設定屬性的 JSON Schema */
   schema: SessionConfigSchema;
-  /** Current configuration values */
+  /** 目前設定值 */
   values: Record<string, unknown>;
 }
 
 // ─── Tool Definition Types ───────────────────────────────────────────────────
 
 /**
- * Describes a tool available in a session, provided by either the server or the active client.
+ * 描述工作階段中可用的工具，由伺服器或作用中用戶端提供。
  *
  * @category Tool Definition Types
  */
 export interface ToolDefinition {
-  /** Unique tool identifier */
+  /** 唯一工具識別碼 */
   name: string;
-  /** Human-readable display name */
+  /** 人類可讀的顯示名稱 */
   title?: string;
-  /** Description of what the tool does */
+  /** 工具功能描述 */
   description?: string;
   /**
-   * JSON Schema defining the expected input parameters.
+   * 定義預期輸入參數的 JSON Schema。
    *
-   * Optional because client-provided tools may not have formal schemas.
-   * Mirrors MCP `Tool.inputSchema`.
+   * 選用，因為用戶端提供的工具可能沒有正式綱要。鏡射 MCP
+   * `Tool.inputSchema`。
    */
   inputSchema?: {
     type: 'object';
@@ -570,58 +538,56 @@ export interface ToolDefinition {
     required?: string[];
   };
   /**
-   * JSON Schema defining the structure of the tool's output.
+   * 定義工具輸出結構的 JSON Schema。
    *
-   * Mirrors MCP `Tool.outputSchema`.
+   * 鏡射 MCP `Tool.outputSchema`。
    */
   outputSchema?: {
     type: 'object';
     properties?: Record<string, object>;
     required?: string[];
   };
-  /** Behavioral hints about the tool. All properties are advisory. */
+  /** 關於工具的行為提示。所有屬性皆為建議性。 */
   annotations?: ToolAnnotations;
   /**
-   * Additional provider-specific metadata.
+   * 額外的提供者特定中繼資料。
    *
-   * Mirrors the MCP `_meta` convention.
+   * 鏡射 MCP `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Behavioral hints about a tool. All properties are advisory and not
- * guaranteed to faithfully describe tool behavior.
+ * 關於工具的行為提示。所有屬性皆為建議性，且不保證能如實描述工具
+ * 行為。
  *
- * Mirrors MCP `ToolAnnotations` from the Model Context Protocol specification.
+ * 鏡射 Model Context Protocol 規範中的 MCP `ToolAnnotations`。
  *
  * @category Tool Definition Types
  */
 export interface ToolAnnotations {
-  /** Alternate human-readable title */
+  /** 替代的人類可讀標題 */
   title?: string;
-  /** Tool does not modify its environment (default: false) */
+  /** 工具不修改其環境（預設：false） */
   readOnlyHint?: boolean;
-  /** Tool may perform destructive updates (default: true) */
+  /** 工具可能執行破壞性更新（預設：true） */
   destructiveHint?: boolean;
-  /** Repeated calls with the same arguments have no additional effect (default: false) */
+  /** 以相同引數重複呼叫沒有額外效果（預設：false） */
   idempotentHint?: boolean;
-  /** Tool may interact with external entities (default: true) */
+  /** 工具可能與外部實體互動（預設：true） */
   openWorldHint?: boolean;
 }
 
 // ─── Customization Types ─────────────────────────────────────────────────────
 
 /**
- * Discriminant for the kind of customization.
+ * 自訂種類的判別欄位。
  *
- * Top-level entries in {@link SessionState.customizations} and
- * {@link AgentInfo.customizations} are either container customizations
- * ({@link CustomizationType.Plugin | `Plugin`} or
- * {@link CustomizationType.Directory | `Directory`}) or
- * {@link CustomizationType.McpServer | `McpServer`} entries surfaced
- * directly by the host. The remaining types appear only as children of
- * a container.
+ * {@link SessionState.customizations} 與 {@link AgentInfo.customizations}
+ * 中的頂層項目不是容器自訂（{@link CustomizationType.Plugin | `Plugin`}
+ * 或 {@link CustomizationType.Directory | `Directory`}），就是主機直接
+ * 公開的 {@link CustomizationType.McpServer | `McpServer`} 項目。其餘
+ * 種類僅作為容器的子項出現。
  *
  * @category Customization Types
  */
@@ -637,8 +603,8 @@ export const enum CustomizationType {
 }
 
 /**
- * Customization types that appear as children of a
- * {@link PluginCustomization} or {@link DirectoryCustomization}.
+ * 作為 {@link PluginCustomization} 或 {@link DirectoryCustomization} 子項
+ * 出現的自訂類型。
  *
  * @category Customization Types
  */
@@ -651,50 +617,46 @@ export type ChildCustomizationType =
   | CustomizationType.McpServer;
 
 /**
- * Fields shared by every customization variant.
+ * 每個自訂變體共用的欄位。
  *
  * @category Customization Types
  */
 interface CustomizationBase {
   /**
-   * Session-unique opaque identifier. Used by every action that targets a
-   * specific customization. Minted by whoever publishes the customization
-   * (typically the agent host).
+   * 工作階段內唯一的不透明識別碼。由每個以特定自訂為目標的操作使用。
+   * 由發布該自訂的一方（通常為代理主機）鑄造。
    */
   id: string;
   /**
-   * Source URI for this customization. A plugin URL, a file URI, or a
-   * directory URI.
+   * 此自訂的來源 URI。可以是外掛 URL、檔案 URI 或目錄 URI。
    *
-   * For declarations that live inside a larger file — e.g. an MCP
-   * server declared inline in a `plugins.json` manifest — `uri` points
-   * to the containing file and {@link CustomizationBase.range | `range`}
-   * narrows it to the declaration's span.
+   * 對於存在於較大檔案中的宣告 — 例如內嵌於 `plugins.json` 資訊清單的
+   * MCP 伺服器 — `uri` 指向包含檔案，而
+   * {@link CustomizationBase.range | `range`} 將其縮窄至宣告的跨度。
    */
   uri: URI;
-  /** Human-readable name. */
+  /** 人類可讀名稱。 */
   name: string;
-  /** Icons for UI display. */
+  /** 用於 UI 顯示的圖示。 */
   icons?: Icon[];
   /**
-   * Optional span within {@link CustomizationBase.uri | `uri`} when this
-   * customization is a subset of a larger file (for example, one entry
-   * in an inline `mcpServers` block of a `plugins.json` manifest).
-   * Absent when the customization covers the whole resource.
+   * 當此自訂為較大檔案的子集時（例如 `plugins.json` 資訊清單中內嵌
+   * `mcpServers` 區塊的一個項目），在
+   * {@link CustomizationBase.uri | `uri`} 內的選用跨度。當自訂涵蓋整個
+   * 資源時不存在。
    */
   range?: TextRange;
   /**
-   * Additional provider-specific metadata for this customization.
+   * 此自訂的額外提供者特定中繼資料。
    *
-   * Mirrors the MCP `_meta` convention. Optional and opaque to the
-   * protocol; producers and consumers agree on its contents
-   * out-of-band.
+   * 鏡射 MCP `_meta` 慣例。對協定為選用且不透明；生產者與消費者
+   * 在帶外就其內容達成共識。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Discriminant values for {@link CustomizationLoadState}.
+ * {@link CustomizationLoadState} 的判別值。
  *
  * @category Customization Types
  */
@@ -706,7 +668,7 @@ export const enum CustomizationLoadStatus {
 }
 
 /**
- * Container is being loaded by the host.
+ * 容器正由主機載入。
  *
  * @category Customization Types
  */
@@ -715,7 +677,7 @@ export interface CustomizationLoadingState {
 }
 
 /**
- * Container loaded successfully.
+ * 容器載入成功。
  *
  * @category Customization Types
  */
@@ -724,30 +686,30 @@ export interface CustomizationLoadedState {
 }
 
 /**
- * Container partially loaded but has warnings.
+ * 容器部分載入但有警告。
  *
  * @category Customization Types
  */
 export interface CustomizationDegradedState {
   kind: CustomizationLoadStatus.Degraded;
-  /** Human-readable description of the warning. */
+  /** 警告的人類可讀描述。 */
   message: string;
 }
 
 /**
- * Container failed to load.
+ * 容器載入失敗。
  *
  * @category Customization Types
  */
 export interface CustomizationErrorState {
   kind: CustomizationLoadStatus.Error;
-  /** Human-readable error message. */
+  /** 人類可讀的錯誤訊息。 */
   message: string;
 }
 
 /**
- * Discriminated load state for a container customization
- * ({@link PluginCustomization} or {@link DirectoryCustomization}).
+ * 容器自訂（{@link PluginCustomization} 或
+ * {@link DirectoryCustomization}）的判別聯集載入狀態。
  *
  * @category Customization Types
  */
@@ -758,241 +720,223 @@ export type CustomizationLoadState =
   | CustomizationErrorState;
 
 /**
- * Fields shared by container customizations.
+ * 容器自訂共用的欄位。
  *
  * @category Customization Types
  */
 interface ContainerCustomizationBase extends CustomizationBase {
-  /** Whether this container is currently enabled. */
+  /** 此容器目前是否啟用。 */
   enabled: boolean;
   /**
-   * `clientId` of the client that contributed this container. Absent for
-   * server-originated entries.
+   * 貢獻此容器之用戶端的 `clientId`。伺服器發起的項目不存在。
    */
   clientId?: string;
   /**
-   * Host-reported load state. Absent means the host has not yet reported
-   * a load state for this container.
+   * 主機回報的載入狀態。不存在表示主機尚未回報此容器的載入狀態。
    */
   load?: CustomizationLoadState;
   /**
-   * Children discovered inside this container.
+   * 在此容器內發現的子項。
    *
-   * Absent means the host has not parsed this container yet. An empty
-   * array means the host parsed the container and it contributes
-   * nothing.
+   * 不存在表示主機尚未解析此容器。空陣列表示主機已解析容器且其未
+   * 貢獻任何內容。
    */
   children?: ChildCustomization[];
 }
 
 /**
- * An [Open Plugins](https://open-plugins.com/) plugin.
+ * 一個 [Open Plugins](https://open-plugins.com/) 外掛。
  *
  * @category Customization Types
  */
 export interface PluginCustomization extends ContainerCustomizationBase {
   type: CustomizationType.Plugin;
   /**
-   * Version of the plugin, sourced from the
-   * [Open Plugins](https://open-plugins.com/) manifest's optional
-   * `version` field (semver, e.g. `"1.2.0"`). Absent when the manifest
-   * declares no version — the field is optional there — or the source
-   * has no version concept. Provenance / display only: the host neither
-   * parses nor enforces it.
+   * 外掛版本，取自 [Open Plugins](https://open-plugins.com/) 資訊清單的
+   * 選用 `version` 欄位（semver，例如 `"1.2.0"`）。當資訊清單未宣告版本
+   * — 該欄位在那裡為選用 — 或來源沒有版本概念時不存在。僅供出處/
+   * 顯示之用：主機既不解析也不強制執行它。
    */
   version?: string;
 }
 
 /**
- * A {@link PluginCustomization} as published by a client. Extends the
- * server-facing shape with an opaque `nonce` so the host can detect when
- * the client's view of a plugin has changed and re-parse only as needed.
+ * 由用戶端發布的 {@link PluginCustomization}。以不透明的 `nonce` 擴充
+ * 伺服器面向的形狀，讓主機能偵測用戶端的外掛檢視何時變更，並僅在
+ * 需要時重新解析。
  *
- * Clients SHOULD include a `nonce`. Server-side fields like
- * {@link ContainerCustomizationBase.children | `children`} and
- * {@link ContainerCustomizationBase.load | `load`} are typically left
- * absent on publication and populated by the host when the resolved
- * plugin appears in {@link SessionState.customizations}.
+ * 用戶端 SHOULD 包含 `nonce`。發布時通常省略
+ * {@link ContainerCustomizationBase.children | `children`} 與
+ * {@link ContainerCustomizationBase.load | `load`} 等伺服器端欄位，
+ * 並在解析後的外掛出現於 {@link SessionState.customizations} 時由主機
+ * 填入。
  *
  * @category Customization Types
  */
 export interface ClientPluginCustomization extends PluginCustomization {
-  /** Opaque version token used by the host to detect changes. */
+  /** 主機用來偵測變更的不透明版本權杖。 */
   nonce?: string;
 }
 
 /**
- * A directory the host watches for this session.
+ * 主機為此工作階段監視的目錄。
  *
- * Presence in the customization list signals that the host may discover
- * customizations from this directory. When `writable` is `true`, clients
- * MAY persist new customizations into the directory using
- * [`resourceWrite`](/reference/common#resourcewrite); the host will
- * then surface the resulting child via the customization actions.
+ * 其存在於自訂清單中表示主機可從此目錄發現自訂。當 `writable` 為
+ * `true` 時，用戶端 MAY 使用
+ * [`resourceWrite`](/reference/common#resourcewrite) 將新自訂持久化至
+ * 該目錄；主機接著會透過自訂操作公開產生的子項。
  *
- * The directory may not yet exist on disk.
+ * 該目錄在磁碟上可能尚未存在。
  *
  * @category Customization Types
  */
 export interface DirectoryCustomization extends ContainerCustomizationBase {
   type: CustomizationType.Directory;
-  /** Which child customization type this directory holds. */
+  /** 此目錄持有的子自訂類型。 */
   contents: ChildCustomizationType;
-  /** Whether clients may write into this directory. */
+  /** 用戶端是否可寫入此目錄。 */
   writable: boolean;
 }
 
 /**
- * Fields shared by the leaf child customizations that live inside a
- * container — {@link AgentCustomization}, {@link SkillCustomization},
- * {@link PromptCustomization}, {@link RuleCustomization}, and
- * {@link HookCustomization}.
+ * 容器內子項自訂共用的欄位 — {@link AgentCustomization}、
+ * {@link SkillCustomization}、{@link PromptCustomization}、
+ * {@link RuleCustomization} 與 {@link HookCustomization}。
  *
- * {@link McpServerCustomization} is also a child but does not extend this
- * base: it always carries an explicit {@link McpServerCustomization.enabled}
- * because it can appear as a top-level customization too.
+ * {@link McpServerCustomization} 也是子項但不擴充此基礎：它永遠承載
+ * 明確的 {@link McpServerCustomization.enabled}，因為它也可作為頂層
+ * 自訂出現。
  *
  * @category Customization Types
  */
 interface ChildCustomizationBase extends CustomizationBase {
   /**
-   * Whether this child is individually enabled. Absent means enabled, so a
-   * producer only needs to set it to surface a child that exists but is
-   * turned off on its own.
+   * 此子項是否個別啟用。不存在表示啟用，因此生產者只需設定它即可公開
+   * 存在但自身被關閉的子項。
    *
-   * This flag is independent of the parent container's: the **effective**
-   * enabled state of a child is
-   * `container.enabled && (child.enabled ?? true)`, so a disabled container
-   * disables every child regardless of each child's own flag.
+   * 此旗標獨立於父容器：子項的**有效**啟用狀態為
+   * `container.enabled && (child.enabled ?? true)`，因此停用的容器會
+   * 停用每個子項，無論各子項自身的旗標為何。
    *
-   * A child is turned on or off by id with
-   * {@link SessionCustomizationToggledAction | `session/customizationToggled`}.
+   * 子項以 id 透過
+   * {@link SessionCustomizationToggledAction | `session/customizationToggled`}
+   * 開啟或關閉。
    */
   enabled?: boolean;
 }
 
 /**
- * A custom agent contributed by a plugin or directory.
+ * 由外掛或目錄貢獻的自訂代理程式。
  *
- * Mirrors the [Open Plugins agent](https://open-plugins.com/agent-builders/components/agents)
- * format: a markdown file with YAML frontmatter, where the body is the
- * agent's system prompt.
+ * 鏡射 [Open Plugins agent](https://open-plugins.com/agent-builders/components/agents)
+ * 格式：一個帶有 YAML frontmatter 的 markdown 檔案，其中本文為代理
+ * 程式的系統提示。
  *
  * @category Customization Types
  */
 export interface AgentCustomization extends ChildCustomizationBase {
   type: CustomizationType.Agent;
   /**
-   * Short description of what the agent specializes in and when to
-   * invoke it. Sourced from the agent file's frontmatter `description`.
+   * 代理程式專精於什麼以及何時叫用它的簡短描述。取自代理程式檔案
+   * frontmatter 的 `description`。
    */
   description?: string;
   /**
-   * Model the agent is pinned to, sourced from the agent file's
-   * frontmatter `model`. Absent means the agent inherits the session's
-   * default model.
+   * 代理程式釘選的模型，取自代理程式檔案 frontmatter 的 `model`。
+   * 不存在表示代理程式繼承工作階段的預設模型。
    */
   model?: string;
   /**
-   * Allowlist of tool names the agent is scoped to, sourced from the
-   * agent file's frontmatter `tools`. A non-empty list restricts the
-   * agent to exactly those tools. Absent — or an empty list — imposes no
-   * restriction beyond the session default: the agent may use any
-   * available tool. Producers express "no restriction" by omitting the
-   * field rather than sending an empty array, so an empty list carries no
-   * meaning distinct from absence.
+   * 代理程式範圍限制的工具名稱允許清單，取自代理程式檔案 frontmatter
+   * 的 `tools`。非空清單將代理程式限制為確切那些工具。不存在 — 或
+   * 空清單 — 不施加工作階段預設之外的任何限制：代理程式可使用任何
+   * 可用工具。生產者透過省略該欄位而非傳送空陣列來表示「無限制」，
+   * 因此空清單不承載與不存在不同的意義。
    */
   tools?: string[];
   /**
-   * When `true`, the agent will not auto-delegate to this custom agent
-   * as a sub-agent; it can only be selected by the user. Absent or
-   * `false` means the agent may delegate to it.
+   * 為 `true` 時，代理程式不會自動委派至此自訂代理程式作為子代理程式；
+   * 它只能由使用者選取。不存在或 `false` 表示代理程式 MAY 委派給它。
    */
   disableModelInvocation?: boolean;
   /**
-   * When `true`, the user cannot select this custom agent (for example,
-   * in a picker); it remains available for the agent to auto-delegate
-   * to. Absent or `false` means the user may select it.
+   * 為 `true` 時，使用者無法選取此自訂代理程式（例如在選擇器中）；
+   * 它仍可供代理程式自動委派。不存在或 `false` 表示使用者 MAY 選取
+   * 它。
    */
   disableUserInvocation?: boolean;
 }
 
 /**
- * A skill contributed by a plugin or directory.
+ * 由外掛或目錄貢獻的技能。
  *
- * Covers both [Open Plugins skill formats](https://open-plugins.com/agent-builders/components/skills)
- * — the `skills/` directory layout (one subdirectory per skill, each with
- * a `SKILL.md`) and the flatter `commands/` directory of slash-command
- * skills.
+ * 涵蓋兩種 [Open Plugins skill 格式](https://open-plugins.com/agent-builders/components/skills)
+ * — `skills/` 目錄佈局（每個技能一個子目錄，各含一個
+ * `SKILL.md`）與較扁平的 `commands/` 斜線指令技能目錄。
  *
  * @category Customization Types
  */
 export interface SkillCustomization extends ChildCustomizationBase {
   type: CustomizationType.Skill;
   /**
-   * Short description used for help text and auto-invocation matching.
-   * Sourced from the skill's frontmatter `description`.
+   * 用於說明文字與自動叫用比對的簡短描述。取自技能 frontmatter 的
+   * `description`。
    */
   description?: string;
   /**
-   * When `true`, only the user can invoke this skill — the agent will not
-   * auto-invoke it. Sourced from the command skill's frontmatter
-   * `disable-model-invocation` flag.
+   * 為 `true` 時，僅使用者可叫用此技能 — 代理程式不會自動叫用它。
+   * 取自指令技能 frontmatter 的 `disable-model-invocation` 旗標。
    */
   disableModelInvocation?: boolean;
   /**
-   * When `true`, the user cannot directly invoke this skill (for example,
-   * as a slash command); it remains available for the agent to
-   * auto-invoke. Absent or `false` means the user may invoke it.
+   * 為 `true` 時，使用者無法直接叫用此技能（例如作為斜線指令）；
+   * 它仍可供代理程式自動叫用。不存在或 `false` 表示使用者 MAY 叫用
+   * 它。
    */
   disableUserInvocation?: boolean;
 }
 
 /**
- * A prompt contributed by a plugin or directory.
+ * 由外掛或目錄貢獻的提示。
  *
  * @category Customization Types
  */
 export interface PromptCustomization extends ChildCustomizationBase {
   type: CustomizationType.Prompt;
-  /** Short description of what the prompt does. */
+  /** 提示功能的簡短描述。 */
   description?: string;
 }
 
 /**
- * A rule contributed by a plugin or directory.
+ * 由外掛或目錄貢獻的規則。
  *
- * Mirrors the [Open Plugins rule](https://open-plugins.com/agent-builders/components/rules)
- * format: a markdown file (e.g. `.mdc`) whose body is injected into
- * context while the rule is active. This type also covers tool-specific
- * "instruction" formats (e.g. VS Code Copilot's
- * `.github/instructions/*.md`), which differ only in naming — they
- * share the same semantics of `description`, optional always-on
- * activation, and optional glob scoping.
+ * 鏡射 [Open Plugins rule](https://open-plugins.com/agent-builders/components/rules)
+ * 格式：一個 markdown 檔案（例如 `.mdc`），其本文在規則作用時注入至
+ * 上下文。此類型也涵蓋工具特定的「instruction」格式（例如 VS Code
+ * Copilot 的 `.github/instructions/*.md`），其僅在命名上不同 — 它們
+ * 共用 `description`、選用的常駐啟用與選用的 glob 範圍限制的相同語意。
  *
  * @category Customization Types
  */
 export interface RuleCustomization extends ChildCustomizationBase {
   type: CustomizationType.Rule;
   /**
-   * Description of what the rule enforces.
+   * 規則所強制執行之內容的描述。
    */
   description?: string;
   /**
-   * When `true`, the rule is always active (subject to `globs` if any).
-   * When `false` or absent, the agent or user decides whether to apply
-   * the rule.
+   * 為 `true` 時，規則永遠作用（受 `globs` 約束，若有）。為 `false` 或
+   * 不存在時，由代理程式或使用者決定是否套用該規則。
    */
   alwaysApply?: boolean;
   /**
-   * Glob patterns the rule applies to. When present, the rule is only
-   * active for matching files.
+   * 規則適用的 glob 模式。存在時，規則僅對相符檔案作用。
    */
   globs?: string[];
 }
 
 /**
- * A hook manifest contributed by a plugin or directory.
+ * 由外掛或目錄貢獻的掛鉤資訊清單。
  *
  * @category Customization Types
  */
@@ -1001,134 +945,123 @@ export interface HookCustomization extends ChildCustomizationBase {
 }
 
 /**
- * An MCP server contributed by a plugin or directory.
+ * 由外掛或目錄貢獻的 MCP 伺服器。
  *
- * When the server is declared inline in the containing plugin manifest,
- * `uri` points at the manifest file and
- * {@link CustomizationBase.range | `range`} narrows it to the
- * declaration's span.
+ * 當伺服器內嵌宣告於包含的外掛資訊清單時，`uri` 指向資訊清單檔案，
+ * 而 {@link CustomizationBase.range | `range`} 將其縮窄至宣告的跨度。
  *
- * The MCP server customization also reflects its current status.
+ * MCP 伺服器自訂也反映其目前狀態。
  *
  * @category Customization Types
  */
 export interface McpServerCustomization extends CustomizationBase {
   type: CustomizationType.McpServer;
   /**
-   * Whether this MCP server is currently enabled.
+   * 此 MCP 伺服器目前是否啟用。
    */
   enabled: boolean;
   /**
-   * Current lifecycle state of the MCP server.
+   * MCP 伺服器的目前生命週期狀態。
    */
   state: McpServerState;
   /**
-   * An `mcp://`-protocol channel the client uses to side-channel traffic
-   * into the upstream MCP server itself. The channel is NOT a fresh raw MCP
-   * connection: it piggybacks on the AHP transport
-   * and skips the MCP `initialize` sequence.
+   * 用戶端用來將流量側通道傳入上游 MCP 伺服器本身的 `mcp://` 協定
+   * 通道。該通道並非全新的原始 MCP 連線：它搭載於 AHP 傳輸上並跳過
+   * MCP `initialize` 序列。
    *
-   * The agent host MAY only serve a subset of MCP on this
-   * channel; the served subset is described by domain-specific
-   * capabilities such as those in
-   * {@link McpServerCustomizationApps.capabilities}.
+   * 代理主機 MAY 僅在此通道上提供 MCP 的子集；所提供的子集由
+   * 領域特定能力描述，例如
+   * {@link McpServerCustomizationApps.capabilities} 中的那些。
    *
-   * The channel URI SHOULD be stable across the server's lifetime, but
-   * the agent host MAY change it (for example across a restart) and
-   * MAY only expose it while the server is in
-   * {@link McpServerStatus.Ready | `Ready`}. Absence means no
-   * side-channel is currently available.
+   * 通道 URI SHOULD 在伺服器生命週期內穩定，但代理主機 MAY 變更它
+   * （例如跨重新啟動），且 MAY 僅在伺服器處於
+   * {@link McpServerStatus.Ready | `Ready`} 時公開它。不存在表示目前
+   * 沒有可用的側通道。
    */
   channel?: URI;
   /**
-   * MCP App support. This property SHOULD be advertised for MCP servers
-   * which support apps.
+   * MCP App 支援。對支援 apps 的 MCP 伺服器，SHOULD 公開此屬性。
    */
   mcpApp?: McpServerCustomizationApps;
 }
 
 /**
- * Information from the agent host needed to render MCP Apps served
- * by this MCP server.
+ * 代理主機為呈現由此 MCP 伺服器提供之 MCP Apps 所需的資訊。
  *
  * @category MCP Server State
  */
 export interface McpServerCustomizationApps {
   /**
-   * The subset of MCP App
+   * AHP 主機能為由此伺服器支援的 Views 滿足的 MCP App
    * [`HostCapabilities`](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx)
-   * the AHP host can satisfy for Views backed by this server. The
-   * client feeds these straight through into the `hostCapabilities` of
-   * the `ui/initialize` response delivered to the View.
+   * 子集。用戶端將其直接送入傳遞給 View 的 `ui/initialize` 回應的
+   * `hostCapabilities` 中。
    */
   capabilities: AhpMcpUiHostCapabilities;
 }
 
 /**
- * The subset of MCP App
+ * AHP 主機可從上游 MCP 伺服器（及 AHP 自身的轉送管線）推導出的 MCP
+ * App
  * [`HostCapabilities`](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx)
- * an AHP host can derive from the upstream MCP server (and from AHP's own
- * forwarding plumbing). Advertised on
- * {@link McpServerCustomizationApps.capabilities} so clients can pass it
- * through into the `hostCapabilities` of the `ui/initialize` response
- * delivered to an MCP App View.
+ * 子集。公開於 {@link McpServerCustomizationApps.capabilities}，讓用戶端
+ * 能將其直接送入傳遞給 MCP App View 的 `ui/initialize` 回應的
+ * `hostCapabilities` 中。
  *
- * Field names mirror the MCP Apps spec exactly, so the AHP-side producer
- * can pass them straight through into the `hostCapabilities` of the
- * `ui/initialize` response delivered to the View.
+ * 欄位名稱與 MCP Apps 規範完全一致，讓 AHP 端生產者能將其直接送入
+ * 傳遞給 View 的 `ui/initialize` 回應的 `hostCapabilities` 中。
  *
- * Capabilities outside this set (`openLinks`, `downloadFile`, `sandbox`,
- * `experimental`) are decided locally by whichever AHP client renders the
- * View and are NOT part of this AHP-level advertisement — only the
- * server-derived subset is.
+ * 此集合之外的能力（`openLinks`、`downloadFile`、`sandbox`、
+ * `experimental`）由呈現 View 的 AHP 用戶端在本機決定，且不屬於此
+ * AHP 層級通告的一部分 — 僅有伺服器推導的子集屬於。
  *
- * An agent host MUST only advertise a capability when it actually accepts the
- * corresponding methods/notifications on the `mcp://` channel:
+ * 代理主機 MUST 僅在其確實於 `mcp://` 通道上接受對應方法/通知時通告
+ * 某項能力：
  *
- * - {@link serverTools}: host proxies `tools/list` and `tools/call` to
- *   the MCP server. When `listChanged` is `true`, the host also forwards
- *   `notifications/tools/list_changed`.
- * - {@link serverResources}: host proxies `resources/read`,
- *   `resources/list`, and `resources/templates/list` to the MCP server.
- *   When `listChanged` is `true`, the host also forwards
- *   `notifications/resources/list_changed`.
- * - {@link logging}: host accepts `notifications/message` log entries
- *   from the App and forwards them via `mcpNotification` (and forwards
- *   `logging/setLevel` calls to the server).
- * - {@link sampling}: host serves `sampling/createMessage` via
- *   `mcpMethodCall`. When `sampling.tools` is present, the host also
- *   accepts SEP-1577 `tools` / `toolChoice` / `tool_use` content blocks
- *   inside `CreateMessageRequest`.
+ * - {@link serverTools}：主機代理 `tools/list` 與 `tools/call` 至 MCP
+ *   伺服器。當 `listChanged` 為 `true` 時，主機也轉送
+ *   `notifications/tools/list_changed`。
+ * - {@link serverResources}：主機代理 `resources/read`、
+ *   `resources/list` 與 `resources/templates/list` 至 MCP 伺服器。當
+ *   `listChanged` 為 `true` 時，主機也轉送
+ *   `notifications/resources/list_changed`。
+ * - {@link logging}：主機接受來自 App 的 `notifications/message` 日誌
+ *   項目並透過 `mcpNotification` 轉送（並將 `logging/setLevel` 呼叫
+ *   轉送至伺服器）。
+ * - {@link sampling}：主機透過 `mcpMethodCall` 提供
+ *   `sampling/createMessage`。當 `sampling.tools` 存在時，主機也接受
+ *   `CreateMessageRequest` 內的 SEP-1577 `tools` / `toolChoice` /
+ *   `tool_use` 內容區塊。
  *
  * @category MCP Server State
- * @see {@link https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx | MCP Apps spec (SEP-1865)}
+ * @see {@link https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx | MCP Apps 規範 (SEP-1865)}
  */
 export interface AhpMcpUiHostCapabilities {
-  /** Producer proxies the MCP `tools/*` methods to the upstream server. */
+  /** 生產者將 MCP `tools/*` 方法代理至上游伺服器。 */
   serverTools?: {
-    /** Producer forwards `notifications/tools/list_changed` from the server. */
+    /** 生產者轉送來自伺服器的 `notifications/tools/list_changed`。 */
     listChanged?: boolean;
   };
-  /** Producer proxies the MCP `resources/*` methods to the upstream server. */
+  /** 生產者將 MCP `resources/*` 方法代理至上游伺服器。 */
   serverResources?: {
-    /** Producer forwards `notifications/resources/list_changed` from the server. */
+    /** 生產者轉送來自伺服器的 `notifications/resources/list_changed`。 */
     listChanged?: boolean;
   };
-  /** Producer accepts `notifications/message` log entries from the App via `mcpNotification`. */
+  /** 生產者透過 `mcpNotification` 接受來自 App 的 `notifications/message` 日誌項目。 */
   logging?: Record<string, never>;
-  /** Producer serves `sampling/createMessage` via `mcpMethodCall`. */
+  /** 生產者透過 `mcpMethodCall` 提供 `sampling/createMessage`。 */
   sampling?: {
     /**
-     * Producer accepts SEP-1577 `tools` / `toolChoice` / `tool_use` content
-     * blocks inside `CreateMessageRequest`.
+     * 生產者接受 `CreateMessageRequest` 內的 SEP-1577 `tools` /
+     * `toolChoice` / `tool_use` 內容區塊。
      */
     tools?: Record<string, never>;
   };
 }
 
 /**
- * Child customizations that live inside a {@link PluginCustomization} or
- * {@link DirectoryCustomization}.
+ * 存在於 {@link PluginCustomization} 或
+ * {@link DirectoryCustomization} 內的子自訂。
  *
  * @category Customization Types
  */
@@ -1141,11 +1074,10 @@ export type ChildCustomization =
   | McpServerCustomization;
 
 /**
- * A top-level customization active in a session. Either a container
- * ({@link PluginCustomization} or {@link DirectoryCustomization}) whose
- * leaf customizations live in its
- * {@link ContainerCustomizationBase.children | `children`} array, or a
- * bare {@link McpServerCustomization} surfaced directly by the host.
+ * 工作階段中作用中的頂層自訂。可以是容器（{@link PluginCustomization}
+ * 或 {@link DirectoryCustomization}），其葉自訂存在於其
+ * {@link ContainerCustomizationBase.children | `children`} 陣列中，或是
+ * 主機直接公開的單獨 {@link McpServerCustomization}。
  *
  * @category Customization Types
  */
@@ -1158,64 +1090,58 @@ export type Customization =
 // ─── MCP Server State ────────────────────────────────────────────────────────
 
 /**
- * Discriminant for the {@link McpServerState} union.
+ * {@link McpServerState} 聯集的判別欄位。
  *
  * @category MCP Server State
  */
 export const enum McpServerStatus {
-  /** Server has been registered but is not yet running. */
+  /** 伺服器已註冊但尚未執行。 */
   Starting = 'starting',
-  /** Server is running and serving requests. */
+  /** 伺服器執行中並提供請求服務。 */
   Ready = 'ready',
   /**
-   * Server is reachable but requires additional authentication before it
-   * can start, or before it can serve a particular request. Carries the
-   * RFC 9728 Protected Resource Metadata the client needs to obtain a
-   * token; the client then pushes the token via the existing
-   * `authenticate` command.
+   * 伺服器可連線，但在啟動前或服務特定請求前需要額外驗證。承載用戶端
+   * 取得權杖所需的 RFC 9728 Protected Resource Metadata；用戶端接著
+   * 透過現有的 `authenticate` 指令推送權杖。
    */
   AuthRequired = 'authRequired',
-  /** Server failed to start, crashed, or otherwise transitioned to a fatal error. */
+  /** 伺服器啟動失敗、崩潰或以其他方式轉換至致命錯誤。 */
   Error = 'error',
-  /** Server has been shut down. */
+  /** 伺服器已關閉。 */
   Stopped = 'stopped',
 }
 
 /**
- * Why an MCP server is currently in the {@link McpServerStatus.AuthRequired}
- * state. Mirrors the three failure modes defined by the
- * [MCP authorization spec](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization.md).
+ * MCP 伺服器目前為何處於 {@link McpServerStatus.AuthRequired} 狀態。
+ * 鏡射 [MCP authorization 規範](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization.md)
+ * 定義的三種失敗模式。
  *
  * @category MCP Server State
  */
 export const enum McpAuthRequiredReason {
-  /** No token has been provided yet (HTTP 401, no prior token). */
+  /** 尚未提供權杖（HTTP 401，無先前權杖）。 */
   Required = 'required',
-  /** A previously valid token expired or was revoked (HTTP 401). */
+  /** 先前有效的權杖已過期或被撤銷（HTTP 401）。 */
   Expired = 'expired',
   /**
-   * Step-up auth: a token is present but its scopes are insufficient for
-   * the requested operation (HTTP 403 with
-   * `WWW-Authenticate: Bearer error="insufficient_scope"`).
+   * 提升授權：權杖存在但其範圍對所請求的操作不足（HTTP 403，含
+   * `WWW-Authenticate: Bearer error="insufficient_scope"`）。
    *
-   * Unlike {@link Required} and {@link Expired} — which typically surface
-   * before any tool work is in flight — `InsufficientScope` is almost
-   * always triggered by an MCP request issued mid-turn (a `tools/call`,
-   * `resources/read`, etc.). The host SHOULD pair the
-   * {@link McpServerAuthRequiredState} transition with
-   * {@link SessionStatus.InputNeeded} on
-   * {@link SessionSummary.status | the session} so the activity becomes
-   * visible at the session-summary level, and clients SHOULD watch for
-   * this kind on any
-   * {@link McpServerCustomization | MCP server} backing a running tool
-   * call so they can present an explicit "grant more access" affordance
-   * tied to the blocked tool call.
+   * 與 {@link Required} 和 {@link Expired} — 兩者通常在任何工具工作進行前
+   * 出現 — 不同，`InsufficientScope` 幾乎總是由回合中途發出的 MCP 請求
+   * （`tools/call`、`resources/read` 等）觸發。主機 SHOULD 將
+   * {@link McpServerAuthRequiredState} 轉換與
+   * {@link SessionSummary.status | 工作階段}上的
+   * {@link SessionStatus.InputNeeded} 配對，讓活動在工作階段摘要層級
+   * 可見，且用戶端 SHOULD 監看任何支援執行中工具呼叫的
+   * {@link McpServerCustomization | MCP 伺服器}上的此種類，以便能呈現
+   * 與受阻工具呼叫繫結的明確「授予更多存取權」介面。
    */
   InsufficientScope = 'insufficientScope',
 }
 
 /**
- * Server is registered with the host but has not yet started.
+ * 伺服器已向主機註冊但尚未啟動。
  *
  * @category MCP Server State
  */
@@ -1224,7 +1150,7 @@ export interface McpServerStartingState {
 }
 
 /**
- * Server is running and serving requests.
+ * 伺服器執行中並提供請求服務。
  *
  * @category MCP Server State
  */
@@ -1233,91 +1159,81 @@ export interface McpServerReadyState {
 }
 
 /**
- * A pre-registered OAuth client that clients use instead of dynamic client
- * registration when resolving an MCP authentication challenge.
+ * 預先註冊的 OAuth 用戶端，用戶端在解決 MCP 驗證挑戰時使用它，而非
+ * 動態用戶端註冊。
  *
  * @category MCP Server State
  */
 export interface McpOAuthClient {
-  /** OAuth client identifier registered with the authorization server. */
+  /** 向授權伺服器註冊的 OAuth 用戶端識別碼。 */
   clientId: string;
   /**
-   * OAuth client secret for a confidential client. Absence means the client is
-   * public and uses a secretless flow such as authorization code with PKCE.
+   * 機密用戶端的 OAuth 用戶端密碼。不存在表示用戶端為公開用戶端，並
+   * 使用如授權碼搭配 PKCE 的無密碼流程。
    */
   clientSecret?: string;
 }
 
 /**
- * Reusable MCP authentication challenge — the RFC 9728 discovery info a
- * client needs to obtain a token and push it via the `authenticate` command.
- * Deliberately carries **no token**: this describes what is being asked for,
- * never the ****** itself.
+ * 可重複使用的 MCP 驗證挑戰 — 用戶端取得權杖並透過 `authenticate` 指令
+ * 推送所需的 RFC 9728 探索資訊。刻意**不承載權杖**：此處描述的是所
+ * 請求的內容，從不包含 ****** 本身。
  *
- * Shared by two independent state machines that describe the same OAuth
- * challenge from different vantage points:
+ * 由兩個描述同一 OAuth 挑戰不同觀點的獨立狀態機共用：
  *
- * - {@link McpServerAuthRequiredState} — the MCP server itself cannot serve
- *   *any* request until the client authenticates.
- * - {@link ToolCallAuthRequiredState} — a specific in-flight tool call is
- *   paused pending authentication (typically
- *   {@link McpAuthRequiredReason.InsufficientScope} step-up auth
- *   mid-execution). The server state and the tool-call state remain
- *   separate on purpose: the server saying "I need auth" and a tool
- *   invocation saying "I am waiting on that auth" are different facts that
- *   can be true independently.
+ * - {@link McpServerAuthRequiredState} — MCP 伺服器本身在用戶端驗證前
+ *   無法服務*任何*請求。
+ * - {@link ToolCallAuthRequiredState} — 特定的進行中工具呼叫因等待
+ *   驗證而暫停（通常為
+ *   {@link McpAuthRequiredReason.InsufficientScope} 執行中途的提升
+ *   授權）。伺服器狀態與工具呼叫狀態刻意保持分離：伺服器說「我需要
+ *   驗證」與工具呼叫說「我正在等待該驗證」是可獨立為真的不同事實。
  *
  * @category MCP Server State
  */
 export interface McpAuthRequirement {
-  /** Why authentication is required. */
+  /** 為何需要驗證。 */
   reason: McpAuthRequiredReason;
   /**
-   * Pre-registered OAuth client to use for authorization. When present, clients
-   * MUST use these credentials instead of dynamic client registration.
+   * 用於授權的預先註冊 OAuth 用戶端。存在時，用戶端 MUST 使用這些
+   * 憑證而非動態用戶端註冊。
    */
   oauthClient?: McpOAuthClient;
   /**
-   * RFC 9728 Protected Resource Metadata. The `resource` field is the
-   * canonical MCP server URI per RFC 8707, used as the OAuth `resource`
-   * indicator. `authorization_servers` is REQUIRED by the MCP
-   * authorization spec.
+   * RFC 9728 Protected Resource Metadata。`resource` 欄位為依 RFC 8707
+   * 的標準 MCP 伺服器 URI，用作 OAuth `resource` 指示器。
+   * `authorization_servers` 為 MCP authorization 規範所 REQUIRED。
    */
   resource: ProtectedResourceMetadata;
   /**
-   * Scopes required for the current challenge, parsed from the
-   * `WWW-Authenticate: ******"…"` header (or `scopes_supported`
-   * fallback). Authoritative for the next authorization request — clients
-   * MUST NOT assume any subset/superset relationship to
-   * `resource.scopes_supported`.
+   * 目前挑戰所需的範圍，解析自
+   * `WWW-Authenticate: ******"…"` 標頭（或 `scopes_supported`
+   * 回退值）。對下次授權請求具權威性 — 用戶端 MUST NOT 假設與
+   * `resource.scopes_supported` 有任何子集/超集關係。
    */
   requiredScopes?: string[];
-  /** Human-readable hint, typically from the OAuth `error_description`. */
+  /** 人類可讀的提示，通常來自 OAuth `error_description`。 */
   description?: string;
 }
 
 /**
- * Server is reachable but cannot serve requests until the client
- * authenticates. Mirrors the discovery flow defined by
+ * 伺服器可連線但在用戶端驗證前無法服務請求。鏡射
  * [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728)
- * (Protected Resource Metadata) and the OAuth 2.1 / RFC 6750 challenge
- * semantics required by the MCP authorization spec.
+ * （Protected Resource Metadata）定義的探索流程，以及 MCP authorization
+ * 規範所需的 OAuth 2.1 / RFC 6750 挑戰語意。
  *
- * Clients react to this state by calling the existing `authenticate`
- * command with the {@link ProtectedResourceMetadata.resource | resource}
- * carried here. There is **no** `notify/authRequired` notification for
- * MCP servers — the action stream is the single source of truth.
+ * 用戶端透過以現有的 `authenticate` 指令呼叫，並帶上此處承載的
+ * {@link ProtectedResourceMetadata.resource | resource} 來回應此狀態。
+ * MCP 伺服器**沒有** `notify/authRequired` 通知 — 操作串流是唯一
+ * 真相來源。
  *
- * When the transition is triggered by a request issued during a turn
- * — most commonly
+ * 當轉換是由回合期間發出的請求觸發 — 最常見為
  * {@link McpAuthRequiredReason.InsufficientScope | `InsufficientScope`}
- * surfacing mid-tool-call — the host SHOULD also raise
- * {@link SessionStatus.InputNeeded} on the session so the block is
- * visible at the summary level. Clients SHOULD watch this status on
- * any MCP server backing a running tool call and surface an explicit
- * affordance (e.g. a "grant additional access" prompt) tied to that
- * tool call, rather than relying on the user to notice the
- * customization’s status badge.
+ * 在工具呼叫中途出現 — 主機 SHOULD 一併在工作階段上引發
+ * {@link SessionStatus.InputNeeded}，讓阻塞在摘要層級可見。用戶端
+ * SHOULD 監看任何支援執行中工具呼叫之 MCP 伺服器上的此狀態，並呈現
+ * 與該工具呼叫繫結的明確介面（例如「授予額外存取權」提示），而非
+ * 仰賴使用者注意到自訂的狀態徽章。
  *
  * @category MCP Server State
  */
@@ -1326,21 +1242,20 @@ export interface McpServerAuthRequiredState extends McpAuthRequirement {
 }
 
 /**
- * Server failed to start, crashed, or otherwise transitioned to a
- * non-recoverable error. Use {@link McpServerStatus.AuthRequired}
- * for authentication failures.
+ * 伺服器啟動失敗、崩潰或以其他方式轉換至無法恢復的錯誤。驗證失敗
+ * 請使用 {@link McpServerStatus.AuthRequired}。
  *
  * @category MCP Server State
  */
 export interface McpServerErrorState {
   kind: McpServerStatus.Error;
-  /** Error details. */
+  /** 錯誤詳細資訊。 */
   error: ErrorInfo;
 }
 
 /**
- * Server has been shut down. The host MAY remove the server from the
- * session entirely shortly after this state.
+ * 伺服器已關閉。主機 MAY 在此狀態後不久將伺服器從工作階段中完全
+ * 移除。
  *
  * @category MCP Server State
  */
@@ -1349,8 +1264,8 @@ export interface McpServerStoppedState {
 }
 
 /**
- * Discriminated union of all MCP server lifecycle states.
- * Discriminated by `kind` (a {@link McpServerStatus} value).
+ * 所有 MCP 伺服器生命週期狀態的判別聯集。
+ * 以 `kind`（一個 {@link McpServerStatus} 值）作為判別。
  *
  * @category MCP Server State
  */

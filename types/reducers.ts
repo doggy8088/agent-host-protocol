@@ -1,6 +1,5 @@
 /**
- * Reducer Functions — Aggregator shim that re-exports the channel-organized
- * pure state reducers and dispatch helpers.
+ * 化簡函式 — 重新匯出依通道組織之純狀態化簡器與分派輔助函式的聚合器墊片。
  *
  * @module reducers
  */

@@ -1,5 +1,5 @@
 /**
- * Terminal Channel Actions — Mutations of an `ahp-terminal:` channel's state.
+ * 終端機通道操作 — 對 `ahp-terminal:` 通道狀態的變動。
  *
  * @module channels-terminal/actions
  */
@@ -11,34 +11,32 @@ import type { TerminalClaim } from './state.js';
 // ─── Terminal Actions ────────────────────────────────────────────────────────
 
 /**
- * Terminal output data (pty → client direction).
+ * 終端機輸出資料（pty → 用戶端方向）。
  *
- * Appends `data` to the terminal's `content` in the reducer.
+ * 在 reducer 中將 `data` 附加到終端機的 `content`。
  *
- * `terminal/data` and `terminal/input` are intentionally separate actions
- * because standard write-ahead reconciliation is not safe for terminal I/O.
- * A pty is a stateful, mutable process — optimistically applying input or
- * predicting output would produce incorrect state. Instead, `terminal/input`
- * is a side-effect-only action (client → server → pty), and `terminal/data`
- * is server-authoritative output (pty → server → client).
+ * `terminal/data` 與 `terminal/input` 是刻意分開的操作，因為標準的
+ * 預寫入協調對終端機 I/O 並不安全。pty 是有狀態、可變動的行程 —
+ * 樂觀地套用輸入或預測輸出會產生不正確的狀態。相反地，`terminal/input`
+ * 是僅具副作用的操作（用戶端 → 伺服器 → pty），而 `terminal/data` 是
+ * 伺服器權威的輸出（pty → 伺服器 → 用戶端）。
  *
  * @category Terminal Actions
  * @version 1
  */
 export interface TerminalDataAction {
   type: ActionType.TerminalData;
-  /** Output data (may contain ANSI escape sequences) */
+  /** 輸出資料（可能包含 ANSI 逸出序列） */
   data: string;
 }
 
 /**
- * Keyboard input sent to the terminal process (client → pty direction).
+ * 傳送給終端機行程的鍵盤輸入（用戶端 → pty 方向）。
  *
- * This is a side-effect-only action: the server forwards the data to the
- * terminal's pty. The reducer treats this as a no-op since `terminal/data`
- * actions will reflect any resulting output.
+ * 這是僅具副作用的操作：伺服器將資料轉送到終端機的 pty。reducer 將此
+ * 視為 no-op，因為 `terminal/data` 操作會反映任何產生的輸出。
  *
- * See `terminal/data` for why these two actions are kept separate.
+ * 關於這兩個操作為何保持分開，請參見 `terminal/data`。
  *
  * @category Terminal Actions
  * @version 1
@@ -46,15 +44,15 @@ export interface TerminalDataAction {
  */
 export interface TerminalInputAction {
   type: ActionType.TerminalInput;
-  /** Input data to send to the pty */
+  /** 要傳送給 pty 的輸入資料 */
   data: string;
 }
 
 /**
- * Terminal dimensions changed.
+ * 終端機尺寸已變更。
  *
- * Dispatchable by clients to request a resize, or by the server to inform
- * clients of the actual terminal dimensions.
+ * 可由用戶端分派以請求調整大小，或由伺服器分派以告知用戶端實際的
+ * 終端機尺寸。
  *
  * @category Terminal Actions
  * @version 1
@@ -62,17 +60,16 @@ export interface TerminalInputAction {
  */
 export interface TerminalResizedAction {
   type: ActionType.TerminalResized;
-  /** Terminal width in columns */
+  /** 終端機寬度（以欄為單位） */
   cols: number;
-  /** Terminal height in rows */
+  /** 終端機高度（以列為單位） */
   rows: number;
 }
 
 /**
- * Terminal claim changed. A client or session transfers ownership of the terminal.
+ * 終端機聲明已變更。用戶端或工作階段轉移終端機的所有權。
  *
- * The server SHOULD reject if the dispatching client does not currently hold
- * the claim.
+ * 若分派的用戶端目前未持有聲明，伺服器 SHOULD 拒絕。
  *
  * @category Terminal Actions
  * @version 1
@@ -80,15 +77,15 @@ export interface TerminalResizedAction {
  */
 export interface TerminalClaimedAction {
   type: ActionType.TerminalClaimed;
-  /** The new claim */
+  /** 新的聲明 */
   claim: TerminalClaim;
 }
 
 /**
- * Terminal title changed.
+ * 終端機標題已變更。
  *
- * Fired by the server when the terminal process updates its title (e.g. via
- * escape sequences), or dispatched by a client to rename a terminal.
+ * 當終端機行程更新其標題（例如透過逸出序列）時由伺服器引發，
+ * 或由用戶端分派以重新命名終端機。
  *
  * @category Terminal Actions
  * @version 1
@@ -96,36 +93,36 @@ export interface TerminalClaimedAction {
  */
 export interface TerminalTitleChangedAction {
   type: ActionType.TerminalTitleChanged;
-  /** New terminal title */
+  /** 新的終端機標題 */
   title: string;
 }
 
 /**
- * Terminal working directory changed.
+ * 終端機工作目錄已變更。
  *
  * @category Terminal Actions
  * @version 1
  */
 export interface TerminalCwdChangedAction {
   type: ActionType.TerminalCwdChanged;
-  /** New working directory */
+  /** 新的工作目錄 */
   cwd: URI;
 }
 
 /**
- * Terminal process exited.
+ * 終端機行程已結束。
  *
  * @category Terminal Actions
  * @version 1
  */
 export interface TerminalExitedAction {
   type: ActionType.TerminalExited;
-  /** Process exit code. `undefined` if the process was killed without an exit code. */
+  /** 行程結束代碼。若行程被終止而未產生結束代碼則為 `undefined`。 */
   exitCode?: number;
 }
 
 /**
- * Terminal scrollback buffer cleared.
+ * 終端機回捲緩衝區已清除。
  *
  * @category Terminal Actions
  * @version 1
@@ -136,12 +133,11 @@ export interface TerminalClearedAction {
 }
 
 /**
- * Shell integration has loaded and the terminal now supports command
- * detection. The server dispatches this when shell integration becomes
- * available (which may happen asynchronously after the terminal is created).
+ * shell 整合已載入，終端機現在支援指令偵測。當 shell 整合變為可用時
+ * （這可能在終端機建立後非同步地發生），伺服器會分派此操作。
  *
- * Clients MUST NOT assume command detection is available until this action
- * (or `terminal/commandExecuted`) has been received.
+ * 在收到此操作（或 `terminal/commandExecuted`）之前，用戶端 MUST NOT
+ * 假設指令偵測可用。
  *
  * @category Terminal Actions
  * @version 1
@@ -151,9 +147,9 @@ export interface TerminalCommandDetectionAvailableAction {
 }
 
 /**
- * A command has been submitted to the shell and is now executing.
- * All subsequent `terminal/data` actions (until the matching
- * `terminal/commandFinished`) constitute this command's output.
+ * 指令已提交給 shell 並正在執行。
+ * 所有後續的 `terminal/data` 操作（直到對應的
+ * `terminal/commandFinished`）構成此指令的輸出。
  *
  * @category Terminal Actions
  * @version 1
@@ -161,38 +157,35 @@ export interface TerminalCommandDetectionAvailableAction {
 export interface TerminalCommandExecutedAction {
   type: ActionType.TerminalCommandExecuted;
   /**
-   * Stable identifier for this command, scoped to the terminal URI.
-   * Allows correlating `commandExecuted` → `commandFinished` pairs.
+   * 此指令的穩定識別碼，範圍限定於終端機 URI。
+   * 允許將 `commandExecuted` → `commandFinished` 配對關聯起來。
    */
   commandId: string;
-  /** The command line text that was submitted */
+  /** 已提交的命令列文字 */
   commandLine: string;
   /**
-   * Unix timestamp (ms) of when the command started executing, as measured
-   * on the server.
+   * 指令開始執行時的 Unix 時間戳記（毫秒），於伺服器端量測。
    */
   timestamp: number;
 }
 
 /**
- * A command has finished executing.
+ * 指令已完成執行。
  *
- * The sequence of `terminal/data` actions between the preceding
- * `terminal/commandExecuted` (same `commandId`) and this action constitutes
- * the complete output of the command.
+ * 在先前的 `terminal/commandExecuted`（相同 `commandId`）與此操作
+ * 之間的 `terminal/data` 操作序列，構成該指令的完整輸出。
  *
  * @category Terminal Actions
  * @version 1
  */
 export interface TerminalCommandFinishedAction {
   type: ActionType.TerminalCommandFinished;
-  /** Matches the `commandId` from the corresponding `commandExecuted` */
+  /** 與對應的 `commandExecuted` 之 `commandId` 相符 */
   commandId: string;
-  /** Shell exit code. `undefined` if the shell did not report one. */
+  /** shell 結束代碼。若 shell 未回報則為 `undefined`。 */
   exitCode?: number;
   /**
-   * Wall-clock duration of the command in milliseconds, as measured by the
-   * shell integration script on the server side.
+   * 指令的實際耗時（毫秒），由伺服器端的 shell 整合指令稿量測。
    */
   durationMs?: number;
 }

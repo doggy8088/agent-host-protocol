@@ -1,6 +1,6 @@
 /**
- * Chat State Types — Per-chat turns, messages, response parts, tool calls,
- * and elicitation/input requests exposed on `ahp-chat:` channels.
+ * 聊天狀態類型 — 個別聊天的回合、訊息、回應部分、工具呼叫，
+ * 以及在 `ahp-chat:` 通道上公開的引出／輸入請求。
  *
  * @module channels-chat/state
  */
@@ -21,215 +21,196 @@ import type {
 // ─── Chat State ──────────────────────────────────────────────────────────────
 
 /**
- * Full state for a single chat, loaded when a client subscribes to the chat's
- * URI.
+ * 單一聊天的完整狀態，於用戶端訂閱該聊天的 URI 時載入。
  *
- * The lightweight catalog representation of a chat is {@link ChatSummary},
- * carried in {@link SessionState.chats | `SessionState.chats`}. `ChatState`
- * **denormalizes** every {@link ChatSummary} field directly onto itself so
- * subscribers receive one flat object instead of having to merge a nested
- * `summary` sub-object. Producers MUST keep the two representations
- * consistent: any change to the inlined fields below SHOULD also be
- * announced on the parent session via the matching
- * {@link SessionChatUpdatedAction | `session/chatUpdated`} action.
+ * 聊天的輕量目錄表示為 {@link ChatSummary}，承載於
+ * {@link SessionState.chats | `SessionState.chats`}。`ChatState` 將每個
+ * {@link ChatSummary} 欄位直接 **反正規化** 到自身，讓訂閱者收到單一
+ * 扁平物件，而不需合併巢狀的 `summary` 子物件。產生者 MUST 保持兩個
+ * 表示一致：下方內嵌欄位的任何變更，也 SHOULD 透過相符的
+ * {@link SessionChatUpdatedAction | `session/chatUpdated`} 操作在父工作階段上發布。
  *
  * @category Chat State
  */
 export interface ChatState {
   // ── Summary fields (denormalized from ChatSummary) ─────────────────
-  /** Chat URI */
+  /** 聊天 URI */
   resource: URI;
-  /** Chat title */
+  /** 聊天標題 */
   title: string;
-  /** Current chat status (reuses SessionStatus shape) */
+  /** 目前的聊天狀態（沿用 SessionStatus 形狀） */
   status: SessionStatus;
-  /** Human-readable description of what the chat is currently doing */
+  /** 此聊天目前正在做什麼的人類可讀描述 */
   activity?: string;
-  /** Last modification timestamp (ISO 8601, e.g. `"2025-03-10T18:42:03.123Z"`) */
+  /** 上次修改時間戳記（ISO 8601，例如 `"2025-03-10T18:42:03.123Z"`） */
   modifiedAt: string;
-  /** How this chat came into existence */
+  /** 此聊天如何產生 */
   origin?: ChatOrigin;
   /**
-   * How the user can interact with this chat. See {@link ChatInteractivity}.
+   * 使用者可如何與此聊天互動。參見 {@link ChatInteractivity}。
    *
-   * Supports agent-team patterns where worker chats are read-only or hidden.
-   * Absence defaults to {@link ChatInteractivity.Full} for backward
-   * compatibility.
+   * 支援代理程式團隊模式，其中工作者聊天為唯讀或隱藏。當此欄位缺省時，
+   * 為向後相容預設為 {@link ChatInteractivity.Full}。
    */
   interactivity?: ChatInteractivity;
   /**
-   * The subset of the session's
-   * {@link SessionState.workingDirectories | `workingDirectories`} that this
-   * chat's agent has tool access to. Every entry MUST be present in the owning
-   * session's `workingDirectories`; servers MUST reject a
-   * `chat/workingDirectorySet` action that violates this constraint.
+   * 此聊天的代理程式具有工具存取權的工作階段
+   * {@link SessionState.workingDirectories | `workingDirectories`} 子集。每個
+   * 項目 MUST 存在於所屬工作階段的 `workingDirectories` 中；伺服器 MUST 拒絕
+   * 違反此限制的 `chat/workingDirectorySet` 操作。
    *
-   * When absent, the chat inherits the full session set. When present but empty
-   * (not recommended), the chat has no working-directory tool access at all.
+   * 當缺省時，聊天會繼承完整的工作階段集合。當存在但為空（不建議）時，
+   * 聊天完全沒有工作目錄工具存取權。
    *
-   * Dispatch `chat/workingDirectorySet` / `chat/workingDirectoryRemoved` to
-   * update the subset on a running chat.
+   * 分派 `chat/workingDirectorySet` / `chat/workingDirectoryRemoved` 以
+   * 更新執行中聊天上的子集。
    */
   workingDirectories?: URI[];
   /**
-   * The chat's primary working directory — the distinguished root this chat is
-   * centered on (e.g. the agent's process root for this chat, the default
-   * location for relative paths). MUST be one of this chat's effective working
-   * directories ({@link workingDirectories}, or the session's set when that is
-   * absent). Present when the agent advertises
-   * {@link MultipleWorkingDirectoriesCapability.requiresPrimary}.
+   * 聊天的主要工作目錄 — 此聊天所居中的特殊根目錄（例如此聊天的代理程式
+   * 行程根目錄、相對路徑的預設位置）。MUST 為此聊天的有效工作目錄之一
+   * （{@link workingDirectories}，或當缺省時為工作階段的集合）。當代理程式
+   * 廣告 {@link MultipleWorkingDirectoriesCapability.requiresPrimary} 時存在。
    *
-   * **Read-only and fixed at creation.** It is set from
-   * {@link CreateChatParams.primaryWorkingDirectory} (or, for the session's
-   * default chat, {@link CreateSessionParams.primaryWorkingDirectory}) and does
-   * not change over the chat's lifetime — there is no action to mutate it, and
-   * it does not participate in `session/chatUpdated`.
+   * **建立時即為唯讀且固定。** 其值取自
+   * {@link CreateChatParams.primaryWorkingDirectory}（或對於工作階段的預設
+   * 聊天，取自 {@link CreateSessionParams.primaryWorkingDirectory}），且在
+   * 聊天生命週期內不會改變 — 沒有操作可變動它，且它不參與
+   * `session/chatUpdated`。
    */
   primaryWorkingDirectory?: URI;
 
   // ── Conversation contents ──────────────────────────────────────────
-  /** Completed turns */
+  /** 已完成的回合 */
   turns: Turn[];
   /**
-   * Cursor for loading older completed turns into this chat state.
+   * 用於將較舊的已完成回合載入此聊天狀態的游標。
    *
-   * Presence means `turns` is a tail window and more historical turns are
-   * available. Pass this opaque cursor to `fetchTurns`; the host MUST insert
-   * the loaded turns into state and update or clear this cursor before
-   * responding. Absence means the state contains all retained turns.
+   * 存在時表示 `turns` 為尾端視窗，且有更多歷史回合可用。將此不透明
+   * 游標傳遞給 `fetchTurns`；主機 MUST 在回應前將載入的回合插入狀態，
+   * 並更新或清除此游標。缺省時表示狀態包含所有保留的回合。
    */
   turnsNextCursor?: string;
-  /** Currently in-progress turn */
+  /** 目前進行中的回合 */
   activeTurn?: ActiveTurn;
-  /** Message to inject into the current turn at a convenient point */
+  /** 在適當時機注入目前回合的訊息 */
   steeringMessage?: PendingMessage;
-  /** Messages to send automatically as new turns after the current turn finishes */
+  /** 在目前回合結束後自動作為新回合傳送的訊息 */
   queuedMessages?: PendingMessage[];
   /**
-   * The user's in-progress draft input for this chat — the message they are
-   * composing but have not sent yet, including its
-   * {@link Message.model | model} / {@link Message.agent | agent} selection
-   * and attachments.
+   * 使用者對此聊天進行中的草稿輸入 — 他們正在撰寫但尚未傳送的訊息，
+   * 包含其 {@link Message.model | model} / {@link Message.agent | agent}
+   * 選擇與附件。
    *
-   * Clients MAY periodically sync their local input state into this field so
-   * a draft survives reloads and is visible to other clients viewing the same
-   * chat. Eager syncing is **not** required — clients SHOULD debounce and MAY
-   * sync only at convenient points. When presenting input UI for an existing
-   * chat, clients SHOULD use any `draft` to initialize their input state.
-   * Cleared (set to `undefined`) once the message is sent.
+   * 用戶端 MAY 定期將其本地輸入狀態同步到此欄位，讓草稿在重新載入後存活，
+   * 且對檢視相同聊天的其他用戶端可見。並 **不** 需要積極同步 — 用戶端
+   * SHOULD 去抖動，且 MAY 僅在適當時機同步。在為既有聊天呈現輸入 UI 時，
+   * 用戶端 SHOULD 使用任何 `draft` 來初始化其輸入狀態。一旦訊息傳送即清除
+   * （設為 `undefined`）。
    */
   draft?: Message;
   /**
-   * Additional provider-specific metadata for this chat.
+   * 此聊天的額外提供者特定中介資料。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Lightweight catalog entry for a chat, carried in
- * {@link SessionState.chats | `SessionState.chats`}. The full conversation
- * lives in {@link ChatState}, which inlines (denormalizes) every field below.
+ * 聊天的輕量目錄項目，承載於 {@link SessionState.chats | `SessionState.chats`}。
+ * 完整對話存在於 {@link ChatState}，其內嵌（反正規化）了下方所有欄位。
  *
  * @category Chat State
  */
 export interface ChatSummary {
-  /** Chat URI */
+  /** 聊天 URI */
   resource: URI;
-  /** Chat title */
+  /** 聊天標題 */
   title: string;
-  /** Current chat status (reuses SessionStatus shape) */
+  /** 目前的聊天狀態（沿用 SessionStatus 形狀） */
   status: SessionStatus;
-  /** Human-readable description of what the chat is currently doing */
+  /** 此聊天目前正在做什麼的人類可讀描述 */
   activity?: string;
-  /** Last modification timestamp (ISO 8601, e.g. `"2025-03-10T18:42:03.123Z"`) */
+  /** 上次修改時間戳記（ISO 8601，例如 `"2025-03-10T18:42:03.123Z"`） */
   modifiedAt: string;
-  /** How this chat came into existence */
+  /** 此聊天如何產生 */
   origin?: ChatOrigin;
   /**
-   * How the user can interact with this chat. See {@link ChatInteractivity}.
+   * 使用者可如何與此聊天互動。參見 {@link ChatInteractivity}。
    *
-   * Supports agent-team patterns where worker chats are read-only or hidden.
-   * Absence defaults to {@link ChatInteractivity.Full} for backward
-   * compatibility.
+   * 支援代理程式團隊模式，其中工作者聊天為唯讀或隱藏。當此欄位缺省時，
+   * 為向後相容預設為 {@link ChatInteractivity.Full}。
    */
   interactivity?: ChatInteractivity;
   /**
-   * The subset of the session's working directories this chat uses.
-   * See {@link ChatState.workingDirectories} for the full semantics.
+   * 此聊天使用的工作階段工作目錄子集。
+   * 完整語意請參見 {@link ChatState.workingDirectories}。
    */
   workingDirectories?: URI[];
   /**
-   * The chat's primary working directory.
-   * See {@link ChatState.primaryWorkingDirectory} for the full semantics.
+   * 聊天的主要工作目錄。
+   * 完整語意請參見 {@link ChatState.primaryWorkingDirectory}。
    */
   primaryWorkingDirectory?: URI;
 }
 
 /**
- * Discriminant for {@link ChatOrigin} — how a chat came into existence.
+ * {@link ChatOrigin} 的判別欄位 — 聊天如何產生。
  *
  * @category Chat State
  */
 export const enum ChatOriginKind {
-  /** User created the chat explicitly (e.g. via the host UI). */
+  /** 使用者明確建立此聊天（例如透過主機 UI）。 */
   User = 'user',
-  /** Forked from an existing chat at a specific turn. */
+  /** 在特定回合從既有聊天分岔。 */
   Fork = 'fork',
-  /** Created as an independent side conversation from a specific turn. */
+  /** 從特定回合建立為獨立的側邊對話。 */
   SideChat = 'sideChat',
-  /** Spawned by a tool call running in another chat (e.g. a sub-agent delegation). */
+  /** 由執行於另一個聊天的工具呼叫產生（例如子代理程式委派）。 */
   Tool = 'tool',
 }
 
 /**
- * Immutable selected-text snapshot captured when a side chat is created.
+ * 建立側邊聊天時擷取的不可變選取文字快照。
  *
- * The host records this exact text when it accepts `createChat`; later changes
- * to the source chat do not alter it.
+ * 主機在接受 `createChat` 時記錄此確切文字；之後對來源聊天的變更不會
+ * 改變它。
  *
  * @category Chat State
  */
 export interface SideChatSelection {
   /**
-   * Exact selected-text snapshot captured at `createChat` acceptance.
+   * 在接受 `createChat` 時擷取的確切選取文字快照。
    *
-   * MUST be non-empty.
+   * MUST 非空。
    */
   text: string;
   /**
-   * Optional provenance for the response part that contained {@link text} when
-   * the host took the snapshot.
+   * 主機拍攝快照時，包含 {@link text} 的回應部分的選用出處資訊。
    *
-   * Advisory only: this is not a live range or offset and MUST NOT be used to
-   * recompute `text`.
+   * 僅供參考：這不是即時範圍或位移，且 MUST NOT 用於重新計算 `text`。
    */
   responsePartId?: string;
 }
 
 /**
- * How a chat came into existence. Clients MAY use it to render
- * contextual UI (parent indicators, fork markers, "spawned by tool" badges).
+ * 聊天如何產生。用戶端 MAY 使用它來呈現情境 UI（父項指標、分岔標記、
+ * 「由工具產生」徽章）。
  *
- * Fork and side-chat origins both carry a stable top-level `turnId` alongside
- * their discriminated `kind` value instead of snapshotting whether that turn
- * was active or historical at creation time. Consumers resolve the identifier
- * against the
- * source chat's current `activeTurn` or retained `turns` as needed.
+ * 分岔與側邊聊天起源兩者都帶有穩定的頂層 `turnId`，伴隨其判別
+ * `kind` 值，而非快照建立時該回合為作用中或歷史的狀態。消費者視需要將
+ * 識別碼解析為來源聊天目前的 `activeTurn` 或保留的 `turns`。
  *
- * When a host accepts side-chat creation from the source chat's current active
- * turn, it snapshots the retained history plus that turn's current user
- * message and any partial assistant response already available. Later
- * source-turn deltas do not retroactively change the created side chat's
- * starting context, and once the source turn completes it is still referenced
- * by the same `turnId`. Side-chat origins MAY also retain an immutable
- * {@link SideChatSelection | selected-text snapshot} captured at acceptance
- * time; any `responsePartId` there is provenance only, not a range.
+ * 當主機接受從來源聊天目前作用中回合建立側邊聊天時，它會快照保留的
+ * 歷史，加上該回合目前的使用者訊息與任何已可用的部分代理程式回應。
+ * 之後來源回合的差異不會回溯變更所建立側邊聊天的起始情境，且一旦
+ * 來源回合完成，它仍由相同的 `turnId` 參照。側邊聊天起源 MAY 也保留
+ * 在接受時擷取的不可變 {@link SideChatSelection | 選取文字快照}；其中
+ * 的任何 `responsePartId` 僅為出處，不是範圍。
  *
- * The `tool` variant records a tool-spawned worker from the worker's side: its
- * `chat`/`toolCallId` identify the spawning tool call in the parent chat. This
- * is the canonical record of the spawn relationship. The same edge is surfaced
- * from the parent's side by {@link ToolResultSubagentContent}, whose `resource`
- * is this chat's URI; hosts MUST keep the two consistent.
+ * `tool` 變體從工作者側記錄工具產生的工作者：其 `chat`/`toolCallId`
+ * 識別父聊天中產生的工具呼叫。這是產生關係的標準記錄。相同的邊從父側
+ * 由 {@link ToolResultSubagentContent} 呈現，其 `resource` 為此聊天的
+ * URI；主機 MUST 保持兩者一致。
  *
  * @category Chat State
  */
@@ -240,55 +221,53 @@ export type ChatOrigin =
   | { kind: ChatOriginKind.Tool; chat: URI; toolCallId: string };
 
 /**
- * How a user can interact with a chat.
+ * 使用者可如何與聊天互動。
  *
- * - `Full` — user can send messages and watch (default when absent)
- * - `ReadOnly` — user can watch but not send messages (e.g. agent team workers)
- * - `Hidden` — internal worker not shown in UI at all
+ * - `Full` — 使用者可傳送訊息並觀看（缺省時為預設）
+ * - `ReadOnly` — 使用者可觀看但無法傳送訊息（例如代理程式團隊工作者）
+ * - `Hidden` — 完全不顯示在 UI 中的內部工作者
  *
- * Supports the agent-team pattern where a lead chat is fully interactive and
- * worker chats are read-only (visible for observability) or hidden (internal
- * implementation detail). The harness sets this based on the chat's role;
- * the UI uses it to show appropriate controls.
+ * 支援代理程式團隊模式，其中主導聊天為完全互動，而工作者聊天為唯讀
+ * （可見以供可觀測性）或隱藏（內部實作細節）。框架根據聊天的角色
+ * 設定此值；UI 使用它來顯示適當的控制項。
  *
  * @category Chat State
  */
 export const enum ChatInteractivity {
-  /** User can send messages and watch (default when absent) */
+  /** 使用者可傳送訊息並觀看（缺省時為預設） */
   Full = 'full',
-  /** User can watch but not send messages */
+  /** 使用者可觀看但無法傳送訊息 */
   ReadOnly = 'read-only',
-  /** Internal worker not shown in UI at all */
+  /** 完全不顯示在 UI 中的內部工作者 */
   Hidden = 'hidden',
 }
 
 // ─── Pending Message Types ───────────────────────────────────────────────────
 
 /**
- * Discriminant for pending message kinds.
+ * 待處理訊息種類的判別欄位。
  *
  * @category Pending Message Types
  */
 export const enum PendingMessageKind {
-  /** Injected into the current turn at a convenient point */
+  /** 在適當時機注入目前回合 */
   Steering = 'steering',
-  /** Sent automatically as a new turn after the current turn finishes */
+  /** 在目前回合結束後自動作為新回合傳送 */
   Queued = 'queued',
 }
 
 /**
- * A message queued for future delivery to the agent.
+ * 已排入佇列、待未來傳遞給代理程式的訊息。
  *
- * Steering messages are injected into the current turn mid-flight.
- * Queued messages are automatically started as new turns after the
- * current turn naturally finishes.
+ * 引導訊息會在進行中注入目前回合。佇列訊息會在目前回合自然結束後
+ * 自動作為新回合啟動。
  *
  * @category Pending Message Types
  */
 export interface PendingMessage {
-  /** Unique identifier for this pending message */
+  /** 此待處理訊息的唯一識別碼 */
   id: string;
-  /** The message that will start the next turn */
+  /** 將啟動下一回合的訊息 */
   message: Message;
 }
 
@@ -296,7 +275,7 @@ export interface PendingMessage {
 // ─── Chat Input Types ────────────────────────────────────────────────────
 
 /**
- * How a client completed an input request.
+ * 用戶端如何完成輸入請求。
  *
  * @category Chat Input Types
  */
@@ -307,7 +286,7 @@ export const enum ChatInputResponseKind {
 }
 
 /**
- * Question/input control kind.
+ * 問題／輸入控制項種類。
  *
  * @category Chat Input Types
  */
@@ -321,96 +300,96 @@ export const enum ChatInputQuestionKind {
 }
 
 /**
- * A choice in a select-style question.
+ * 選擇式問題中的一個選項。
  *
  * @category Chat Input Types
  */
 export interface ChatInputOption {
-  /** Stable option identifier; for MCP enum values this is the enum string */
+  /** 穩定的選項識別碼；對 MCP 列舉值而言此為列舉字串 */
   id: string;
-  /** Display label */
+  /** 顯示標籤 */
   label: string;
-  /** Optional secondary text */
+  /** 選用的次要文字 */
   description?: string;
-  /** Whether this option is the recommended/default choice */
+  /** 此選項是否為建議／預設選擇 */
   recommended?: boolean;
 }
 
 interface ChatInputQuestionBase {
-  /** Stable question identifier used as the key in `answers` */
+  /** 穩定的問題識別碼，作為 `answers` 中的索引鍵 */
   id: string;
-  /** Short display title */
+  /** 簡短顯示標題 */
   title?: string;
-  /** Prompt shown to the user */
+  /** 顯示給使用者的提示 */
   message: string;
-  /** Whether the user must answer this question to accept the request */
+  /** 使用者是否必須回答此問題才能接受請求 */
   required?: boolean;
 }
 
-/** Text question within a chat input request. */
+/** 聊天輸入請求中的文字問題。 */
 export interface ChatInputTextQuestion extends ChatInputQuestionBase {
   kind: ChatInputQuestionKind.Text;
-  /** Format hint for text questions, such as `email`, `uri`, `date`, or `date-time` */
+  /** 文字問題的格式提示，例如 `email`、`uri`、`date` 或 `date-time` */
   format?: string;
-  /** Minimum string length */
+  /** 最小字串長度 */
   min?: number;
-  /** Maximum string length */
+  /** 最大字串長度 */
   max?: number;
-  /** Default text */
+  /** 預設文字 */
   defaultValue?: string;
 }
 
-/** Numeric question within a chat input request. */
+/** 聊天輸入請求中的數值問題。 */
 export interface ChatInputNumberQuestion extends ChatInputQuestionBase {
   kind: ChatInputQuestionKind.Number | ChatInputQuestionKind.Integer;
   /**
-   * Minimum value
+   * 最小值
    * @format float
    */
   min?: number;
   /**
-   * Maximum value
+   * 最大值
    * @format float
    */
   max?: number;
   /**
-   * Default numeric value
+   * 預設數值
    * @format float
    */
   defaultValue?: number;
 }
 
-/** Boolean question within a chat input request. */
+/** 聊天輸入請求中的布林值問題。 */
 export interface ChatInputBooleanQuestion extends ChatInputQuestionBase {
   kind: ChatInputQuestionKind.Boolean;
-  /** Default boolean value */
+  /** 預設布林值 */
   defaultValue?: boolean;
 }
 
-/** Single-select question within a chat input request. */
+/** 聊天輸入請求中的單選問題。 */
 export interface ChatInputSingleSelectQuestion extends ChatInputQuestionBase {
   kind: ChatInputQuestionKind.SingleSelect;
-  /** Options the user may select from */
+  /** 使用者可從中選取的選項 */
   options: ChatInputOption[];
-  /** Whether the user may enter text instead of selecting an option */
+  /** 使用者是否可改為輸入文字而不選取選項 */
   allowFreeformInput?: boolean;
 }
 
-/** Multi-select question within a chat input request. */
+/** 聊天輸入請求中的多選問題。 */
 export interface ChatInputMultiSelectQuestion extends ChatInputQuestionBase {
   kind: ChatInputQuestionKind.MultiSelect;
-  /** Options the user may select from */
+  /** 使用者可從中選取的選項 */
   options: ChatInputOption[];
-  /** Whether the user may enter text in addition to selecting options */
+  /** 使用者是否可在選取選項之外另輸入文字 */
   allowFreeformInput?: boolean;
-  /** Minimum selected item count */
+  /** 最小選取項目數 */
   min?: number;
-  /** Maximum selected item count */
+  /** 最大選取項目數 */
   max?: number;
 }
 
 /**
- * One question within a chat input request.
+ * 聊天輸入請求中的單一問題。
  *
  * @category Chat Input Types
  */
@@ -421,29 +400,28 @@ export type ChatInputQuestion = ChatInputTextQuestion
   | ChatInputMultiSelectQuestion;
 
 /**
- * The request payload carried by an {@link InputRequestResponsePart}.
+ * 由 {@link InputRequestResponsePart} 承載的請求有效負載。
  *
- * The server creates or replaces the containing response part with
- * `chat/inputRequested`. Clients sync drafts with `chat/inputAnswerChanged`
- * and submit responses with `chat/inputCompleted`.
+ * 伺服器會以 `chat/inputRequested` 建立或取代包含的回應部分。用戶端以
+ * `chat/inputAnswerChanged` 同步草稿，並以 `chat/inputCompleted` 提交回應。
  *
  * @category Chat Input Types
  */
 export interface ChatInputRequest {
-  /** Stable request identifier */
+  /** 穩定的請求識別碼 */
   id: string;
-  /** Display message for the request as a whole */
+  /** 整個請求的顯示訊息 */
   message?: string;
-  /** URL the user should review or open, for URL-style elicitations */
+  /** 使用者應檢閱或開啟的 URL，用於 URL 式引出 */
   url?: URI;
-  /** Ordered questions to ask the user */
+  /** 要詢問使用者的有序問題 */
   questions?: ChatInputQuestion[];
-  /** Current draft or submitted answers, keyed by question ID */
+  /** 目前的草稿或已提交答案，以問題 ID 為索引鍵 */
   answers?: Record<string, ChatInputAnswer>;
 }
 
 /**
- * Answer value kind.
+ * 答案值種類。
  *
  * @category Chat Input Types
  */
@@ -456,7 +434,7 @@ export const enum ChatInputAnswerValueKind {
 }
 
 /**
- * Value captured for one answer.
+ * 為單一答案擷取的值。
  *
  * @category Chat Input Types
  */
@@ -479,14 +457,14 @@ export interface ChatInputBooleanAnswerValue {
 export interface ChatInputSelectedAnswerValue {
   kind: ChatInputAnswerValueKind.Selected;
   value: string;
-  /** Free-form text entered instead of selecting an option */
+  /** 改為輸入而非選取選項的自由格式文字 */
   freeformValues?: string[];
 }
 
 export interface ChatInputSelectedManyAnswerValue {
   kind: ChatInputAnswerValueKind.SelectedMany;
   value: string[];
-  /** Free-form text entered in addition to selected options */
+  /** 除了選取選項之外另輸入的自由格式文字 */
   freeformValues?: string[];
 }
 
@@ -497,21 +475,21 @@ export type ChatInputAnswerValue = ChatInputTextAnswerValue
   | ChatInputSelectedManyAnswerValue;
 
 export interface ChatInputAnswered {
-  /** Answer state */
+  /** 答案狀態 */
   state: ChatInputAnswerState.Draft | ChatInputAnswerState.Submitted;
-  /** Answer value */
+  /** 答案值 */
   value: ChatInputAnswerValue;
 }
 
 export interface ChatInputSkipped {
-  /** Answer state */
+  /** 答案狀態 */
   state: ChatInputAnswerState.Skipped;
-  /** Free-form reason or value captured while skipping, if any */
+  /** 跳過時擷取的自由格式原因或值（若有） */
   freeformValues?: string[];
 }
 
 /**
- * Answer lifecycle state.
+ * 答案生命週期狀態。
  *
  * @category Chat Input Types
  */
@@ -522,7 +500,7 @@ export const enum ChatInputAnswerState {
 }
 
 /**
- * Draft, submitted, or skipped answer for one question.
+ * 單一問題的草稿、已提交或已跳過答案。
  *
  * @category Chat Input Types
  */
@@ -532,7 +510,7 @@ export type ChatInputAnswer = ChatInputAnswered | ChatInputSkipped;
 // ─── Turn Types ──────────────────────────────────────────────────────────────
 
 /**
- * How a turn ended.
+ * 回合如何結束。
  *
  * @category Turn Types
  */
@@ -543,309 +521,296 @@ export const enum TurnState {
 }
 
 /**
- * Discriminant for {@link MessageAttachment} variants.
+ * {@link MessageAttachment} 變體的判別欄位。
  *
  * @category Turn Types
  */
 export const enum MessageAttachmentKind {
-  /** A simple, opaque attachment whose representation is described by the producer. */
+  /** 簡單、不透明的附件，其表示由產生者描述。 */
   Simple = 'simple',
-  /** An attachment whose data is embedded inline as a base64 string. */
+  /** 資料以 base64 字串內嵌的附件。 */
   EmbeddedResource = 'embeddedResource',
-  /** An attachment that references a resource by URI. */
+  /** 依 URI 參照資源的附件。 */
   Resource = 'resource',
-  /** An attachment that references annotations on an annotations channel. */
+  /** 參照註解通道上之註解的附件。 */
   Annotations = 'annotations',
-  /** An attachment that references a bounded transcript from another chat. */
+  /** 參照另一個聊天之有界轉錄的附件。 */
   Chat = 'chat',
 }
 
 /**
- * A completed request/response cycle.
+ * 已完成的請求／回應循環。
  *
  * @category Turn Types
  */
 export interface Turn {
-  /** Turn identifier */
+  /** 回合識別碼 */
   id: string;
-  /** ISO 8601 timestamp when this turn started. */
+  /** 此回合開始時的 ISO 8601 時間戳記。 */
   startedAt?: string;
-  /** Turn duration in milliseconds. */
+  /** 回合持續時間，以毫秒為單位。 */
   duration?: number;
-  /** The message that initiated the turn */
+  /** 啟動此回合的訊息 */
   message: Message;
   /**
-   * All response content in stream order: text, tool calls, reasoning, and content refs.
+   * 所有回應內容依串流順序排列：文字、工具呼叫、推理與內容參照。
    *
-   * Consumers should derive display text by concatenating markdown parts,
-   * and find tool calls by filtering for `ToolCall` parts.
+   * 消費者應透過串接 markdown 部分來衍生顯示文字，並透過篩選
+   * `ToolCall` 部分來尋找工具呼叫。
    */
   responseParts: ResponsePart[];
-  /** Token usage info */
+  /** 權杖使用資訊 */
   usage: UsageInfo | undefined;
-  /** How the turn ended */
+  /** 回合如何結束 */
   state: TurnState;
-  /** Error details if state is `'error'` */
+  /** 當狀態為 `'error'` 時的錯誤細節 */
   error?: ErrorInfo;
 }
 
 /**
- * An in-progress turn — the assistant is actively streaming.
+ * 進行中的回合 — 助理正在主動串流。
  *
  * @category Turn Types
  */
 export interface ActiveTurn {
-  /** Turn identifier */
+  /** 回合識別碼 */
   id: string;
-  /** ISO 8601 timestamp when this turn started. */
+  /** 此回合開始時的 ISO 8601 時間戳記。 */
   startedAt: string;
-  /** The message that initiated the turn */
+  /** 啟動此回合的訊息 */
   message: Message;
   /**
-   * All response content in stream order: text, tool calls, reasoning, and content refs.
+   * 所有回應內容依串流順序排列：文字、工具呼叫、推理與內容參照。
    *
-   * Tool call parts include `pendingPermissions` when permissions are awaiting user approval.
+   * 當權限等待使用者核准時，工具呼叫部分會包含 `pendingPermissions`。
    */
   responseParts: ResponsePart[];
-  /** Token usage info */
+  /** 權杖使用資訊 */
   usage: UsageInfo | undefined;
 }
 
 /**
- * Discriminant for {@link MessageOrigin} — identifies who produced a message.
+ * {@link MessageOrigin} 的判別欄位 — 識別訊息的產生者。
  *
  * @category Turn Types
  */
 export enum MessageKind {
-  /** Sent directly by the user. */
+  /** 由使用者直接傳送。 */
   User = 'user',
   /**
-   * Produced by the agent itself rather than the user — for example, an agent
-   * that seeds the first message of a chat it spawned.
+   * 由代理程式本身而非使用者產生 — 例如，代理程式為其產生的聊天
+   * 植入第一則訊息。
    */
   Agent = 'agent',
   /**
-   * Produced by a tool rather than the user — for example, a tool that spawns a
-   * worker chat whose first message carries a seed prompt.
+   * 由工具而非使用者產生 — 例如，工具產生一個工作者聊天，其第一則
+   * 訊息帶有種子提示。
    */
   Tool = 'tool',
-  /** A system-generated notification rather than a direct user message. */
+  /** 系統產生的通知，而非直接的使用者訊息。 */
   SystemNotification = 'systemNotification',
 }
 
 /**
- * Identifies the origin of a {@link Message} — who produced it. For the message
- * that initiates a turn ({@link Turn.message}), this is also the origin of the
- * turn; for steering or queued messages it is just the origin of that message.
+ * 識別 {@link Message} 的起源 — 由誰產生。對於啟動回合的訊息
+ * （{@link Turn.message}），這也是回合的起源；對於引導或佇列訊息，
+ * 則僅為該訊息的起源。
  *
  * @category Turn Types
  */
 export interface MessageOrigin {
-  /** The kind of actor that produced the message. */
+  /** 產生此訊息的行為者種類。 */
   kind: MessageKind;
 }
 
 /**
- * A message that initiates or steers a turn. Messages can originate from the
- * user, the agent, a tool, or be system-generated (see {@link MessageOrigin}).
+ * 啟動或引導回合的訊息。訊息可來自使用者、代理程式、工具，或由系統
+ * 產生（參見 {@link MessageOrigin}）。
  *
- * Attachments MAY be referenced inside {@link Message.text} via their
- * {@link MessageAttachmentBase.range} field. Attachments without a range are
- * still associated with the message but do not correspond to a specific span
- * in the text.
+ * 附件 MAY 透過其 {@link MessageAttachmentBase.range} 欄位在
+ * {@link Message.text} 中被參照。沒有範圍的附件仍與訊息關聯，但不
+ * 對應文字中的特定跨度。
  *
  * @category Turn Types
  */
 export interface Message {
-  /** Message text */
+  /** 訊息文字 */
   text: string;
-  /** The origin of the message */
+  /** 訊息的起源 */
   origin: MessageOrigin;
-  /** File/selection attachments */
+  /** 檔案／選取範圍附件 */
   attachments?: MessageAttachment[];
   /**
-   * The model this message was, or will be, sent with.
+   * 此訊息已（或將）用來傳送的模型。
    *
-   * For historic user/agent messages this records the model actually used, so
-   * a client editing or resending the message can retain that selection. For a
-   * {@link ChatState.draft | draft} it carries the model the user picked for
-   * the message they are composing. Absent means the agent host's default
-   * model applies.
+   * 對於歷史使用者／代理程式訊息，此記錄實際使用的模型，讓編輯或重送
+   * 訊息的用戶端可保留該選擇。對於 {@link ChatState.draft | draft}，
+   * 它承載使用者為其正在撰寫的訊息所挑選的模型。缺省表示套用代理主機
+   * 的預設模型。
    */
   model?: ModelSelection;
   /**
-   * The custom agent this message was, or will be, sent with.
+   * 此訊息已（或將）用來傳送的自訂代理程式。
    *
-   * For historic messages this records the agent actually used; for a
-   * {@link ChatState.draft | draft} it carries the agent the user picked.
-   * Absent means no custom agent — the provider's default behavior applies.
+   * 對於歷史訊息，此記錄實際使用的代理程式；對於
+   * {@link ChatState.draft | draft}，它承載使用者挑選的代理程式。缺省
+   * 表示無自訂代理程式 — 套用提供者的預設行為。
    */
   agent?: AgentSelection;
   /**
-   * Additional provider-specific metadata for this message.
+   * 此訊息的額外提供者特定中介資料。
    *
-   * Clients MAY look for well-known keys here to provide enhanced UI, and
-   * agent hosts MAY use it to carry context that does not fit any other
-   * field. Mirrors the MCP `_meta` convention.
+   * 用戶端 MAY 在此尋找已知的索引鍵以提供增強 UI，代理主機 MAY 用它
+   * 承載不符合任何其他欄位的情境。鏡像 MCP 的 `_meta` 慣例。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Common fields shared by all {@link MessageAttachment} variants.
+ * 所有 {@link MessageAttachment} 變體共用的欄位。
  *
  * @category Turn Types
  */
 export interface MessageAttachmentBase {
   /**
-   * A human-readable label for the attachment (e.g. the filename of a file
-   * attachment). Used for display in UI.
+   * 附件的人類可讀標籤（例如檔案附件的檔名）。用於 UI 中的顯示。
    */
   label: string;
 
   /**
-   * If defined, the range in {@link Message.text} that references this
-   * attachment. This is a text range, not a byte range.
+   * 若已定義，為 {@link Message.text} 中參照此附件的範圍。這是文字
+   * 範圍，不是位元組範圍。
    */
   range?: TextRange;
 
   /**
-   * Advisory display hint for clients rendering this attachment. Recognized
-   * values include:
+   * 轉譯此附件的用戶端的建議顯示提示。可辨識的值包含：
    *
-   * - `'image'`: the attachment is an image
-   * - `'document'`: the attachment is a textual document
-   * - `'symbol'`: the attachment is a code symbol (e.g. a function or class)
-   * - `'directory'`: the attachment is a folder
-   * - `'selection'`: the attachment is a selection within a document
+   * - `'image'`：附件為影像
+   * - `'document'`：附件為文字文件
+   * - `'symbol'`：附件為程式碼符號（例如函式或類別）
+   * - `'directory'`：附件為資料夾
+   * - `'selection'`：附件為文件內的選取範圍
    *
-   * Implementations MAY provide additional values; clients SHOULD fall back
-   * to a reasonable default when an unknown value is encountered.
+   * 實作 MAY 提供額外的值；用戶端 SHOULD 在遇到未知值時退回合理的
+   * 預設值。
    */
   displayKind?: string;
 
   /**
-   * Additional implementation-defined metadata for the attachment.
+   * 附件的額外實作定義中介資料。
    *
-   * If the attachment was produced by the `completions` command, the client
-   * MUST preserve every property of `_meta` originally returned by the agent
-   * host when sending the user message containing the accepted completion.
+   * 若附件由 `completions` 指令產生，用戶端在傳送包含已接受補全的
+   * 使用者訊息時，MUST 保留代理主機原先傳回的 `_meta` 的每個屬性。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * A simple, opaque attachment whose model representation is described by
- * the producer.
+ * 簡單、不透明的附件，其模型表示由產生者描述。
  *
  * @category Turn Types
  */
 export interface SimpleMessageAttachment extends MessageAttachmentBase {
-  /** Discriminant */
+  /** 判別欄位 */
   type: MessageAttachmentKind.Simple;
 
   /**
-   * Representation of the attachment as it should be shown to the model.
+   * 附件應顯示給模型的表示。
    *
-   * If the attachment was produced by the client, this property MUST be
-   * defined so the agent host can correctly interpret the attachment. This
-   * property MAY be omitted when the attachment originated from a
-   * `completions` response.
+   * 若附件由用戶端產生，此屬性 MUST 已定義，讓代理主機可正確解讀附件。
+   * 當附件源自 `completions` 回應時，MAY 省略此屬性。
    */
   modelRepresentation?: string;
 }
 
 /**
- * An attachment whose data is embedded inline as a base64 string.
+ * 資料以 base64 字串內嵌的附件。
  *
- * Use this for small binary payloads (e.g. a pasted image) that should be
- * delivered with the user message itself rather than fetched separately.
+ * 將此用於應隨使用者訊息本身傳遞而非另行擷取的小型二進位有效負載
+ * （例如貼上的影像）。
  *
  * @category Turn Types
  */
 export interface MessageEmbeddedResourceAttachment extends MessageAttachmentBase {
-  /** Discriminant */
+  /** 判別欄位 */
   type: MessageAttachmentKind.EmbeddedResource;
-  /** Base64-encoded binary data */
+  /** Base64 編碼的二進位資料 */
   data: string;
-  /** Content MIME type (e.g. `"image/png"`, `"application/pdf"`) */
+  /** 內容 MIME 類型（例如 `"image/png"`、`"application/pdf"`） */
   contentType: string;
   /**
-   * Optional selection within the attached textual resource.
+   * 附加文字資源內的選用選取範圍。
    *
-   * Only meaningful for textual resources.
+   * 僅對文字資源有意義。
    */
   selection?: TextSelection;
 }
 
 /**
- * An attachment that references a resource by URI. The content is not
- * delivered inline; consumers can fetch it via `resourceRead` when needed.
+ * 依 URI 參照資源的附件。內容不會內嵌傳遞；消費者可在需要時透過
+ * `resourceRead` 擷取它。
  *
  * @category Turn Types
  */
 export interface MessageResourceAttachment extends MessageAttachmentBase, ContentRef {
-  /** Discriminant */
+  /** 判別欄位 */
   type: MessageAttachmentKind.Resource;
   /**
-   * Optional selection within the referenced textual resource.
+   * 被參照文字資源內的選用選取範圍。
    *
-   * Only meaningful for textual resources.
+   * 僅對文字資源有意義。
    */
   selection?: TextSelection;
 }
 
 /**
- * An attachment that references annotations on a session's annotations
- * channel (see {@link AnnotationsState}).
+ * 參照工作階段之註解通道上之註解的附件（參見 {@link AnnotationsState}）。
  *
- * When {@link annotationIds} is omitted the attachment references every
- * annotation on the channel; when present it references only the listed
- * {@link Annotation.id | annotation ids}.
+ * 當 {@link annotationIds} 缺省時，附件參照通道上的每個註解；當存在時，
+ * 僅參照列出的 {@link Annotation.id | 註解識別碼}。
  *
  * @category Turn Types
  */
 export interface MessageAnnotationsAttachment extends MessageAttachmentBase {
-  /** Discriminant */
+  /** 判別欄位 */
   type: MessageAttachmentKind.Annotations;
   /**
-   * The annotations channel URI (typically `ahp-session:/<uuid>/annotations`).
-   * Matches {@link AnnotationsSummary.resource}.
+   * 註解通道的 URI（通常為 `ahp-session:/<uuid>/annotations`）。
+   * 符合 {@link AnnotationsSummary.resource}。
    */
   resource: URI;
   /**
-   * Specific {@link Annotation.id | annotation ids} to reference. When
-   * omitted, the attachment references all annotations on the channel.
+   * 要參照的特定 {@link Annotation.id | 註解識別碼}。當缺省時，附件
+   * 參照通道上的所有註解。
    */
   annotationIds?: string[];
 }
 
 /**
- * An attachment that references a chat transcript through a fixed completed
- * turn.
+ * 透過固定已完成回合參照聊天轉錄的附件。
  *
- * The referenced chat MUST belong to the same session as the message's chat.
- * The host resolves the transcript from its first retained turn through
- * `endTurn`, inclusive, when accepting the message. Later turns do not
- * change the context represented by an already-sent attachment.
+ * 被參照的聊天 MUST 與訊息的聊天屬於同一工作階段。主機在接受訊息時，
+ * 從其第一個保留回合到 `endTurn`（含）解析轉錄。之後的回合不會變更
+ * 已傳送附件所代表的情境。
  *
- * Hosts MUST NOT recursively expand chat attachments found inside the
- * referenced transcript. Clients SHOULD keep rendering `label` if the
- * referenced chat is later pruned, and treat opening `resource` as best-effort.
+ * 主機 MUST NOT 遞迴展開在參照轉錄內找到的聊天附件。用戶端 SHOULD 在
+ * 被參照聊天之後被修剪時持續轉譯 `label`，並將開啟 `resource` 視為
+ * 盡力而為。
  *
  * @category Turn Types
  */
 export interface MessageChatAttachment extends MessageAttachmentBase {
-  /** Discriminant */
+  /** 判別欄位 */
   type: MessageAttachmentKind.Chat;
-  /** URI of the referenced chat. */
+  /** 被參照聊天的 URI。 */
   resource: URI;
-  /** Last completed turn included in the referenced transcript. */
+  /** 被參照轉錄中包含的最後一個已完成回合。 */
   endTurn: string;
 }
 
 /**
- * An attachment associated with a {@link Message}.
+ * 與 {@link Message} 關聯的附件。
  *
  * @category Turn Types
  */
@@ -859,7 +824,7 @@ export type MessageAttachment =
 // ─── Response Parts ──────────────────────────────────────────────────────────
 
 /**
- * Discriminant for response part types.
+ * 回應部分類型的判別欄位。
  *
  * @category Response Parts
  */
@@ -876,51 +841,50 @@ export const enum ResponsePartKind {
  * @category Response Parts
  */
 export interface MarkdownResponsePart {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: ResponsePartKind.Markdown;
-  /** Part identifier, used by `chat/delta` to target this part for content appends */
+  /** 部分識別碼，由 `chat/delta` 用來指定此部分進行內容附加 */
   id: string;
-  /** Markdown content */
+  /** Markdown 內容 */
   content: string;
 }
 
 /**
- * A content part that's a reference to large content stored outside the state tree.
+ * 作為對儲存於狀態樹外之大型內容參照的內容部分。
  *
  * @category Response Parts
  */
 export interface ResourceReponsePart extends ContentRef {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: ResponsePartKind.ContentRef;
 }
 
 /**
- * A tool call represented as a response part.
+ * 表示為回應部分的工具呼叫。
  *
- * Tool calls are part of the response stream, interleaved with text and
- * reasoning. The `toolCall.toolCallId` serves as the part identifier for
- * actions that target this part.
+ * 工具呼叫為回應串流的一部分，與文字與推理交錯。`toolCall.toolCallId`
+ * 作為指定此部分之操作的識別碼。
  *
  * @category Response Parts
  */
 export interface ToolCallResponsePart {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: ResponsePartKind.ToolCall;
-  /** Full tool call lifecycle state */
+  /** 完整工具呼叫生命週期狀態 */
   toolCall: ToolCallState;
 }
 
 /**
- * Reasoning/thinking content from the model.
+ * 來自模型的推理／思考內容。
  *
  * @category Response Parts
  */
 export interface ReasoningResponsePart {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: ResponsePartKind.Reasoning;
-  /** Part identifier, used by `chat/reasoning` to target this part for content appends */
+  /** 部分識別碼，由 `chat/reasoning` 用來指定此部分進行內容附加 */
   id: string;
-  /** Accumulated reasoning text */
+  /** 累積的推理文字 */
   content: string;
 }
 
@@ -936,57 +900,54 @@ export type ResponsePart =
   | InputRequestResponsePart;
 
 /**
- * A live or resolved input request (elicitation) in the turn response stream.
+ * 回合回應串流中的作用中或已解決輸入請求（引出）。
  *
- * The server inserts the part with `chat/inputRequested`. While
- * {@link response} is absent, clients can update answer drafts with
- * `chat/inputAnswerChanged` and submit a response with `chat/inputCompleted`.
- * Completion updates this part in place so its stream position is stable and
- * the full interaction remains durable and backfillable via `fetchTurns`.
+ * 伺服器以 `chat/inputRequested` 插入此部分。當 {@link response} 缺省時，
+ * 用戶端可以 `chat/inputAnswerChanged` 更新答案草稿，並以
+ * `chat/inputCompleted` 提交回應。完成時會就地更新此部分，使其串流
+ * 位置穩定，且完整互動保持持久並可透過 `fetchTurns` 回填。
  *
- * If the turn ends without a submitted response, the unresolved part remains
- * in the completed turn transcript with {@link response} absent.
+ * 若回合在未提交回應的情況下結束，未解決的部分會留在已完成的回合
+ * 轉錄中，且 {@link response} 缺省。
  *
  * @category Response Parts
  */
 export interface InputRequestResponsePart {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: ResponsePartKind.InputRequest;
   /**
-   * The request, carrying its `id`, `message`, `url`, `questions`, and current
-   * draft or submitted `answers`.
+   * 請求，承載其 `id`、`message`、`url`、`questions` 與目前的草稿或
+   * 已提交 `answers`。
    */
   request: ChatInputRequest;
   /**
-   * How the request was resolved. Absent until a client submits `accept`,
-   * `decline`, or `cancel` with `chat/inputCompleted`.
+   * 請求如何被解決。在用戶端以 `chat/inputCompleted` 提交 `accept`、
+   * `decline` 或 `cancel` 之前為缺省。
    */
   response?: ChatInputResponseKind;
 }
 
 /**
- * A system notification surfaced as part of the response stream.
+ * 作為回應串流一部分呈現的系統通知。
  *
- * System notifications are messages authored by the agent harness
- * that need to be visible to both the agent (for situational awareness) and
- * the user (for transcript continuity). Examples include "background subagent
- * X completed" or "task Y was cancelled".
+ * 系統通知是由代理程式框架撰寫的訊息，需要對代理程式（供情境感知）
+ * 與使用者（供轉錄連續性）皆可見。例如「背景子代理程式 X 已完成」
+ * 或「任務 Y 已取消」。
  *
  * @category Response Parts
  */
 export interface SystemNotificationResponsePart {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: ResponsePartKind.SystemNotification;
-  /** The text of the system notification */
+  /** 系統通知的文字 */
   content: StringOrMarkdown;
   /**
-   * Additional provider-specific metadata for this notification.
+   * 此通知的額外提供者特定中介資料。
    *
-   * A host MAY attach a machine-readable descriptor of what triggered the
-   * notification so clients can categorize, icon, group, filter, or localize
-   * it without parsing `content`. Clients MAY look for well-known keys here to
-   * provide enhanced UI, and MUST render coherently from `content` alone when
-   * `_meta` is absent or unrecognized.
+   * 主機 MAY 附加觸發通知之項目的機器可讀描述子，讓用戶端可在不解析
+   * `content` 的情況下對其分類、加圖示、分組、篩選或在地化。用戶端
+   * MAY 在此尋找已知的索引鍵以提供增強 UI，且當 `_meta` 缺省或無法
+   * 辨識時，MUST 單獨從 `content` 一致地轉譯。
    */
   _meta?: Record<string, unknown>;
 }
@@ -995,7 +956,7 @@ export interface SystemNotificationResponsePart {
 // ─── Tool Call Types ─────────────────────────────────────────────────────────
 
 /**
- * Status of a tool call in the lifecycle state machine.
+ * 工具呼叫在生命週期狀態機中的狀態。
  *
  * @category Tool Call Types
  */
@@ -1004,9 +965,8 @@ export const enum ToolCallStatus {
   PendingConfirmation = 'pending-confirmation',
   Running = 'running',
   /**
-   * Running paused because the MCP server backing this call needs
-   * authentication (typically step-up auth for insufficient scope,
-   * surfacing mid-execution). See {@link ToolCallAuthRequiredState}.
+   * 執行暫停，因為支援此呼叫的 MCP 伺服器需要驗證（通常是範圍不足的
+   * 步進式驗證，於執行中浮現）。參見 {@link ToolCallAuthRequiredState}。
    */
   AuthRequired = 'auth-required',
   PendingResultConfirmation = 'pending-result-confirmation',
@@ -1015,11 +975,11 @@ export const enum ToolCallStatus {
 }
 
 /**
- * How a tool call was confirmed for execution.
+ * 工具呼叫如何被確認執行。
  *
- * - `NotNeeded` — No confirmation required (auto-approved)
- * - `UserAction` — User explicitly approved
- * - `Setting` — Approved by a persistent user setting
+ * - `NotNeeded` — 無需確認（自動核准）
+ * - `UserAction` — 使用者明確核准
+ * - `Setting` — 由持續性使用者設定核准
  *
  * @category Tool Call Types
  */
@@ -1030,7 +990,7 @@ export const enum ToolCallConfirmationReason {
 }
 
 /**
- * Identifies a model judge as the source of a confirmation requirement.
+ * 將模型評審器識別為確認需求的來源。
  *
  * @category Tool Call Types
  */
@@ -1039,7 +999,7 @@ export const enum ToolCallRiskAssessmentKind {
 }
 
 /**
- * Lifecycle status of an asynchronous model-judge confirmation decision.
+ * 非同步模型評審器確認決定的生命週期狀態。
  *
  * @category Tool Call Types
  */
@@ -1053,7 +1013,7 @@ interface ToolCallRiskAssessmentBase {
 }
 
 /**
- * The model judge is still evaluating the tool call.
+ * 模型評審器仍在評估工具呼叫。
  *
  * @category Tool Call Types
  */
@@ -1062,7 +1022,7 @@ export interface ToolCallRiskAssessmentLoadingState extends ToolCallRiskAssessme
 }
 
 /**
- * The model judge has completed its evaluation.
+ * 模型評審器已完成其評估。
  *
  * @category Tool Call Types
  */
@@ -1070,7 +1030,7 @@ export interface ToolCallRiskAssessmentCompleteState extends ToolCallRiskAssessm
   status: ToolCallRiskAssessmentStatus.Complete;
   reason: StringOrMarkdown;
   /**
-   * The judge's normalized safety score, where `0` is unsafe and `1` is safe.
+   * 評審器的正規化安全分數，其中 `0` 為不安全，`1` 為安全。
    * @format float
    */
   safety: number;
@@ -1081,7 +1041,7 @@ export type ToolCallRiskAssessment =
   | ToolCallRiskAssessmentCompleteState;
 
 /**
- * Why a tool call was cancelled.
+ * 工具呼叫為何被取消。
  *
  * @category Tool Call Types
  */
@@ -1092,7 +1052,7 @@ export const enum ToolCallCancellationReason {
 }
 
 /**
- * Whether a confirmation option represents an approval or denial action.
+ * 確認選項是否代表核准或拒絕動作。
  *
  * @category Tool Call Types
  */
@@ -1102,25 +1062,24 @@ export const enum ConfirmationOptionKind {
 }
 
 /**
- * A confirmation option that the server offers for a tool call awaiting
- * approval. Allows richer choices beyond simple approve/deny — for example,
- * "Approve in this Session" or "Deny with reason."
+ * 伺服器為等待核准的工具呼叫所提供的確認選項。允許超出簡單
+ * 核准／拒絕的更豐富選擇 — 例如「在此工作階段中核准」或
+ * 「附帶原因拒絕」。
  *
  * @category Tool Call Types
  */
 export interface ConfirmationOption {
-  /** Unique identifier for the option, returned in the confirmed action */
+  /** 選項的唯一識別碼，於確認操作中傳回 */
   id: string;
-  /** Human-readable label displayed to the user */
+  /** 顯示給使用者的人類可讀標籤 */
   label: string;
-  /** Whether this option represents an approval or denial */
+  /** 此選項是否代表核准或拒絕 */
   kind: ConfirmationOptionKind;
   /**
-   * Logical group number for visual categorisation.
+   * 用於視覺分類的邏輯群組編號。
    *
-   * Clients SHOULD display options in the order they are defined and MAY
-   * use differing group numbers to insert dividers between logical clusters
-   * of options.
+   * 用戶端 SHOULD 依選項定義的順序顯示選項，且 MAY 使用不同的群組
+   * 編號在選項的邏輯叢集之間插入分隔線。
    */
   group?: number;
 }
@@ -1133,11 +1092,11 @@ export const enum ToolCallContributorKind {
 export interface ToolCallClientContributor {
   kind: ToolCallContributorKind.Client;
   /**
-   * If this tool is provided by a client, the `clientId` of the owning client.
-   * Absent for server-side tools.
+   * 若此工具由用戶端提供，為所屬用戶端的 `clientId`。伺服器端工具
+   * 為缺省。
    *
-   * When set, the identified client is responsible for executing the tool and
-   * dispatching `chat/toolCallComplete` with the result.
+   * 設定時，所識別的用戶端負責執行工具並以結果分派
+   * `chat/toolCallComplete`。
    */
   clientId: string;
 }
@@ -1145,7 +1104,7 @@ export interface ToolCallClientContributor {
 export interface ToolCallMcpContributor {
   kind: ToolCallContributorKind.MCP;
   /**
-   * Customization ID of the corresponding MCP server in {@link SessionState.customizations}.
+   * 在 {@link SessionState.customizations} 中對應 MCP 伺服器的自訂 ID。
    */
   customizationId: string;
 }
@@ -1153,191 +1112,180 @@ export interface ToolCallMcpContributor {
 export type ToolCallContributor = ToolCallClientContributor | ToolCallMcpContributor;
 
 /**
- * Metadata common to all tool call states.
+ * 所有工具呼叫狀態共用的中介資料。
  *
  * @category Tool Call Types
  * @remarks
- * Fields like `toolName` carry agent-specific identifiers on the wire despite the
- * agent-agnostic design principle. These exist for debugging and logging purposes.
- * A future version may move these to a separate diagnostic channel or namespace them
- * more clearly.
+ * 如 `toolName` 等欄位在線上承載代理程式特定的識別碼，儘管有代理程式
+ * 無關的設計原則。這些是為了除錯與記錄目的而存在。未來版本可能會將這些
+ * 移至獨立的診斷通道，或更清楚地為其命名空間。
  */
 interface ToolCallBase {
-  /** Unique tool call identifier */
+  /** 唯一的工具呼叫識別碼 */
   toolCallId: string;
-  /** Internal tool name (for debugging/logging) */
+  /** 內部工具名稱（用於除錯／記錄） */
   toolName: string;
-  /** Human-readable tool name */
+  /** 人類可讀的工具名稱 */
   displayName: string;
-  /** Human-readable description of what the tool invocation intends to do */
+  /** 工具呼叫意圖執行之事的人類可讀描述 */
   intention?: string;
   /**
-   * Reference to the contributor of the tool being called.
+   * 對被呼叫工具之貢獻者的參照。
    */
   contributor?: ToolCallContributor;
   /**
-   * Additional provider-specific metadata for this tool call.
+   * 此工具呼叫的額外提供者特定中介資料。
    *
-   * This MAY include a `ui` field corresponding to the MCP Apps (SEP-1865)
-   * `McpUiToolMeta` found in MCP tool calls, which may be used in combination
-   * with the {@link contributor} to serve MCP Apps.
+   * 這 MAY 包含對應至 MCP 工具呼叫中 MCP Apps (SEP-1865)
+   * `McpUiToolMeta` 的 `ui` 欄位，可與 {@link contributor} 結合使用以
+   * 服務 MCP Apps。
    */
   _meta?: Record<string, unknown>;
 }
 
 /**
- * Properties available once tool call parameters are fully received.
+ * 工具呼叫參數完全接收後可用的屬性。
  *
  * @category Tool Call Types
  */
 interface ToolCallParameterFields {
-  /** Message describing what the tool will do */
+  /** 描述工具將執行什麼的訊息 */
   invocationMessage: StringOrMarkdown;
-  /** Raw tool input */
+  /** 原始工具輸入 */
   toolInput?: string;
 }
 
 /**
- * Tool execution result details, available after execution completes.
+ * 工具執行結果細節，於執行完成後可用。
  *
  * @category Tool Call Types
  */
 export interface ToolCallResult {
-  /** Whether the tool succeeded */
+  /** 工具是否成功 */
   success: boolean;
-  /** Past-tense description of what the tool did */
+  /** 工具已執行之事的過去式描述 */
   pastTenseMessage: StringOrMarkdown;
   /**
-   * Unstructured result content blocks.
+   * 非結構化結果內容區塊。
    *
-   * This mirrors the `content` field of MCP `CallToolResult`.
+   * 這鏡像 MCP `CallToolResult` 的 `content` 欄位。
    */
   content?: ToolResultContent[];
   /**
-   * Optional structured result object.
+   * 選用的結構化結果物件。
    *
-   * This mirrors the `structuredContent` field of MCP `CallToolResult`.
+   * 這鏡像 MCP `CallToolResult` 的 `structuredContent` 欄位。
    */
   structuredContent?: Record<string, unknown>;
-  /** Error details if the tool failed */
+  /** 當工具失敗時的錯誤細節 */
   error?: { message: string; code?: string };
 }
 
 /**
- * LM is streaming the tool call parameters.
+ * LM 正在串流工具呼叫參數。
  *
  * @category Tool Call Types
  */
 export interface ToolCallStreamingState extends ToolCallBase {
   status: ToolCallStatus.Streaming;
-  /** Partial parameters accumulated so far */
+  /** 目前為止累積的部分參數 */
   partialInput?: string;
-  /** Progress message shown while parameters are streaming */
+  /** 參數串流時顯示的進度訊息 */
   invocationMessage?: StringOrMarkdown;
 }
 
 /**
- * Parameters are complete, or a running tool requires re-confirmation
- * (e.g. a mid-execution permission check).
+ * 參數已完整，或執行中的工具需要重新確認（例如執行中的權限檢查）。
  *
  * @category Tool Call Types
  */
 export interface ToolCallPendingConfirmationState extends ToolCallBase, ToolCallParameterFields {
   status: ToolCallStatus.PendingConfirmation;
-  /** Short title for the confirmation prompt (e.g. `"Run in terminal"`, `"Write file"`) */
+  /** 確認提示的簡短標題（例如 `"Run in terminal"`、`"Write file"`） */
   confirmationTitle?: StringOrMarkdown;
-  /** Risk assessment that informed the confirmation requirement. */
+  /** 促成此確認需求的風險評估。 */
   riskAssessment?: ToolCallRiskAssessment;
-  /** File edits that this tool call will perform, for preview before confirmation */
+  /** 此工具呼叫將執行的檔案編輯，供確認前預覽 */
   edits?: { items: FileEdit[] };
-  /** Whether the agent host allows the client to edit the tool's input parameters before confirming */
+  /** 代理主機是否允許用戶端在確認前編輯工具的輸入參數 */
   editable?: boolean;
   /**
-   * Options the server offers for this confirmation. When present, the client
-   * SHOULD render these instead of a plain approve/deny UI. Each option
-   * belongs to a {@link ConfirmationOptionGroup} so the client can still
-   * categorise the choices.
+   * 伺服器為此確認提供的選項。當存在時，用戶端 SHOULD 改為轉譯這些
+   * 選項，而非單純的核准／拒絕 UI。每個選項屬於一個
+   * {@link ConfirmationOptionGroup}，讓用戶端仍可分類這些選擇。
    */
   options?: ConfirmationOption[];
 }
 
 /**
- * Fields present on every tool call state that exists **after** confirmation
- * has been resolved: {@link ToolCallRunningState}, {@link ToolCallAuthRequiredState},
- * {@link ToolCallPendingResultConfirmationState}, and {@link ToolCallCompletedState}.
- * `ToolCallPendingConfirmationState` (not yet confirmed) and
- * `ToolCallCancelledState` (the denial path — never ran) don't satisfy this
- * invariant, so they keep their own `selectedOption` field independently
- * rather than extending this one.
+ * 存在於確認已解決 **之後** 之每個工具呼叫狀態上的欄位：
+ * {@link ToolCallRunningState}、{@link ToolCallAuthRequiredState}、
+ * {@link ToolCallPendingResultConfirmationState} 與
+ * {@link ToolCallCompletedState}。`ToolCallPendingConfirmationState`
+ * （尚未確認）與 `ToolCallCancelledState`（拒絕路徑 — 從未執行）不
+ * 滿足此不變式，因此它們獨立保留自己的 `selectedOption` 欄位，而非
+ * 擴充此欄位。
  *
  * @category Tool Call Types
  */
 interface ToolCallPostConfirmationFields {
-  /** How the tool was confirmed for execution */
+  /** 工具如何被確認執行 */
   confirmed: ToolCallConfirmationReason;
-  /** The confirmation option the user selected, if confirmation options were provided */
+  /** 使用者所選的確認選項（若有提供確認選項） */
   selectedOption?: ConfirmationOption;
 }
 
 /**
- * Tool is actively executing.
+ * 工具正在主動執行。
  *
  * @category Tool Call Types
  */
 export interface ToolCallRunningState extends ToolCallBase, ToolCallParameterFields, ToolCallPostConfirmationFields {
   status: ToolCallStatus.Running;
   /**
-   * Partial content produced while the tool is still executing.
+   * 工具仍在執行時產生的部分內容。
    *
-   * For example, a terminal content block lets clients subscribe to live
-   * output before the tool completes.
+   * 例如，終端機內容區塊讓用戶端可在工具完成前訂閱即時輸出。
    */
   content?: ToolResultContent[];
 }
 
 /**
- * A running tool call is paused because the MCP server backing it needs
- * authentication — most commonly {@link McpAuthRequirement.reason |
- * `insufficientScope`} step-up auth triggered by the `tools/call` request
- * itself. Only ever reached from {@link ToolCallRunningState}, and normally
- * returns there once authenticated: `running` → `auth-required` → `running`
- * → …. A client MAY instead cancel the invocation without authenticating by
- * dispatching a `chat/toolCallComplete` with a **failed** result, always
- * moving straight to {@link ToolCallCompletedState} —
- * `requiresResultConfirmation` is ignored on this path, so it can never
- * enter {@link ToolCallPendingResultConfirmationState}. A **successful**
- * result dispatched from this state is invalid and MUST be rejected/ignored
- * as a no-op by the reducer, since execution never resumed after the
- * challenge.
+ * 執行中的工具呼叫暫停，因為支援它的 MCP 伺服器需要驗證 — 最常見為
+ * 由 `tools/call` 請求本身觸發的 {@link McpAuthRequirement.reason |
+ * `insufficientScope`} 步進式驗證。只能從 {@link ToolCallRunningState}
+ * 到達，且通常在驗證後返回該處：`running` → `auth-required` →
+ * `running` → …。用戶端也可改為不分派驗證，透過分派帶有 **失敗**
+ * 結果的 `chat/toolCallComplete` 來取消呼叫，且一律直接移至
+ * {@link ToolCallCompletedState} — 此路徑上 `requiresResultConfirmation`
+ * 會被忽略，因此永遠不會進入 {@link ToolCallPendingResultConfirmationState}。
+ * 從此狀態分派的 **成功** 結果為無效，且 MUST 被化簡器作為 no-op
+ * 拒絕／忽略，因為挑戰後執行從未恢復。
  *
- * This is the tool-call-level counterpart to
- * {@link McpServerAuthRequiredState} — that state means the MCP *server*
- * cannot serve any request; this one means *this specific invocation* is
- * waiting on the same kind of challenge. The two are dispatched
- * independently and MAY be true at the same time, or not: an
- * `insufficientScope` challenge triggered by a single tool call, for
- * example, need not block the whole server.
+ * 這是 {@link McpServerAuthRequiredState} 的工具呼叫層級對應 — 該狀態
+ * 表示 MCP *伺服器* 無法服務任何請求；此狀態表示 *此特定呼叫* 正在
+ * 等待相同種類的挑戰。兩者獨立分派，且 MAY 同時為真或不同時：例如，
+ * 由單一工具呼叫觸發的 `insufficientScope` 挑戰不必封鎖整個伺服器。
  *
- * Because the challenge is always resolved by pushing a token via the
- * existing `authenticate` command, this state can only originate from a
- * tool call {@link ToolCallContributorKind.MCP | contributed by an MCP
- * server} — `contributor` is narrowed accordingly (unlike the optional,
- * multi-kind `contributor` on other tool call states).
+ * 由於挑戰一律透過現有的 `authenticate` 指令推送權杖來解決，此狀態
+ * 只能源自 {@link ToolCallContributorKind.MCP | 由 MCP 伺服器貢獻} 的
+ * 工具呼叫 — `contributor` 因此被窄化（與其他工具呼叫狀態上選用、
+ * 多種類的 `contributor` 不同）。
  *
  * @category Tool Call Types
  */
 export interface ToolCallAuthRequiredState extends ToolCallBase, ToolCallParameterFields, ToolCallPostConfirmationFields {
   status: ToolCallStatus.AuthRequired;
-  /** The MCP server that contributed this tool call — always MCP, never a client tool. */
+  /** 貢獻此工具呼叫的 MCP 伺服器 — 一律為 MCP，絕非用戶端工具。 */
   contributor: ToolCallMcpContributor;
-  /** The authentication challenge blocking this invocation. */
+  /** 封鎖此呼叫的驗證挑戰。 */
   auth: McpAuthRequirement;
-  /** Partial content produced before the call paused for authentication. */
+  /** 呼叫為驗證暫停前產生的部分內容。 */
   content?: ToolResultContent[];
 }
 
 /**
- * Tool finished executing, waiting for client to approve the result.
+ * 工具已完成執行，等待用戶端核准結果。
  *
  * @category Tool Call Types
  */
@@ -1346,7 +1294,7 @@ export interface ToolCallPendingResultConfirmationState extends ToolCallBase, To
 }
 
 /**
- * Tool completed successfully or with an error.
+ * 工具已成功完成或發生錯誤。
  *
  * @category Tool Call Types
  */
@@ -1355,27 +1303,27 @@ export interface ToolCallCompletedState extends ToolCallBase, ToolCallParameterF
 }
 
 /**
- * Tool call was cancelled before execution.
+ * 工具呼叫在執行前被取消。
  *
  * @category Tool Call Types
  */
 export interface ToolCallCancelledState extends ToolCallBase, ToolCallParameterFields {
   status: ToolCallStatus.Cancelled;
-  /** Why the tool was cancelled */
+  /** 工具為何被取消 */
   reason: ToolCallCancellationReason;
-  /** Optional message explaining the cancellation */
+  /** 解釋取消的選用訊息 */
   reasonMessage?: StringOrMarkdown;
-  /** What the user suggested doing instead */
+  /** 使用者建議改為執行的動作 */
   userSuggestion?: Message;
-  /** The confirmation option the user selected, if confirmation options were provided */
+  /** 使用者所選的確認選項（若有提供確認選項） */
   selectedOption?: ConfirmationOption;
 }
 
 /**
- * Discriminated union of all tool call lifecycle states.
+ * 所有工具呼叫生命週期狀態的判別聯集。
  *
- * See the [state model guide](/guide/state-model.html#tool-call-lifecycle)
- * for the full state machine diagram.
+ * 完整狀態機圖請參見
+ * [狀態模型指南](/guide/state-model.html#tool-call-lifecycle)。
  *
  * @category Tool Call Types
  */
@@ -1389,18 +1337,16 @@ export type ToolCallState =
   | ToolCallCancelledState;
 
 /**
- * The two tool-call states that block on a client confirmation: parameter
- * confirmation before execution ({@link ToolCallPendingConfirmationState}) and
- * result confirmation after execution
- * ({@link ToolCallPendingResultConfirmationState}).
+ * 會因用戶端確認而封鎖的兩個工具呼叫狀態：執行前的參數確認
+ * （{@link ToolCallPendingConfirmationState}）與執行後的結果確認
+ * （{@link ToolCallPendingResultConfirmationState}）。
  *
- * {@link ToolCallAuthRequiredState} is intentionally **not** part of this
- * union: it doesn't block on a `chat/toolCallConfirmed`-style client
- * decision, it blocks on the client completing an OAuth flow and calling
- * `authenticate`. See {@link SessionToolAuthenticationRequest} for its
- * session-level surfacing.
+ * {@link ToolCallAuthRequiredState} 刻意 **不** 屬於此聯集：它不因
+ * `chat/toolCallConfirmed` 式的用戶端決定而封鎖，而是因用戶端完成
+ * OAuth 流程並呼叫 `authenticate` 而封鎖。其工作階段層級呈現請參見
+ * {@link SessionToolAuthenticationRequest}。
  *
- * Surfaced at the session level by {@link SessionToolConfirmationRequest}.
+ * 在工作階段層級由 {@link SessionToolConfirmationRequest} 呈現。
  *
  * @category Tool Call Types
  */
@@ -1412,7 +1358,7 @@ export type ToolCallConfirmationState =
 // ─── Tool Result Content ─────────────────────────────────────────────────────
 
 /**
- * Discriminant for tool result content types.
+ * 工具結果內容類型的判別欄位。
  *
  * @category Tool Result Content
  */
@@ -1426,37 +1372,37 @@ export const enum ToolResultContentType {
 }
 
 /**
- * Text content in a tool result.
+ * 工具結果中的文字內容。
  *
- * Mirrors MCP `TextContent`.
+ * 鏡像 MCP `TextContent`。
  *
  * @category Tool Result Content
  */
 export interface ToolResultTextContent {
   type: ToolResultContentType.Text;
-  /** The text content */
+  /** 文字內容 */
   text: string;
 }
 
 /**
- * Base64-encoded binary content embedded in a tool result.
+ * 內嵌於工具結果的 Base64 編碼二進位內容。
  *
- * Mirrors MCP `EmbeddedResource` for inline binary data.
+ * 鏡像 MCP `EmbeddedResource`（用於內嵌二進位資料）。
  *
  * @category Tool Result Content
  */
 export interface ToolResultEmbeddedResourceContent {
   type: ToolResultContentType.EmbeddedResource;
-  /** Base64-encoded data */
+  /** Base64 編碼的資料 */
   data: string;
-  /** Content type (e.g. `"image/png"`, `"application/pdf"`) */
+  /** 內容類型（例如 `"image/png"`、`"application/pdf"`） */
   contentType: string;
 }
 
 /**
- * A reference to a resource stored outside the tool result.
+ * 對儲存於工具結果外之資源的參照。
  *
- * Wraps {@link ContentRef} for lazy-loading large results.
+ * 包裝 {@link ContentRef} 以延遲載入大型結果。
  *
  * @category Tool Result Content
  */
@@ -1465,7 +1411,7 @@ export interface ToolResultResourceContent extends ContentRef {
 }
 
 /**
- * Describes a file modification performed by a tool.
+ * 描述工具執行的檔案修改。
  *
  * @category Tool Result Content
  */
@@ -1474,85 +1420,81 @@ export interface ToolResultFileEditContent extends FileEdit {
 }
 
 /**
- * A reference to a terminal whose output is relevant to this tool result.
+ * 對輸出與此工具結果相關之終端機的參照。
  *
- * Clients can subscribe to the terminal's URI to stream its output in real
- * time, providing live feedback while a tool is executing.
+ * 用戶端可訂閱終端機的 URI 以即時串流其輸出，在工具執行時提供即時
+ * 回饋。
  *
- * When the command exits, {@link result} is filled in on the completed
- * result, retaining the outcome for clients that did not subscribe. This
- * records the command's exit, not the terminal's — the terminal may keep
- * running afterwards.
+ * 當指令結束時，{@link result} 會填入完成的結果中，為未訂閱的用戶端
+ * 保留結果。這記錄的是指令的結束，而非終端機的結束 — 終端機之後
+ * 可能會繼續執行。
  *
  * @category Tool Result Content
  */
 export interface ToolResultTerminalContent {
   type: ToolResultContentType.Terminal;
-  /** Terminal URI (subscribable for full terminal state) */
+  /** 終端機 URI（可訂閱以取得完整終端機狀態） */
   resource: URI;
-  /** Display title for the terminal content */
+  /** 終端機內容的顯示標題 */
   title: string;
   /**
-   * Whether this terminal-style resource is backed by a pseudoterminal.
-   * When `false`, output is plain text and clients do not need to parse
-   * VT sequences.
+   * 此終端機式資源是否由偽終端機支援。當 `false` 時，輸出為純文字，
+   * 且用戶端不需解析 VT 序列。
    */
   isPty?: boolean;
-  /** Outcome of the command, present once it has exited. */
+  /** 指令的結果，於其結束後存在。 */
   result?: TerminalCommandResult;
 }
 
 /**
- * Outcome of a command run in a terminal-style tool, filled in on
- * {@link ToolResultTerminalContent.result} once the command exits.
+ * 在終端機式工具中執行之指令的結果，於指令結束時填入
+ * {@link ToolResultTerminalContent.result}。
  *
  * @category Tool Result Content
  */
 export interface TerminalCommandResult {
-  /** Exit code from the completed command, if reported by the runtime */
+  /** 已完成指令的結束代碼（若執行階段有回報） */
   exitCode?: number;
   /**
-   * Preview of the command's output, for clients that are not subscribed
-   * to the terminal or that arrive after it is disposed. When `isPty` is
-   * `true` the preview may contain VT sequences; when `false` it is plain
-   * text.
+   * 指令輸出的預覽，供未訂閱終端機或在其處置後才抵達的用戶端使用。
+   * 當 `isPty` 為 `true` 時，預覽可能包含 VT 序列；當 `false` 時為
+   * 純文字。
    */
   preview?: string;
-  /** Whether `preview` is known to be incomplete or truncated */
+  /** `preview` 是否已知為不完整或已截斷 */
   truncated?: boolean;
 }
 
 /**
- * A reference, embedded in a tool result, to a worker chat spawned by the tool
- * call (a sub-agent delegation), referenced by a chat URI (`ahp-chat:/...`).
+ * 內嵌於工具結果中的參照，指向由工具呼叫產生的工作者聊天（子代理程式
+ * 委派），由聊天 URI（`ahp-chat:/...`）參照。
  *
- * This is the spawning tool call's forward view of the worker. The worker chat
- * records the same edge in reverse via its {@link ChatOrigin} (`kind: 'tool'`),
- * whose `toolCallId` identifies the tool call that emitted this content.
+ * 這是產生工具呼叫對工作者的正向檢視。工作者聊天透過其
+ * {@link ChatOrigin}（`kind: 'tool'`）反向記錄相同的邊，其 `toolCallId`
+ * 識別發出此內容的工具呼叫。
  *
  * @category Tool Result Content
  */
 export interface ToolResultSubagentContent {
   type: ToolResultContentType.Subagent;
-  /** Worker chat URI (subscribable for full chat state) */
+  /** 工作者聊天 URI（可訂閱以取得完整聊天狀態） */
   resource: URI;
-  /** Display title for the subagent */
+  /** 子代理程式的顯示標題 */
   title: string;
-  /** Internal agent name */
+  /** 內部代理程式名稱 */
   agentName?: string;
-  /** Human-readable description of the subagent's task */
+  /** 子代理程式任務的人類可讀描述 */
   description?: string;
 }
 
 /**
- * Content block in a tool result.
+ * 工具結果中的內容區塊。
  *
- * Mirrors the content blocks in MCP `CallToolResult.content`, plus
- * `ToolResultResourceContent` for lazy-loading large results,
- * `ToolResultFileEditContent` for file edit diffs,
- * `ToolResultTerminalContent` for live terminal output and
- * command completion metadata, and
- * `ToolResultSubagentContent` for tool-spawned worker chats (AHP extensions).
+ * 鏡像 MCP `CallToolResult.content` 中的內容區塊，加上用於延遲載入大型
+ * 結果的 `ToolResultResourceContent`、用於檔案編輯差異的
+ * `ToolResultFileEditContent`、用於即時終端機輸出與指令完成中介資料的
+ * `ToolResultTerminalContent`，以及用於工具產生工作者聊天的
+ * `ToolResultSubagentContent`（AHP 擴充）。
  *
  * @category Tool Result Content
  */

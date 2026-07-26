@@ -1,7 +1,6 @@
 /**
- * Common Action Types — `ActionEnvelope`, `ActionOrigin`, the central
- * `ActionType` enum, and the `StateAction` discriminated union over every
- * per-channel action declaration.
+ * 通用操作類型 — `ActionEnvelope`、`ActionOrigin`、中央的
+ * `ActionType` 列舉，以及涵蓋每個通道操作宣告的 `StateAction` 判別聯集。
  *
  * @module common/actions
  */
@@ -117,7 +116,7 @@ import type {
 // ─── Action Type Enum ────────────────────────────────────────────────────────
 
 /**
- * Discriminant values for all state actions.
+ * 所有狀態操作的判別欄位值。
  *
  * @category Actions
  */
@@ -212,7 +211,7 @@ export const enum ActionType {
 // ─── Action Envelope ─────────────────────────────────────────────────────────
 
 /**
- * Identifies the client that originally dispatched an action.
+ * 識別最初分派該操作的用戶端。
  */
 export interface ActionOrigin {
   clientId: string;
@@ -220,16 +219,15 @@ export interface ActionOrigin {
 }
 
 /**
- * Every action is wrapped in an `ActionEnvelope`.
+ * 每個操作都包裝在 `ActionEnvelope` 中。
  *
- * The envelope identifies the channel the action belongs to (e.g.
- * `ahp-root://` for root actions, the session URI for session actions, the
- * terminal URI for terminal actions). Individual action payloads carry only
- * fields that are intrinsic to the action; the channel comes from the
- * envelope so that any subscribable resource can route its actions uniformly.
+ * 此信封識別該操作所屬的通道（例如根操作使用 `ahp-root://`、工作階段操作
+ * 使用工作階段 URI、終端機操作使用終端機 URI）。個別操作的有效負載只帶有
+ * 該操作本身固有的欄位；通道來自信封，這使得任何可訂閱的資源都能統一地
+ * 路由其操作。
  */
 export interface ActionEnvelope {
-  /** Channel URI this action belongs to. */
+  /** 此操作所屬的通道 URI。 */
   readonly channel: URI;
   readonly action: StateAction;
   readonly serverSeq: number;
@@ -240,7 +238,7 @@ export interface ActionEnvelope {
 // ─── Discriminated Union ─────────────────────────────────────────────────────
 
 /**
- * Discriminated union of all state actions.
+ * 所有狀態操作的判別聯集。
  */
 export type StateAction =
   | RootAgentsChangedAction

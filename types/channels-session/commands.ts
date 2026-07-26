@@ -1,6 +1,6 @@
 /**
- * Session Channel Commands — `createSession`, `disposeSession`, `fetchTurns`,
- * and `completions`. Most target a specific `ahp-session:` URI.
+ * 工作階段通道指令 — `createSession`、`disposeSession`、`fetchTurns`
+ * 與 `completions`。大多數針對特定的 `ahp-session:` URI。
  *
  * @module channels-session/commands
  */
@@ -17,18 +17,17 @@ import type {
 // ─── createSession ───────────────────────────────────────────────────────────
 
 /**
- * Creates a new session with the specified agent provider.
+ * 以指定的代理程式提供者建立新工作階段。
  *
- * If the session URI already exists, the server MUST return an error with code
- * `-32003` (`SessionAlreadyExists`).
+ * 若工作階段 URI 已存在，伺服器 MUST 回傳代碼為
+ * `-32003`（`SessionAlreadyExists`）的錯誤。
  *
- * After creation, the client should subscribe to the session URI to receive state
- * updates. The server also broadcasts a `root/sessionAdded` notification to all
- * clients.
+ * 建立後，用戶端應訂閱工作階段 URI 以接收狀態更新。伺服器也會向
+ * 所有用戶端廣播 `root/sessionAdded` 通知。
  *
  * @category Commands
  * @method createSession
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  * @example
@@ -48,93 +47,86 @@ import type {
  * ```
  */
 /**
- * Identifies a source session and turn to fork from.
+ * 識別要從中分叉的來源工作階段與回合。
  *
- * When provided in `createSession`, the server populates the new session with
- * content from the source session up to and including the response of the
- * specified turn.
+ * 在 `createSession` 中提供時，伺服器會以來源工作階段的內容填入新工作階段，
+ * 範圍至並包含指定回合的回應為止。
  */
 export interface SessionForkSource {
-  /** URI of the existing session to fork from */
+  /** 要從中分叉的現有工作階段 URI */
   session: URI;
-  /** Turn ID in the source session; content up to and including this turn's response is copied */
+  /** 來源工作階段中的回合 ID；至並包含此回合回應為止的內容會被複製 */
   turnId: string;
 }
 
 export interface CreateSessionParams extends BaseParams {
-  /** Session URI (client-chosen, e.g. `ahp-session:/<uuid>`) */
+  /** 工作階段 URI（由用戶端選擇，例如 `ahp-session:/<uuid>`） */
   channel: URI;
-  /** Agent provider ID */
+  /** 代理程式提供者 ID */
   provider?: string;
   /**
-   * The working directories the session's agent is granted tool access to.
-   * A session may span multiple directories; they are equal peers except when
-   * the agent advertises
-   * {@link MultipleWorkingDirectoriesCapability.requiresPrimary}, in which case
-   * one of them should be designated the primary via
-   * {@link primaryWorkingDirectory}.
+   * 工作階段代理程式被授予工具存取權的工作目錄。一個工作階段可跨越多個
+   * 目錄；它們是平等的同儕，除非代理程式通告了
+   * {@link MultipleWorkingDirectoriesCapability.requiresPrimary}，此時
+   * 應透過 {@link primaryWorkingDirectory} 將其中之一指定為主要目錄。
    *
-   * A client MUST NOT supply more than one entry unless the agent advertises
-   * {@link AgentCapabilities.multipleWorkingDirectories}; a server without that
-   * capability treats only the first entry as the session's working directory
-   * and ignores the rest. Dispatch `session/workingDirectorySet` /
-   * `session/workingDirectoryRemoved` to change the set after the session has
-   * started.
+   * 除非代理程式通告了
+   * {@link AgentCapabilities.multipleWorkingDirectories}，否則用戶端 MUST NOT
+   * 提供多個項目；不具此能力的伺服器僅將第一個項目視為工作階段的工作
+   * 目錄，並忽略其餘項目。在工作階段啟動後，分派
+   * `session/workingDirectorySet` / `session/workingDirectoryRemoved` 來
+   * 變更此集合。
    *
-   * Ignored for forked sessions — a fork inherits its working directories
-   * from the source session identified by `fork`.
+   * 分叉的工作階段會忽略此欄位 — 分叉會從 `fork` 所識別的來源工作階段
+   * 繼承其工作目錄。
    */
   workingDirectories?: URI[];
   /**
-   * The primary working directory for the session's **default chat**.
+   * 工作階段**預設聊天**的主要工作目錄。
    *
-   * A session has no primary of its own — primary is a per-chat notion (see
-   * {@link ChatState.primaryWorkingDirectory}). But `createSession` implicitly
-   * creates the session's default chat, and there is no separate `createChat`
-   * call to carry that chat's create-time fields. This field is therefore the
-   * only place a client can designate the **default chat's** primary at birth;
-   * it is copied into that chat's read-only `primaryWorkingDirectory`. For any
-   * non-default chat, pass {@link CreateChatParams.primaryWorkingDirectory}
-   * instead.
+   * 工作階段本身沒有主要目錄 — 主要目錄是每個聊天的概念（見
+   * {@link ChatState.primaryWorkingDirectory}）。但 `createSession` 會隱含
+   * 建立工作階段的預設聊天，且沒有獨立的 `createChat` 呼叫可承載該聊天的
+   * 建立時間欄位。因此，此欄位是用戶端唯一能在誕生時指定**預設聊天**
+   * 主要目錄之處；它會被複製到該聊天唯讀的
+   * `primaryWorkingDirectory`。對任何非預設聊天，請改為傳遞
+   * {@link CreateChatParams.primaryWorkingDirectory}。
    *
-   * When set, it MUST be one of {@link workingDirectories}. A client SHOULD
-   * supply this when the agent advertises
-   * {@link MultipleWorkingDirectoriesCapability.requiresPrimary}; a host MAY
-   * reject creation that omits it, or fall back to the first entry of
-   * `workingDirectories`. Ignored for forked sessions (a fork inherits the
-   * source session's chats and their primaries).
+   * 設定時，它 MUST 是 {@link workingDirectories} 之一。當代理程式通告
+   * {@link MultipleWorkingDirectoriesCapability.requiresPrimary} 時，用戶端
+   * SHOULD 提供此欄位；主機 MAY 拒絕省略它的建立請求，或退回使用
+   * `workingDirectories` 的第一個項目。分叉的工作階段會忽略此欄位
+   * （分叉會繼承來源工作階段的聊天及其主要目錄）。
    */
   primaryWorkingDirectory?: URI;
   /**
-   * Fork from an existing session. The new session is populated with content
-   * from the source session up to and including the specified turn's response.
+   * 從現有工作階段分叉。新工作階段會以來源工作階段的內容填入，範圍至
+   * 並包含指定回合的回應為止。
    */
   fork?: SessionForkSource;
   /**
-   * Agent-specific configuration values collected via `resolveSessionConfig`.
-   * Keys and values correspond to the schema returned by the server.
+   * 透過 `resolveSessionConfig` 收集的代理程式特定設定值。鍵與值對應於
+   * 伺服器回傳的綱要。
    */
   config?: Record<string, unknown>;
   /**
-   * Eagerly claim an active client role for the new session.
+   * 為新工作階段主動認領作用中用戶端角色。
    *
-   * When provided, the server initializes the session with this client as an
-   * active client, equivalent to dispatching a `session/activeClientSet`
-   * action immediately after creation. The `clientId` MUST match the
-   * `clientId` the creating client supplied in `initialize`.
+   * 提供時，伺服器會以此用戶端作為作用中用戶端初始化工作階段，等同於
+   * 在建立後立即分派 `session/activeClientSet` 操作。`clientId` MUST
+   * 與建立用戶端在 `initialize` 中提供的 `clientId` 相符。
    */
   activeClient?: SessionActiveClient;
   /**
-   * Opt-in progress token. When set, the client is offering to receive
-   * `progress` notifications (see `ProgressParams`) for any long-running work
-   * the server does to bring this session up — most notably the lazy,
-   * first-use download of the provider's native SDK. The server echoes this
-   * exact token on every `progress` frame so the client can correlate it to
-   * this `createSession` call (and the UI awaiting it).
+   * 選擇加入的進度權杖。設定時，用戶端表示願意接收伺服器為帶起此工作
+   * 階段所做任何長時間執行工作的 `progress` 通知（見 `ProgressParams`）
+   * — 最顯著的是提供者原生 SDK 的延遲首次使用下載。伺服器會在每個
+   * `progress` 框架上回應此確切權杖，讓用戶端能將其與此
+   * `createSession` 呼叫（及等待它的 UI）關聯。
    *
-   * The token MUST be unique across the client's active requests. The server
-   * MAY ignore it (e.g. when nothing long-running is needed), in which case no
-   * `progress` notifications are emitted.
+   * 權杖 MUST 在用戶端的作用中請求間是唯一的。伺服器 MAY 忽略它
+   * （例如當不需要任何長時間執行的工作時），此情況下不會發出任何
+   * `progress` 通知。
    */
   progressToken?: string;
 }
@@ -142,13 +134,13 @@ export interface CreateSessionParams extends BaseParams {
 // ─── disposeSession ──────────────────────────────────────────────────────────
 
 /**
- * Disposes a session and cleans up server-side resources.
+ * 處置工作階段並清理伺服器端資源。
  *
- * The server broadcasts a `root/sessionRemoved` notification to all clients.
+ * 伺服器會向所有用戶端廣播 `root/sessionRemoved` 通知。
  *
  * @category Commands
  * @method disposeSession
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  */
@@ -157,20 +149,18 @@ export interface DisposeSessionParams extends BaseParams {}
 // ─── fetchTurns ──────────────────────────────────────────────────────────────
 
 /**
- * Requests that the host load older historical turns into a chat state.
+ * 請求主機將較舊的歷史回合載入聊天狀態。
  *
- * The command result does not carry turns. Instead, before responding, the host
- * MUST dispatch `chat/turnsLoaded` to insert any loaded turns into the chat
- * channel's `turns` state, ahead of the already-loaded window, and update or
- * clear `turnsNextCursor`.
+ * 指令結果不承載回合。相反地，在回應前，主機 MUST 分派
+ * `chat/turnsLoaded`，將任何已載入的回合插入聊天通道的 `turns`
+ * 狀態，置於已載入視窗之前，並更新或清除 `turnsNextCursor`。
  *
- * Before applying any operation that references a turn outside the currently
- * loaded window, the host MUST eagerly load enough older turns into state for
- * that operation to reduce against valid state.
+ * 在套用任何參照目前載入視窗外回合的操作前，主機 MUST 主動將足夠的
+ * 舊回合載入狀態，讓該操作能對有效狀態進行歸約。
  *
  * @category Commands
  * @method fetchTurns
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  * @example
@@ -184,51 +174,48 @@ export interface DisposeSessionParams extends BaseParams {}
  * ```
  */
 export interface FetchTurnsParams extends BaseParams {
-  /** Chat URI */
+  /** 聊天 URI */
   channel: URI;
   /**
-   * Opaque cursor from `ChatState.turnsNextCursor`.
+   * 來自 `ChatState.turnsNextCursor` 的不透明游標。
    *
-   * The host MUST reject unrecognised cursors with `InvalidParams`. Omit only
-   * when asking the host to opportunistically load its next older page for the
-   * chat, if any.
+   * 主機 MUST 以 `InvalidParams` 拒絕無法辨識的游標。僅在要求主機為
+   * 聊天（若有的話）順勢載入其下一個較舊分頁時才省略。
    */
   cursor?: string;
 }
 
 /**
- * Result of the `fetchTurns` command.
+ * `fetchTurns` 指令的結果。
  */
 export interface FetchTurnsResult {}
 
 // ─── completions ─────────────────────────────────────────────────────────────
 
 /**
- * The kind of completion items being requested.
+ * 所請求的補全項目種類。
  *
  * @category Commands
  */
 export const enum CompletionItemKind {
   /**
-   * Completions for the text of a {@link Message} the user is composing.
-   * Each returned item carries an attachment that gets associated with the
-   * message when accepted.
+   * 使用者正在撰寫的 {@link Message} 文字補全。每個回傳項目都承載一個
+   * 附件，在接受時會與訊息關聯。
    */
   UserMessage = 'userMessage',
 }
 
 /**
- * Requests completion items for a partially-typed input (e.g. a user message
- * the user is currently composing). Used to power `@`-mention pickers,
- * file/symbol references, and similar inline-completion experiences.
+ * 為部分輸入的內容請求補全項目（例如使用者目前正在撰寫的使用者
+ * 訊息）。用於驅動 `@` 提及選擇器、檔案/符號參照，以及類似的內嵌
+ * 補全體驗。
  *
- * Servers SHOULD treat this command as best-effort and return promptly. The
- * client SHOULD debounce calls to avoid flooding the server with requests on
- * every keystroke.
+ * 伺服器 SHOULD 將此指令視為盡力而為並迅速回傳。用戶端 SHOULD 對呼叫
+ * 進行去抖動，以避免在每次按鍵時用請求淹沒伺服器。
  *
  * @category Commands
  * @method completions
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  * @example
@@ -258,69 +245,66 @@ export const enum CompletionItemKind {
  * ```
  */
 export interface CompletionsParams extends BaseParams {
-  /** What kind of completion is being requested. */
+  /** 所請求的補全種類。 */
   kind: CompletionItemKind;
-  /** The chat URI the completion is being requested for. */
+  /** 請求補全的聊天 URI。 */
   channel: URI;
   /**
-   * The complete text of the input being completed (e.g. the full user
-   * message text typed so far).
+   * 正在補全之輸入的完整文字（例如目前為止輸入的完整使用者訊息文字）。
    */
   text: string;
   /**
-   * The character offset within `text` at which the completion is requested,
-   * measured in UTF-16 code units. MUST satisfy `0 <= offset <= text.length`.
+   * 在 `text` 中請求補全的字元偏移量，以 UTF-16 碼單位測量。MUST 滿足
+   * `0 <= offset <= text.length`。
    */
   offset: number;
 }
 
 /**
- * A single completion item returned by the `completions` command.
+ * `completions` 指令回傳的單一補全項目。
  *
- * When the user accepts an item, the client SHOULD:
- * 1. Replace the range `[rangeStart, rangeEnd)` in the input with `insertText`
- *    (or insert `insertText` at the cursor when the range is omitted).
- * 2. Associate the item's `attachment` with the resulting {@link Message}.
+ * 當使用者接受項目時，用戶端 SHOULD：
+ * 1. 以 `insertText` 取代輸入中 `[rangeStart, rangeEnd)` 範圍
+ *    （或省略範圍時在游標處插入 `insertText`）。
+ * 2. 將項目的 `attachment` 與產生的 {@link Message} 關聯。
  *
  * @category Commands
  */
 export interface CompletionItem {
   /**
-   * The text inserted into the input when this item is accepted.
+   * 接受此項目時插入到輸入中的文字。
    */
   insertText: string;
 
   /**
-   * If defined, the start of the range in the input's `text` that is replaced
-   * by `insertText`. The range is the half-open interval
-   * `[rangeStart, rangeEnd)` of character offsets, measured in UTF-16 code
-   * units.
+   * 若已定義，為輸入 `text` 中被 `insertText` 取代的範圍起點。此範圍
+   * 為字元偏移量的半開區間 `[rangeStart, rangeEnd)`，以 UTF-16 碼單位
+   * 測量。
    *
-   * When omitted, the client SHOULD insert `insertText` at the cursor.
+   * 省略時，用戶端 SHOULD 在游標處插入 `insertText`。
    *
-   * Note: this range refers to positions in the *current* input. The
-   * attachment's own `rangeStart`/`rangeEnd` (when present) refer to
-   * positions in the final {@link Message.text} after the item is
-   * accepted.
+   * 注意：此範圍參照的是*目前*輸入中的位置。附件自身的
+   * `rangeStart`/`rangeEnd`（若存在）參照的是項目被接受後最終
+   * {@link Message.text} 中的位置。
    */
   rangeStart?: number;
 
   /**
-   * The end of the range in the input's `text` that is replaced by
-   * `insertText`. See {@link rangeStart}.
+   * 輸入 `text` 中被 `insertText` 取代的範圍終點。見
+   * {@link rangeStart}。
    */
   rangeEnd?: number;
 
   /**
-   * The attachment associated with this completion item.
+   * 與此補全項目關聯的附件。
    */
   attachment: MessageAttachment;
 }
 
 /**
- * Result of the `completions` command.
+ * `completions` 指令的結果。
  */
 export interface CompletionsResult {
-  /** The completion items, in the order the server suggests displaying them. */
+  /** 補全項目，按伺服器建議顯示的順序排列。 */
   items: CompletionItem[];
 }

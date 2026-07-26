@@ -1,5 +1,5 @@
 /**
- * Session Channel Reducer — Pure reducer for `SessionState`.
+ * 工作階段通道 Reducer — `SessionState` 的純 reducer。
  *
  * @module channels-session/reducer
  */
@@ -21,22 +21,21 @@ import { softAssertNever } from '../common/reducer-helpers.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Bitmask covering the mutually-exclusive activity bits (bits 0–4). */
+/** 涵蓋互斥活動位元的位元遮罩（位元 0–4）。 */
 const STATUS_ACTIVITY_MASK = (1 << 5) - 1;
 
-/** Sets or clears a metadata flag on a status value. */
+/** 在狀態值上設定或清除中繼資料旗標。 */
 function withStatusFlag(status: SessionStatus, flag: SessionStatus, set: boolean): SessionStatus {
   return set ? status | flag : status & ~flag;
 }
 
 /**
- * Reflects the session-level {@link SessionState.inputNeeded | input queue}
- * into the activity bits of `status`. A non-empty queue promotes the activity
- * to {@link SessionStatus.InputNeeded}; emptying it clears the
- * input-needed-specific bit. Since `InputNeeded` implies
- * {@link SessionStatus.InProgress}, an unblocked turn falls back to
- * `InProgress` while an already-idle session stays idle. Orthogonal flags
- * (`IsRead` / `IsArchived`) are preserved.
+ * 將工作階段層級的 {@link SessionState.inputNeeded | 輸入佇列}反映至
+ * `status` 的活動位元。非空佇列會將活動提升至
+ * {@link SessionStatus.InputNeeded}；清空佇列則清除待處理輸入專屬的
+ * 位元。由於 `InputNeeded` 隱含 {@link SessionStatus.InProgress}，已
+ * 解除阻塞的回合會退回 `InProgress`，而已閒置的工作階段保持閒置。
+ * 正交旗標（`IsRead` / `IsArchived`）會被保留。
  */
 function withInputNeededStatus(status: SessionStatus, inputNeeded: readonly SessionInputRequest[]): SessionStatus {
   if (inputNeeded.length > 0) {
@@ -95,7 +94,7 @@ function updateMcpServerCustomization(
 // ─── Session Reducer ─────────────────────────────────────────────────────────
 
 /**
- * Pure reducer for session state. Handles all {@link SessionAction} variants.
+ * 工作階段狀態的純 reducer。處理所有 {@link SessionAction} 變體。
  */
 export function sessionReducer(state: SessionState, action: SessionAction, log?: (msg: string) => void): SessionState {
   switch (action.type) {

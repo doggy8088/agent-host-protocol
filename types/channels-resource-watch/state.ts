@@ -1,6 +1,6 @@
 /**
- * Resource-Watch Channel State Types — Per-watch state exposed on
- * `ahp-resource-watch:` channels.
+ * 資源監視通道狀態類型 — 於 `ahp-resource-watch:` 通道公開的
+ * 每監視狀態。
  *
  * @module channels-resource-watch/state
  */
@@ -10,38 +10,36 @@ import type { URI } from '../common/state.js';
 // ─── Resource Watch Types ────────────────────────────────────────────────────
 
 /**
- * Full state for a single resource watch, returned when a client subscribes
- * to an `ahp-resource-watch:` URI.
+ * 單一資源監視的完整狀態，於用戶端訂閱 `ahp-resource-watch:`
+ * URI 時回傳。
  *
- * Watches are otherwise stateless: the watcher exists to deliver
- * {@link ResourceWatchChangedAction} events. The state carries only the
- * descriptor of what is being watched so a re-subscribing client can
- * recover the watch configuration after reconnecting.
+ * 監視器本身是無狀態的：監視器的存在是為了傳遞
+ * {@link ResourceWatchChangedAction} 事件。狀態僅攜帶被監視
+ * 內容的描述子，讓重新訂閱的用戶端能在重新連線後恢復監視
+ * 設定。
  *
  * @category Resource Watch Types
  */
 export interface ResourceWatchState {
   /**
-   * The URI being watched. For recursive watches this is the root of the
-   * subtree; for non-recursive watches this is the single file or
-   * directory.
+   * 被監視的 URI。對於遞迴監視，這是子樹的根；對於非遞迴
+   * 監視，這是單一檔案或目錄。
    */
   root: URI;
   /**
-   * `true` if the watcher reports changes for descendants of `root`;
-   * `false` if it only reports changes to `root` itself (and, when
-   * `root` is a directory, its direct children).
+   * 若監視器回報 `root` 後代的變更則為 `true`；
+   * 若僅回報 `root` 本身的變更（且當 `root` 為目錄時，其直接
+   * 子項）則為 `false`。
    */
   recursive: boolean;
   /**
-   * Optional glob patterns or paths relative to `root` to exclude from
-   * change reporting.
+   * 選用的 glob 模式或相對於 `root` 的路徑，用於從變更回報中
+   * 排除。
    */
   excludes?: { items: string[] };
   /**
-   * Optional glob patterns or paths relative to `root` to restrict
-   * change reporting to. Omit to report every change under `root`
-   * subject to `excludes`.
+   * 選用的 glob 模式或相對於 `root` 的路徑，用於限制變更回報
+   * 範圍。省略以回報 `root` 下受 `excludes` 限制的每個變更。
    */
   includes?: { items: string[] };
 }
@@ -49,7 +47,7 @@ export interface ResourceWatchState {
 // ─── Resource Change ─────────────────────────────────────────────────────────
 
 /**
- * Discriminant for {@link ResourceChange.type}.
+ * {@link ResourceChange.type} 的判別欄位。
  *
  * @category Resource Watch Types
  */
@@ -60,13 +58,13 @@ export const enum ResourceChangeType {
 }
 
 /**
- * A single change observed by a resource watcher.
+ * 資源監視器觀察到的單一變更。
  *
  * @category Resource Watch Types
  */
 export interface ResourceChange {
-  /** The URI of the resource that changed. */
+  /** 變更之資源的 URI。 */
   uri: URI;
-  /** The kind of change observed. */
+  /** 觀察到的變更類型。 */
   type: ResourceChangeType;
 }

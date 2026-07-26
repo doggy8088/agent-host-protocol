@@ -1,10 +1,10 @@
 /**
- * Annotations Channel State Types — Per-session inline file-annotation state
- * exposed on the `ahp-session:/<uuid>/annotations` channel.
+ * 註解通道狀態類型 — 每個工作階段的內嵌檔案註解狀態，於
+ * `ahp-session:/<uuid>/annotations` 通道公開。
  *
- * Each session owns at most one annotations channel. The channel URI is
- * derived from the session URI by appending `/annotations` and is also
- * surfaced explicitly on {@link AnnotationsSummary.resource} for badge UI.
+ * 每個工作階段最多擁有一個註解通道。通道 URI 是由工作階段
+ * URI 附加 `/annotations` 衍生而來，並且也明確公開於
+ * {@link AnnotationsSummary.resource} 供徽章 UI 使用。
  *
  * @module channels-annotations/state
  */
@@ -14,93 +14,89 @@ import type { URI, StringOrMarkdown, TextRange } from '../common/state.js';
 // ─── Annotations Summary ─────────────────────────────────────────────────────
 
 /**
- * Lightweight per-session summary of the annotations channel, surfaced on
- * {@link SessionSummary.annotations} so badge UI can render annotation /
- * entry counts without subscribing to the channel itself.
+ * 註解通道的輕量級每工作階段摘要，公開於
+ * {@link SessionSummary.annotations}，讓徽章 UI 無需訂閱通道本身
+ * 即可呈現註解／條目計數。
  *
  * @category Annotations
  */
 export interface AnnotationsSummary {
   /**
-   * The subscribable annotations channel URI for the owning session
-   * (typically `ahp-session:/<uuid>/annotations`). Surfaced explicitly even
-   * though it is derivable from the session URI so badge UI does not need
-   * to know the derivation rule.
+   * 擁有工作階段的可訂閱註解通道 URI
+   * （通常為 `ahp-session:/<uuid>/annotations`）。即使可從工作階段
+   * URI 衍生而來也明確公開，讓徽章 UI 不需要知道衍生規則。
    */
   resource: URI;
-  /** Total number of {@link Annotation} entries in the channel. */
+  /** 通道中 {@link Annotation} 條目的總數。 */
   annotationCount: number;
-  /** Total number of {@link AnnotationEntry} entries across every annotation. */
+  /** 跨所有註解的 {@link AnnotationEntry} 條目總數。 */
   entryCount: number;
 }
 
 // ─── Annotations State ───────────────────────────────────────────────────────
 
 /**
- * Full state for a session's annotations channel, returned when a client
- * subscribes to an `ahp-session:/<uuid>/annotations` URI.
+ * 工作階段註解通道的完整狀態，於用戶端訂閱
+ * `ahp-session:/<uuid>/annotations` URI 時回傳。
  *
  * @category Annotations
  */
 export interface AnnotationsState {
-  /** Annotations in this channel, keyed by {@link Annotation.id}. */
+  /** 此通道中的註解，以 {@link Annotation.id} 為鍵。 */
   annotations: Annotation[];
 }
 
 // ─── Annotation ──────────────────────────────────────────────────────────────
 
 /**
- * A conversation anchored to a specific file produced by a specific turn,
- * optionally narrowed to a range within that file.
+ * 錨定於特定回合所產生之特定檔案的對話，
+ * 可選擇縮小至該檔案內的某個範圍。
  *
- * {@link turnId} anchors the annotation to the file versions that turn
- * produced, so a later turn that rewrites the same file does not silently
- * invalidate the annotation's anchor — clients can resolve {@link resource}
- * and {@link range} against the turn's changeset. When {@link range} is
- * omitted the annotation is anchored to the entire file.
+ * {@link turnId} 將註解錨定至該回合所產生的檔案版本，
+ * 如此一來，後續重寫同一檔案的回合不會悄悄使註解的錨點
+ * 失效——用戶端可根據該回合的變更集解析 {@link resource} 與
+ * {@link range}。省略 {@link range} 時，註解錨定至整個檔案。
  *
- * Every annotation MUST contain at least one {@link AnnotationEntry}. An
- * {@link AnnotationsSetAction} that creates an annotation therefore carries
- * its mandatory first entry, and removing the last remaining entry collapses
- * the annotation via {@link AnnotationsRemovedAction} rather than leaving an
- * empty annotation behind.
+ * 每個註解 MUST 至少包含一個 {@link AnnotationEntry}。因此，
+ * 建立註解的 {@link AnnotationsSetAction} 會攜帶其必要的第一個
+ * 條目，而移除最後一個剩餘條目會透過 {@link AnnotationsRemovedAction}
+ * 摺疊該註解，而非留下空的註解。
  *
  * @category Annotations
  */
 export interface Annotation {
   /**
-   * Stable identifier within the annotations channel. Assigned by the client
-   * that dispatches the creating {@link AnnotationsSetAction}.
+   * 註解通道內的穩定識別碼。由分派建立它的
+   * {@link AnnotationsSetAction} 的用戶端指派。
    */
   id: string;
   /**
-   * Turn that produced the file versions this annotation is anchored to.
-   * Matches a {@link Turn.id} on the owning session.
+   * 產生此註解所錨定之檔案版本的回合。
+   * 與擁有工作階段上的 {@link Turn.id} 相符。
    */
   turnId: string;
-  /** The file the annotation is anchored to. */
+  /** 註解所錨定的檔案。 */
   resource: URI;
   /**
-   * Range within {@link resource} the annotation is anchored to. When
-   * omitted the annotation is anchored to the entire file.
+   * 註解所錨定 {@link resource} 內的範圍。省略時，
+   * 註解錨定至整個檔案。
    */
   range?: TextRange;
   /**
-   * Whether the annotation has been resolved. Newly created annotations are
-   * always unresolved (`false`); a client marks an annotation resolved (or
-   * re-opens it) by dispatching an {@link AnnotationsUpdatedAction} carrying
-   * the updated flag (or an {@link AnnotationsSetAction} when replacing the
-   * whole annotation).
+   * 註解是否已解決。新建的註解一律為未解決
+   * （`false`）；用戶端透過分派攜帶更新旗標的
+   * {@link AnnotationsUpdatedAction} 將註解標記為已解決（或重新開啟），
+   * 或在替換整個註解時使用 {@link AnnotationsSetAction}。
    */
   resolved: boolean;
   /**
-   * Entries in this annotation, in dispatch order (oldest first). MUST
-   * contain at least one entry.
+   * 此註解中的條目，依分派順序排列（最舊者在前）。
+   * MUST 至少包含一個條目。
    */
   entries: AnnotationEntry[];
   /**
-   * Producer-defined opaque metadata, surfaced to tooling but not
-   * interpreted by the protocol.
+   * 由產生者定義的不透明中繼資料，公開供工具使用，
+   * 但不由協定解讀。
    */
   _meta?: Record<string, unknown>;
 }
@@ -108,26 +104,26 @@ export interface Annotation {
 // ─── Annotation Entry ────────────────────────────────────────────────────────
 
 /**
- * A single entry within an {@link Annotation}.
+ * {@link Annotation} 內的單一條目。
  *
  * @category Annotations
  */
 export interface AnnotationEntry {
   /**
-   * Stable identifier within the enclosing annotation. Assigned by the client
-   * that dispatches the {@link AnnotationsEntrySetAction} (or the enclosing
-   * {@link AnnotationsSetAction}) introducing the entry.
+   * 所屬註解內的穩定識別碼。由分派引入該條目之
+   * {@link AnnotationsEntrySetAction}（或所屬
+   * {@link AnnotationsSetAction}）的用戶端指派。
    */
   id: string;
   /**
-   * Entry body. A bare `string` is rendered as plain text; pass
-   * `{ markdown: "…" }` to opt into Markdown rendering. See
-   * {@link StringOrMarkdown}.
+   * 條目主體。裸 `string` 會以純文字呈現；傳入
+   * `{ markdown: "…" }` 以選擇 Markdown 呈現。詳見
+   * {@link StringOrMarkdown}。
    */
   text: StringOrMarkdown;
   /**
-   * Producer-defined opaque metadata, surfaced to tooling but not
-   * interpreted by the protocol.
+   * 由產生者定義的不透明中繼資料，公開供工具使用，
+   * 但不由協定解讀。
    */
   _meta?: Record<string, unknown>;
 }

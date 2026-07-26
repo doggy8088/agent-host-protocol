@@ -1,5 +1,5 @@
 /**
- * Annotations Channel Reducer — Pure reducer for `AnnotationsState`.
+ * 註解通道 Reducer — `AnnotationsState` 的純 reducer。
  *
  * @module channels-annotations/reducer
  */
@@ -10,19 +10,18 @@ import type { AnnotationsAction } from '../action-origin.generated.js';
 import { softAssertNever } from '../common/reducer-helpers.js';
 
 /**
- * Pure reducer for annotations state. Handles every {@link AnnotationsAction}
- * variant.
+ * 註解狀態的純 reducer。處理每個 {@link AnnotationsAction}
+ * 變體。
  *
- * Per the spec, every annotations action is client-dispatchable; the reducer
- * runs identically on the client (optimistic, write-ahead) and the server. It
- * preserves the dispatch order of annotations (and of entries within an
- * annotation): new entries are appended; `*Set` actions with a matching id
- * replace in place, while actions whose target id is unknown are no-ops
- * (mirroring `changeset/fileRemoved` semantics). The single-entry
- * minimum invariant is enforced by producers, not the reducer — removing an
- * annotation's last entry via {@link AnnotationsEntryRemovedAction} (instead
- * of {@link AnnotationsRemovedAction}) would leave an empty annotation,
- * which is observable but not catastrophic.
+ * 依據規格，每個註解操作皆為用戶端可分派；reducer 在用戶端
+ * （樂觀、預寫入）與伺服器上執行方式完全相同。它保留註解
+ * （以及註解內條目）的分派順序：新條目會被附加；具有相符 id
+ * 的 `*Set` 操作會原地替換，而目標 id 未知的操作為 no-op
+ * （映射 `changeset/fileRemoved` 語意）。單條目最小不變式由
+ * 產生者強制執行，而非 reducer——透過
+ * {@link AnnotationsEntryRemovedAction}（而非
+ * {@link AnnotationsRemovedAction}）移除註解的最後一個條目會
+ * 留下空註解，這是可觀察的但不致災。
  */
 export function annotationsReducer(state: AnnotationsState, action: AnnotationsAction, log?: (msg: string) => void): AnnotationsState {
   switch (action.type) {

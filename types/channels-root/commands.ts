@@ -1,7 +1,7 @@
 /**
- * Root Channel Commands — `listSessions`, `resolveSessionConfig`, and
- * `sessionConfigCompletions`. These commands target `ahp-root://` even
- * though they describe per-session metadata.
+ * 根通道指令 — `listSessions`、`resolveSessionConfig` 與
+ * `sessionConfigCompletions`。這些指令雖描述每個工作階段的中繼資料，但其目標為
+ * `ahp-root://`。
  *
  * @module channels-root/commands
  */
@@ -18,22 +18,20 @@ export type { SessionConfigPropertySchema, SessionConfigSchema } from '../channe
 // ─── listSessions ────────────────────────────────────────────────────────────
 
 /**
- * Returns a list of session summaries. Used to populate session lists and sidebars.
+ * 傳回工作階段摘要的清單。用於填入工作階段清單與側邊欄。
  *
- * The session list is **not** part of the state tree because it can be arbitrarily
- * large. Clients fetch it imperatively and maintain a local cache updated by
- * `root/sessionAdded` and `root/sessionRemoved` notifications.
+ * 工作階段清單 **不** 是狀態樹的一部分，因為它可能任意龐大。用戶端以命令式
+ * 方式取得它，並維護一個由 `root/sessionAdded` 與 `root/sessionRemoved` 通知
+ * 更新的本機快取。
  *
- * A large catalogue can be fetched incrementally via the {@link PaginatedParams}
- * `limit`/`cursor` inputs (see that type for the full pagination contract). The
- * server SHOULD return most-recently-modified entries first, so the first page
- * is the immediately useful one. The `root/session*` notifications keep an
- * already-fetched page live; pagination governs only the initial and backfill
- * fetches.
+ * 大型目錄可透過 {@link PaginatedParams} 的 `limit`/`cursor` 輸入以漸進方式取得
+ * （完整的分頁合約請參見該型別）。伺服器 SHOULD 先傳回最近修改的項目，使第一頁
+ * 成為立即可用的一頁。`root/session*` 通知讓已取得的頁面保持最新；分頁僅控管
+ * 初始與回填的取得。
  *
  * @category Commands
  * @method listSessions
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  * @example
@@ -57,11 +55,10 @@ export interface ListSessionsParams extends BaseParams, PaginatedParams {
   channel: 'ahp-root://';
 }
 
-/** Result of the `listSessions` command. */
+/** `listSessions` 指令的結果。 */
 export interface ListSessionsResult extends PaginatedResult {
   /**
-   * The list of session summaries. The server SHOULD order them
-   * most-recently-modified first.
+   * 工作階段摘要的清單。伺服器 SHOULD 將其以最近修改優先排序。
    */
   items: SessionSummary[];
 }
@@ -69,19 +66,17 @@ export interface ListSessionsResult extends PaginatedResult {
 // ─── resolveSessionConfig ────────────────────────────────────────────────────
 
 /**
- * Iteratively resolves the session configuration schema. The client sends the
- * current partial session config and any user-filled metadata values. The server
- * returns a property schema describing what additional metadata is needed,
- * contextual to the current selections.
+ * 反覆解析工作階段組態結構描述。用戶端傳送目前的部分工作階段組態與任何
+ * 使用者填入的中繼資料值。伺服器傳回一個屬性結構描述，說明在目前選取的脈絡
+ * 下還需要哪些額外中繼資料。
  *
- * The client calls this command whenever the user changes a significant input
- * (e.g. picks a working directory, toggles a property). Each response returns
- * the full current property set (not a delta). The returned `values` contain
- * server-resolved defaults to pass to `createSession`.
+ * 每當使用者變更重大輸入（例如挑選工作目錄、切換屬性）時，用戶端就會呼叫此
+ * 指令。每次回應都會傳回完整的目前屬性集合（而非差異）。所傳回的 `values`
+ * 包含伺服器解析後的預設值，以傳遞給 `createSession`。
  *
  * @category Commands
  * @method resolveSessionConfig
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  * @example
@@ -126,50 +121,50 @@ export interface ListSessionsResult extends PaginatedResult {
  */
 export interface ResolveSessionConfigParams extends BaseParams {
   channel: 'ahp-root://';
-  /** Agent provider ID */
+  /** 代理程式提供者 ID */
   provider?: string;
-  /** Working directory for the session */
+  /** 工作階段的工作目錄 */
   workingDirectory?: URI;
-  /** Current user-filled configuration values */
+  /** 目前使用者填入的組態值 */
   config?: Record<string, unknown>;
 }
 
 /**
- * Result of the `resolveSessionConfig` command.
+ * `resolveSessionConfig` 指令的結果。
  */
 export interface ResolveSessionConfigResult {
-  /** JSON Schema describing available configuration properties given the current context */
+  /** 描述給定目前脈絡下可用組態屬性的 JSON Schema */
   schema: SessionConfigSchema;
-  /** Current configuration values (echoed back with server-resolved defaults applied) */
+  /** 目前的組態值（回送並套用伺服器解析後的預設值） */
   values: Record<string, unknown>;
 }
 
 // ─── sessionConfigCompletions ────────────────────────────────────────────────
 
 /**
- * A single value item returned by `sessionConfigCompletions`.
+ * `sessionConfigCompletions` 傳回的單一值項目。
  *
  * @category Commands
  */
 export interface SessionConfigValueItem {
-  /** The value to store in config */
+  /** 要儲存於組態中的值 */
   value: string;
-  /** Human-readable display label */
+  /** 人類可讀的顯示標籤 */
   label: string;
-  /** Optional secondary description */
+  /** 選用的次要描述 */
   description?: string;
 }
 
 /**
- * Queries the server for allowed values of a dynamic session config property.
+ * 向伺服器查詢動態工作階段組態屬性的允許值。
  *
- * Used when a property in the schema returned by `resolveSessionConfig` has
- * `enumDynamic: true`. The client sends a search query and receives matching
- * values with display metadata.
+ * 用於 `resolveSessionConfig` 傳回之結構描述中的屬性具有
+ * `enumDynamic: true` 時。用戶端傳送搜尋查詢，並接收帶有顯示中繼資料的相符
+ * 值。
  *
  * @category Commands
  * @method sessionConfigCompletions
- * @direction Client → Server
+ * @direction 用戶端 → 伺服器
  * @messageType Request
  * @version 1
  * @example
@@ -191,22 +186,22 @@ export interface SessionConfigValueItem {
  */
 export interface SessionConfigCompletionsParams extends BaseParams {
   channel: 'ahp-root://';
-  /** Agent provider ID */
+  /** 代理程式提供者 ID */
   provider?: string;
-  /** Working directory for the session */
+  /** 工作階段的工作目錄 */
   workingDirectory?: URI;
-  /** Current user-filled configuration values (provides context for the query) */
+  /** 目前使用者填入的組態值（為查詢提供脈絡） */
   config?: Record<string, unknown>;
-  /** Property id from the schema to query values for */
+  /** 要為其查詢值的結構描述屬性 id */
   property: string;
-  /** Search filter text (empty or omitted returns default/recent values) */
+  /** 搜尋篩選文字（空白或省略時傳回預設/最近值） */
   query?: string;
 }
 
 /**
- * Result of the `sessionConfigCompletions` command.
+ * `sessionConfigCompletions` 指令的結果。
  */
 export interface SessionConfigCompletionsResult {
-  /** Matching value items */
+  /** 相符的值項目 */
   items: SessionConfigValueItem[];
 }

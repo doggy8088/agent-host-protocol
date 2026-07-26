@@ -1,6 +1,5 @@
 /**
- * Root Channel Notifications — Session catalogue events delivered on the
- * `ahp-root://` channel.
+ * 根通道通知 — 在 `ahp-root://` 通道上傳遞的工作階段目錄事件。
  *
  * @module channels-root/notifications
  */
@@ -11,12 +10,11 @@ import type { SessionSummary } from '../channels-session/state.js';
 // ─── root/sessionAdded ───────────────────────────────────────────────────────
 
 /**
- * Broadcast to all clients subscribed to the root channel when a new session
- * is created.
+ * 當建立新工作階段時，廣播給所有訂閱根通道的用戶端。
  *
  * @category Protocol Notifications
  * @method root/sessionAdded
- * @direction Server → Client
+ * @direction 伺服器 → 用戶端
  * @messageType Notification
  * @version 1
  * @example
@@ -39,21 +37,20 @@ import type { SessionSummary } from '../channels-session/state.js';
  * ```
  */
 export interface SessionAddedParams {
-  /** Channel URI this notification belongs to (the root channel) */
+  /** 此通知所屬的通道 URI（根通道） */
   channel: URI;
-  /** Summary of the new session */
+  /** 新工作階段的摘要 */
   summary: SessionSummary;
 }
 
 // ─── root/sessionRemoved ─────────────────────────────────────────────────────
 
 /**
- * Broadcast to all clients subscribed to the root channel when a session is
- * disposed.
+ * 當工作階段被處置時，廣播給所有訂閱根通道的用戶端。
  *
  * @category Protocol Notifications
  * @method root/sessionRemoved
- * @direction Server → Client
+ * @direction 伺服器 → 用戶端
  * @messageType Notification
  * @version 1
  * @example
@@ -69,47 +66,39 @@ export interface SessionAddedParams {
  * ```
  */
 export interface SessionRemovedParams {
-  /** Channel URI this notification belongs to (the root channel) */
+  /** 此通知所屬的通道 URI（根通道） */
   channel: URI;
-  /** URI of the removed session */
+  /** 已移除工作階段的 URI */
   session: URI;
 }
 
 // ─── root/sessionSummaryChanged ──────────────────────────────────────────────
 
 /**
- * Broadcast to all clients subscribed to the root channel when an existing
- * session's summary changes (title, status, `modifiedAt`, model, working
- * directory, read/done state, or diff statistics).
+ * 當現有工作階段的摘要變更（標題、狀態、`modifiedAt`、模型、工作目錄、已讀/完成
+ * 狀態或差異統計）時，廣播給所有訂閱根通道的用戶端。
  *
- * This notification lets clients that maintain a cached session list — for
- * example, the result of a previous `listSessions()` call — stay in sync with
- * in-flight sessions without having to subscribe to every session URI
- * individually. It is complementary to, not a replacement for,
- * `root/sessionAdded` and `root/sessionRemoved`: those signal lifecycle
- * (creation/disposal), while this signals summary-level mutations on an
- * already-known session.
+ * 此通知讓維護快取工作階段清單的用戶端（例如先前 `listSessions()` 呼叫的結果）
+ * 能與進行中的工作階段保持同步，而無須個別訂閱每個工作階段 URI。它是
+ * `root/sessionAdded` 與 `root/sessionRemoved` 的補充，而非取代：後兩者發出
+ * 生命週期（建立/處置）訊號，而此通知發出已知工作階段上的摘要層級變動訊號。
  *
- * Semantics:
+ * 語意：
  *
- * - Only fields present in `changes` have new values; omitted fields are
- *   unchanged on the client's cached summary.
- * - Identity fields (`resource`, `provider`, `createdAt`) never change and
- *   are not carried.
- * - Like all protocol notifications, this is ephemeral: it is **not**
- *   replayed on reconnect. On reconnect, clients should re-fetch the full
- *   catalog via `listSessions()` as usual.
- * - The server SHOULD emit this notification whenever any mutable field on
- *   {@link SessionSummary | `SessionSummary`} changes for a session the
- *   server has surfaced via `listSessions()` or `root/sessionAdded`.
- *   Servers MAY coalesce or debounce updates for noisy fields (for example,
- *   `modifiedAt` bumps while a turn is streaming) at their discretion.
- * - Clients that have no cached entry for `session` MAY ignore the
- *   notification; it is not a substitute for `root/sessionAdded`.
+ * - 僅存在於 `changes` 中的欄位具有新值；省略的欄位在用戶端快取的摘要中未變更。
+ * - 身分識別欄位（`resource`、`provider`、`createdAt`）永不變更且不予承載。
+ * - 如同所有協定通知，此通知為短暫的：它 **不** 會在重新連線時重播。在重新
+ *   連線時，用戶端應如常透過 `listSessions()` 重新取得完整目錄。
+ * - 每當伺服器已透過 `listSessions()` 或 `root/sessionAdded` 呈現之工作階段的
+ *   {@link SessionSummary | `SessionSummary`} 上任何可變欄位變更時，伺服器
+ *   SHOULD 發出此通知。伺服器 MAY 自行斟酌合併或去抖動頻繁變動欄位的更新
+ *   （例如回合串流時的 `modifiedAt` 更新）。
+ * - 對 `session` 沒有快取項目的用戶端 MAY 忽略此通知；它不是
+ *   `root/sessionAdded` 的替代品。
  *
  * @category Protocol Notifications
  * @method root/sessionSummaryChanged
- * @direction Server → Client
+ * @direction 伺服器 → 用戶端
  * @messageType Notification
  * @version 1
  * @example
@@ -130,15 +119,15 @@ export interface SessionRemovedParams {
  * ```
  */
 export interface SessionSummaryChangedParams {
-  /** Channel URI this notification belongs to (the root channel) */
+  /** 此通知所屬的通道 URI（根通道） */
   channel: URI;
-  /** URI of the session whose summary changed */
+  /** 摘要變更之工作階段的 URI */
   session: URI;
   /**
-   * Mutable summary fields that changed; omitted fields are unchanged.
+   * 已變更的可變摘要欄位；省略的欄位未變更。
    *
-   * Identity fields (`resource`, `provider`, `createdAt`) never change and
-   * MUST be omitted by senders; receivers SHOULD ignore them if present.
+   * 身分識別欄位（`resource`、`provider`、`createdAt`）永不變更且傳送者 MUST
+   * 予以省略；接收者若收到 SHOULD 忽略它們。
    */
   changes: Partial<SessionSummary>;
 }
@@ -146,39 +135,32 @@ export interface SessionSummaryChangedParams {
 // ─── progress ────────────────────────────────────────────────────────────────
 
 /**
- * Generic progress notification for a long-running operation.
+ * 長時間執行作業的通用進度通知。
  *
- * A client opts in to progress for a request by including a `progressToken` in
- * that request (today: the `progressToken` field on `createSession`). If the
- * server does long-running work to service the request — e.g. lazily
- * downloading an agent's native SDK the first time a session of that provider
- * is materialized — it emits `progress` notifications carrying the same token.
+ * 用戶端透過在請求中納入 `progressToken` 來選擇加入該請求的進度（目前：
+ * `createSession` 上的 `progressToken` 欄位）。若伺服器為服務該請求而執行長時間
+ * 執行的工作 —— 例如在該提供者之工作階段首次具體化時，延遲下載代理程式的原生
+ * SDK —— 它會發出帶有相同權杖的 `progress` 通知。
  *
- * The notification is operation-agnostic: it says nothing about *what* is
- * progressing. The client correlates `progressToken` back to the request it
- * originated from (and thus the UI surface awaiting it) and renders its own
- * localized indicator. The same channel serves any future long-running
- * operation without a new method.
+ * 此通知與作業無關：它對 *什麼* 正在進展不予說明。用戶端將 `progressToken`
+ * 關聯回其發起的請求（因而關聯至等待它的 UI 介面），並呈現自身本地化的指示器。
+ * 同一通道可服務未來任何長時間執行的作業，而無需新的方法。
  *
- * Semantics:
+ * 語意：
  *
- * - `progress` is monotonically non-decreasing for a given `progressToken`.
- * - `total` is present only when the server knows the magnitude up front
- *   (e.g. a `Content-Length`); when absent the client SHOULD show an
- *   indeterminate indicator.
- * - The operation is complete when `progress === total`. The server MUST emit a
- *   final frame satisfying `progress === total`; when the total was never
- *   known, it sets `total` to the final `progress` on that frame. No further
- *   frames reference the token afterwards.
- * - The server MAY emit no progress at all (e.g. the work was already done);
- *   the client then never shows an indicator.
- * - Like all notifications this is ephemeral and is **not** replayed on
- *   reconnect. A client that never receives the terminal frame SHOULD expire
- *   the indicator after an idle timeout.
+ * - 對給定的 `progressToken`，`progress` 為單調非遞減。
+ * - `total` 僅在伺服器事先知道大小（例如 `Content-Length`）時存在；缺席時
+ *   用戶端 SHOULD 顯示不定指示器。
+ * - 當 `progress === total` 時作業完成。伺服器 MUST 發出滿足
+ *   `progress === total` 的結尾訊框；當大小從未知時，它會在該訊框上將 `total`
+ *   設為最終的 `progress`。之後不會有其他訊框參照該權杖。
+ * - 伺服器 MAY 完全不發出進度（例如工作已完成）；則用戶端永不顯示指示器。
+ * - 如同所有通知，此通知為短暫的且 **不** 會在重新連線時重播。從未收到結尾訊框
+ *   的用戶端 SHOULD 在閒置逾時後讓指示器過期。
  *
  * @category Protocol Notifications
  * @method root/progress
- * @direction Server → Client
+ * @direction 伺服器 → 用戶端
  * @messageType Notification
  * @version 1
  * @example
@@ -196,28 +178,26 @@ export interface SessionSummaryChangedParams {
  * ```
  */
 export interface ProgressParams {
-  /** Channel URI this notification belongs to (the root channel). */
+  /** 此通知所屬的通道 URI（根通道）。 */
   channel: URI;
   /**
-   * Echoes the `progressToken` the client supplied on the originating request
-   * (e.g. the `progressToken` field of `createSession`), correlating this frame
-   * to that call. Unique across the client's active requests.
+   * 回應用戶端在發起請求上提供的 `progressToken`（例如 `createSession` 的
+   * `progressToken` 欄位），將此訊框關聯至該呼叫。在用戶端作用中的請求間為唯一。
    */
   progressToken: string;
   /**
-   * Progress so far, in operation-defined units (e.g. bytes received).
-   * Monotonically non-decreasing for a given `progressToken`.
+   * 目前為止的進度，以作業定義的單位表示（例如已接收位元組）。對給定的
+   * `progressToken` 為單調非遞減。
    */
   progress: number;
   /**
-   * Total when known up front (e.g. from a `Content-Length`); omitted ⇒
-   * indeterminate. The operation is complete once `progress === total`.
+   * 事先知道大小時的總計（例如來自 `Content-Length`）；省略 ⇒ 不定。一旦
+   * `progress === total` 時作業即完成。
    */
   total?: number;
   /**
-   * Optional human-readable progress message. The client owns its own
-   * (localized) presentation derived from the originating request; generic
-   * clients that don't track the token MAY display this instead.
+   * 選用的人類可讀進度訊息。用戶端擁有自身衍生自發起請求的（本地化）呈現；
+   * 不追蹤權杖的通用用戶端 MAY 改為顯示此訊息。
    */
   message?: string;
 }

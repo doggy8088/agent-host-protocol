@@ -30,11 +30,11 @@ import fs from 'fs';
 import path from 'path';
 import { findProtocolSourceFiles } from './find-protocol-sources.js';
 
-const GENERATED_HEADER = '<!-- Generated from types/*.ts — do not edit -->\n\n';
+const GENERATED_HEADER = '<!-- 由 types/*.ts 產生 — 請勿編輯 -->\n\n';
 
 const GITHUB_REF = process.env.GITHUB_SHA || 'main';
 const GITHUB_BASE = `https://github.com/microsoft/agent-host-protocol/blob/${GITHUB_REF}`;
-const SCHEMA_BASE = '/agent-host-protocol/schema';
+const SCHEMA_BASE = '/schema';
 
 function schemaLink(schemaFile: string): string {
   return `<a href="${SCHEMA_BASE}/${schemaFile}" target="_blank">JSON Schema: <code>${schemaFile}</code></a>\n`;
@@ -334,13 +334,13 @@ interface TableRow {
 function renderTable(rows: TableRow[], includeRequired: boolean): string {
   const lines: string[] = [];
   if (includeRequired) {
-    lines.push('| Field | Type | Required | Description |');
+    lines.push('| 欄位 | 類型 | 必要 | 說明 |');
     lines.push('|---|---|---|---|');
     for (const row of rows) {
-      lines.push(`| \`${row.field}\` | ${escapeTypeForTable(row.type)} | ${row.required || 'Yes'} | ${escapeMarkdown(row.description)} |`);
+      lines.push(`| \`${row.field}\` | ${escapeTypeForTable(row.type)} | ${row.required || '是'} | ${escapeMarkdown(row.description)} |`);
     }
   } else {
-    lines.push('| Field | Type | Description |');
+    lines.push('| 欄位 | 類型 | 說明 |');
     lines.push('|---|---|---|');
     for (const row of rows) {
       lines.push(`| \`${row.field}\` | ${escapeTypeForTable(row.type)} | ${escapeMarkdown(row.description)} |`);
@@ -355,12 +355,12 @@ function interfaceToRows(iface: InterfaceDeclaration): TableRow[] {
     const typeText = getPropertyType(prop);
     let description = getPropertyDescription(prop);
     if (!description && (name === 'type' || name === 'kind') && typeText.startsWith("'")) {
-      description = 'Discriminant';
+      description = '判別欄位';
     }
     return {
       field: name,
       type: typeText,
-      required: isOptional(prop) ? 'No' : 'Yes',
+      required: isOptional(prop) ? '否' : '是',
       description,
     };
   });
@@ -424,10 +424,10 @@ function renderEnumBlock(en: EnumDeclaration): string {
   if (members.length === 0) return lines.join('\n');
   const showDesc = members.some((m) => m.getJsDocs().length > 0);
   if (showDesc) {
-    lines.push('| Member | Value | Description |');
+    lines.push('| 成員 | 值 | 說明 |');
     lines.push('|---|---|---|');
   } else {
-    lines.push('| Member | Value |');
+    lines.push('| 成員 | 值 |');
     lines.push('|---|---|');
   }
   for (const member of members) {
@@ -560,8 +560,8 @@ function renderActionInterfaceBlock(iface: InterfaceDeclaration): string {
   const approvedProp = iface.getProperty('approved');
   const approvedType = approvedProp?.getTypeNode()?.getText().trim();
   const variantSuffix =
-    approvedType === 'true' ? ' (approved)'
-    : approvedType === 'false' ? ' (denied)'
+    approvedType === 'true' ? '（已核准）'
+    : approvedType === 'false' ? '（已拒絕）'
     : '';
   const labelBase = typeValue ?? name;
   // Emit an explicit anchor matching the interface name so cross-links from
@@ -574,7 +574,7 @@ function renderActionInterfaceBlock(iface: InterfaceDeclaration): string {
   lines.push(heading + '\n');
   const isClientDispatchable = hasJsDocTag(iface, 'clientDispatchable');
   const desc = getJsDocDescription(iface);
-  const prefix = isClientDispatchable ? '**Client-dispatchable.** ' : '';
+  const prefix = isClientDispatchable ? '**用戶端可分派。** ' : '';
   if (desc || isClientDispatchable) lines.push(prefix + desc + '\n');
   if (iface.getProperties().length > 0) {
     lines.push(renderInterfaceTable(iface) + '\n');
@@ -651,21 +651,25 @@ function emitCommandsSection(project: Project, sourceFiles: SourceFile[]): strin
 function emitCommandBlock(project: Project, entry: RegistryEntry, paramsIface: InterfaceDeclaration): string {
   const lines: string[] = [];
   const desc = getJsDocDescription(paramsIface);
-  const direction = getJsDocTag(paramsIface, 'direction') || 'Client → Server';
+  const direction = getJsDocTag(paramsIface, 'direction') || '用戶端 → 伺服器';
   const messageType = getJsDocTag(paramsIface, 'messageType') || 'Request';
+  const messageTypeLabel = messageType === 'Request' ? '請求'
+    : messageType === 'Notification' ? '通知'
+    : messageType === 'Response' ? '回應'
+    : messageType;
 
   lines.push(`## \`${entry.method}\`\n`);
   if (desc) lines.push(desc + '\n');
-  lines.push('| Property | Value |');
+  lines.push('| 屬性 | 值 |');
   lines.push('|---|---|');
-  lines.push(`| Direction | ${direction} |`);
-  lines.push(`| Type | ${messageType} |\n`);
+  lines.push(`| 方向 | ${direction} |`);
+  lines.push(`| 類型 | ${messageTypeLabel} |\n`);
 
-  lines.push('**Parameters:**\n');
+  lines.push('**參數：**\n');
   if (paramsIface.getProperties().length > 0) {
     lines.push(renderInterfaceTable(paramsIface) + '\n');
   } else {
-    lines.push('_No parameters._\n');
+    lines.push('_無參數。_\n');
   }
 
   // Result handling
@@ -673,33 +677,33 @@ function emitCommandBlock(project: Project, entry: RegistryEntry, paramsIface: I
     const replay = getInterfaceMaybe(project, 'ReconnectReplayResult');
     const snapshot = getInterfaceMaybe(project, 'ReconnectSnapshotResult');
     if (replay) {
-      lines.push('**Result (replay):** When the server can replay from the requested sequence:\n');
+      lines.push('**結果（重播）：** 當伺服器可從請求的序列重播時：\n');
       lines.push(renderInterfaceTable(replay) + '\n');
     }
     if (snapshot) {
-      lines.push('**Result (snapshot):** When the gap exceeds the replay buffer:\n');
+      lines.push('**結果（快照）：** 當間距超過重播緩衝區時：\n');
       lines.push(renderInterfaceTable(snapshot) + '\n');
     }
   } else if (entry.resultType) {
     const t = entry.resultType.trim();
     if (t === 'null') {
-      lines.push('**Result:** `null` on success.\n');
+      lines.push('**結果：** 成功時為 `null`。\n');
     } else {
       const resultIface = getInterfaceMaybe(project, t);
       if (resultIface) {
-        lines.push('**Result:**\n');
+        lines.push('**結果：**\n');
         if (resultIface.getProperties().length > 0) {
           lines.push(renderInterfaceTable(resultIface) + '\n');
         } else {
-          lines.push('_(empty object)_\n');
+          lines.push('_（空物件）_\n');
         }
       } else {
         // Fallback: render type as code
-        lines.push(`**Result:** ${escapeTypeForTable(t)}\n`);
+        lines.push(`**結果：** ${escapeTypeForTable(t)}\n`);
       }
     }
   } else if (messageType !== 'Notification') {
-    lines.push('**Result:** `null` on success.\n');
+    lines.push('**結果：** 成功時為 `null`。\n');
   }
 
   // @see link
@@ -709,14 +713,14 @@ function emitCommandBlock(project: Project, entry: RegistryEntry, paramsIface: I
     if (seeMatch) {
       const target = seeMatch[1].trim();
       const label = (seeMatch[2] ?? target).trim();
-      lines.push(`See [${label}](${target}) for details.\n`);
+      lines.push(`詳見 [${label}](${target})。\n`);
     }
   }
 
   // @example blocks
   const examples = getJsDocExamples(paramsIface);
   for (const example of examples) {
-    lines.push('**Example:**\n');
+    lines.push('**範例：**\n');
     lines.push(example + '\n');
   }
 
@@ -751,23 +755,27 @@ function emitNotificationsSection(project: Project, sourceFiles: SourceFile[]): 
 function emitNotificationBlock(entry: RegistryEntry, paramsIface: InterfaceDeclaration): string {
   const lines: string[] = [];
   const desc = getJsDocDescription(paramsIface);
-  const direction = getJsDocTag(paramsIface, 'direction') || 'Server → Client';
+  const direction = getJsDocTag(paramsIface, 'direction') || '伺服器 → 用戶端';
   const messageType = getJsDocTag(paramsIface, 'messageType') || 'Notification';
+  const messageTypeLabel = messageType === 'Request' ? '請求'
+    : messageType === 'Notification' ? '通知'
+    : messageType === 'Response' ? '回應'
+    : messageType;
 
   lines.push(`### \`${entry.method}\`\n`);
   if (desc) lines.push(desc + '\n');
-  lines.push('| Property | Value |');
+  lines.push('| 屬性 | 值 |');
   lines.push('|---|---|');
-  lines.push(`| Direction | ${direction} |`);
-  lines.push(`| Type | ${messageType} |\n`);
+  lines.push(`| 方向 | ${direction} |`);
+  lines.push(`| 類型 | ${messageTypeLabel} |\n`);
 
   if (paramsIface.getProperties().length > 0) {
-    lines.push('**Parameters:**\n');
+    lines.push('**參數：**\n');
     lines.push(renderInterfaceTable(paramsIface) + '\n');
   }
 
   for (const example of getJsDocExamples(paramsIface)) {
-    lines.push('**Example:**\n');
+    lines.push('**範例：**\n');
     lines.push(example + '\n');
   }
   return lines.join('\n');
@@ -795,8 +803,8 @@ function renderInterfaceCodeBlock(iface: InterfaceDeclaration): string {
 function generateCommonPage(project: Project): string {
   currentPage = 'common';
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Common Types\n');
-  lines.push('Cross-cutting type definitions shared across every channel of the Agent Host Protocol — primitive aliases, action envelopes, base command shapes, the cross-channel `auth/required` notification, and the JSON-RPC wire types.\n');
+  lines.push('# 通用類型\n');
+  lines.push('跨通道共用、適用於代理主機協定每個通道的橫切型別定義 — 基本別名、操作信封、基礎指令形狀、跨通道 `auth/required` 通知，以及 JSON-RPC 線路類型。\n');
   lines.push(schemaLink('state.schema.json'));
 
   const stateSf = findChannelSourceFile(project, 'common', 'state.ts');
@@ -809,14 +817,14 @@ function generateCommonPage(project: Project): string {
   const stateFiles: SourceFile[] = [];
   if (stateSf) stateFiles.push(stateSf);
   if (stateFiles.length > 0) {
-    lines.push('## State Types\n');
+    lines.push('## 狀態類型\n');
     lines.push(emitStateTypesSection(stateFiles));
   }
 
   // ─── Action Envelope & Discriminant Enum ────────────────────────────────
   if (actionsSf) {
-    lines.push('## Action Envelope\n');
-    lines.push('Every state-mutating message is wrapped in an `ActionEnvelope` and routed by its `channel` field. The full discriminated union of action payloads is `StateAction`; individual action variants are documented on the per-channel pages.\n');
+    lines.push('## 操作信封\n');
+    lines.push('每個會變動狀態的訊息都包裝在 `ActionEnvelope` 中，並依其 `channel` 欄位路由。操作酬載的完整判別聯集為 `StateAction`；個別操作變體記錄於各通道頁面。\n');
     for (const name of ['ActionType', 'ActionOrigin', 'ActionEnvelope', 'StateAction']) {
       const iface = actionsSf.getInterface(name);
       if (iface) { lines.push(renderInterfaceBlock(iface)); continue; }
@@ -831,43 +839,43 @@ function generateCommonPage(project: Project): string {
   if (commandsSf) {
     const baseParams = commandsSf.getInterface('BaseParams');
     if (baseParams) {
-      lines.push('## Base Parameters\n');
-      lines.push('Every command\'s `params` object extends `BaseParams`, ensuring a top-level `channel: URI` is always present.\n');
+      lines.push('## 基礎參數\n');
+      lines.push('每個指令的 `params` 物件都會擴充 `BaseParams`，確保頂層一定帶有 `channel: URI`。\n');
       lines.push(renderInterfaceBlock(baseParams));
     }
   }
 
   // ─── Commands ───────────────────────────────────────────────────────────
   if (commandsSf) {
-    lines.push('## Commands\n');
-    lines.push('Cross-channel commands and notifications. Channel-specific commands (`createSession`, `listSessions`, `createTerminal`, `invokeChangesetOperation`, etc.) live on the corresponding channel page.\n');
+    lines.push('## 指令\n');
+    lines.push('跨通道指令與通知。通道專屬指令（`createSession`、`listSessions`、`createTerminal`、`invokeChangesetOperation` 等）記錄於對應的通道頁面。\n');
     lines.push(schemaLink('commands.schema.json'));
     lines.push(emitCommandsSection(project, [commandsSf]));
   }
 
   // ─── Notifications ──────────────────────────────────────────────────────
   if (notificationsSf) {
-    lines.push('## Notifications\n');
-    lines.push('Notifications are ephemeral broadcasts and are **not** part of the state tree. They are not processed by reducers and are not replayed on reconnection. Every notification carries a top-level `channel: URI` identifying the subscription it belongs to.\n');
+    lines.push('## 通知\n');
+    lines.push('通知是短暫的廣播，**不屬於**狀態樹的一部分。它們不會被 reducer 處理，也不會在重新連線時重播。每個通知都帶有頂層 `channel: URI`，用來識別其所屬的訂閱。\n');
     lines.push(schemaLink('notifications.schema.json'));
     lines.push(emitNotificationsSection(project, [notificationsSf]));
   }
 
   // ─── JSON-RPC Wire Types ────────────────────────────────────────────────
   if (messagesSf) {
-    lines.push('## JSON-RPC Wire Types\n');
-    lines.push('Base JSON-RPC message shapes and the typed registries that drive the discriminated-union wrappers (`AhpRequest`, `AhpResponse`, `AhpClientNotification`, `AhpServerNotification`, `AhpNotification`, `ProtocolMessage`).\n');
+    lines.push('## JSON-RPC 線路類型\n');
+    lines.push('基礎 JSON-RPC 訊息形狀，以及驅動判別聯集包裝器的具型別登錄檔（`AhpRequest`、`AhpResponse`、`AhpClientNotification`、`AhpServerNotification`、`AhpNotification`、`ProtocolMessage`）。\n');
     for (const name of ['JsonRpcRequest', 'JsonRpcSuccessResponse', 'JsonRpcErrorResponse', 'JsonRpcNotification', 'AhpErrorResponse']) {
       const iface = messagesSf.getInterface(name);
       if (iface) lines.push(renderInterfaceBlock(iface));
     }
-    lines.push('### Registries\n');
-    lines.push('The discriminated-union wrappers are parameterised over these registry interfaces. Each property is a JSON-RPC method name; each value is a `{ params; result? }` type literal.\n');
+    lines.push('### 登錄檔\n');
+    lines.push('判別聯集包裝器是以這些登錄檔介面參數化。每個屬性都是一個 JSON-RPC 方法名稱；每個值都是一個 `{ params; result? }` 型別字面值。\n');
     for (const name of ['CommandMap', 'ServerCommandMap', 'ClientNotificationMap', 'ServerNotificationMap']) {
       const iface = messagesSf.getInterface(name);
       if (iface) lines.push(renderInterfaceCodeBlock(iface));
     }
-    lines.push('### Typed Wrappers\n');
+    lines.push('### 具型別包裝器\n');
     for (const name of [
       'AhpRequest', 'AhpServerRequest',
       'AhpSuccessResponse', 'AhpResponse',
@@ -891,27 +899,27 @@ function generateRootChannelPage(project: Project): string {
   const notificationsSf = findChannelSourceFile(project, 'channels-root', 'notifications.ts');
 
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Root Channel\n');
-  lines.push('Reference for the `ahp-root://` channel — the single, host-wide channel every client subscribes to first. See [Root Channel specification](/specification/root-channel) for the wire-level overview.\n');
+  lines.push('# 根通道\n');
+  lines.push('`ahp-root://` 通道的參考資料 — 每個用戶端最先訂閱的單一主機層級通道。線路層級的概觀請參閱[根通道規格](/specification/root-channel)。\n');
   lines.push(schemaLink('state.schema.json'));
 
   if (stateSf) {
-    lines.push('## State Types\n');
+    lines.push('## 狀態類型\n');
     lines.push(emitStateTypesSection([stateSf]));
   }
   if (actionsSf) {
-    lines.push('## Actions\n');
-    lines.push('Mutate `RootState`. All root actions are server-only.\n');
+    lines.push('## 操作\n');
+    lines.push('變動 `RootState`。所有根操作僅限伺服器端。\n');
     lines.push(schemaLink('actions.schema.json'));
     lines.push(emitActionsSection([actionsSf]));
   }
   if (commandsSf) {
-    lines.push('## Commands\n');
+    lines.push('## 指令\n');
     lines.push(schemaLink('commands.schema.json'));
     lines.push(emitCommandsSection(project, [commandsSf]));
   }
   if (notificationsSf) {
-    lines.push('## Notifications\n');
+    lines.push('## 通知\n');
     lines.push(schemaLink('notifications.schema.json'));
     lines.push(emitNotificationsSection(project, [notificationsSf]));
   }
@@ -925,22 +933,22 @@ function generateSessionChannelPage(project: Project): string {
   const commandsSf = findChannelSourceFile(project, 'channels-session', 'commands.ts');
 
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Session Channel\n');
-  lines.push('Reference for the `ahp-session:/<uuid>` channel — per-session state, the turn lifecycle, tool-call state machine, attachments, pending messages, input requests, and per-session customizations. See [Session Channel specification](/specification/session-channel) for the wire-level overview.\n');
+  lines.push('# 工作階段通道\n');
+  lines.push('`ahp-session:/<uuid>` 通道的參考資料 — 每個工作階段的狀態、回合生命週期、工具呼叫狀態機、附件、待處理訊息、輸入請求，以及每個工作階段的自訂項目。線路層級的概觀請參閱[工作階段通道規格](/specification/session-channel)。\n');
   lines.push(schemaLink('state.schema.json'));
 
   if (stateSf) {
-    lines.push('## State Types\n');
+    lines.push('## 狀態類型\n');
     lines.push(emitStateTypesSection([stateSf]));
   }
   if (actionsSf) {
-    lines.push('## Actions\n');
-    lines.push('Mutate `SessionState`. Scoped to a session URI via the enclosing `ActionEnvelope.channel`.\n');
+    lines.push('## 操作\n');
+    lines.push('變動 `SessionState`。透過外層的 `ActionEnvelope.channel` 限定於某個工作階段 URI。\n');
     lines.push(schemaLink('actions.schema.json'));
     lines.push(emitActionsSection([actionsSf]));
   }
   if (commandsSf) {
-    lines.push('## Commands\n');
+    lines.push('## 指令\n');
     lines.push(schemaLink('commands.schema.json'));
     lines.push(emitCommandsSection(project, [commandsSf]));
   }
@@ -954,22 +962,22 @@ function generateChatChannelPage(project: Project): string {
   const commandsSf = findChannelSourceFile(project, 'channels-chat', 'commands.ts');
 
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Chat Channel\n');
-  lines.push('Reference for the `ahp-chat:/<uuid>` channel — per-chat state, the turn lifecycle, tool-call state machine, attachments, pending messages, and input requests. A chat belongs to a session (see [Session Channel](/reference/session)); a session may contain multiple chats. See [Chat Channel specification](/specification/chat-channel) for the wire-level overview.\n');
+  lines.push('# 聊天通道\n');
+  lines.push('`ahp-chat:/<uuid>` 通道的參考資料 — 每個聊天的狀態、回合生命週期、工具呼叫狀態機、附件、待處理訊息與輸入請求。聊天隸屬於某個工作階段（請參閱[工作階段通道](/reference/session)）；一個工作階段可包含多個聊天。線路層級的概觀請參閱[聊天通道規格](/specification/chat-channel)。\n');
   lines.push(schemaLink('state.schema.json'));
 
   if (stateSf) {
-    lines.push('## State Types\n');
+    lines.push('## 狀態類型\n');
     lines.push(emitStateTypesSection([stateSf]));
   }
   if (actionsSf) {
-    lines.push('## Actions\n');
-    lines.push('Mutate `ChatState`. Scoped to a chat URI via the enclosing `ActionEnvelope.channel`.\n');
+    lines.push('## 操作\n');
+    lines.push('變動 `ChatState`。透過外層的 `ActionEnvelope.channel` 限定於某個聊天 URI。\n');
     lines.push(schemaLink('actions.schema.json'));
     lines.push(emitActionsSection([actionsSf]));
   }
   if (commandsSf) {
-    lines.push('## Commands\n');
+    lines.push('## 指令\n');
     lines.push(schemaLink('commands.schema.json'));
     lines.push(emitCommandsSection(project, [commandsSf]));
   }
@@ -983,22 +991,22 @@ function generateTerminalChannelPage(project: Project): string {
   const commandsSf = findChannelSourceFile(project, 'channels-terminal', 'commands.ts');
 
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Terminal Channel\n');
-  lines.push('Reference for the `ahp-terminal:/<id>` channel — long-lived pseudo-terminals that can be attached to clients and/or sessions. See [Terminal Channel specification](/specification/terminal-channel) for the wire-level overview.\n');
+  lines.push('# 終端機通道\n');
+  lines.push('`ahp-terminal:/<id>` 通道的參考資料 — 可連結至用戶端及/或工作階段的長生命週期偽終端機。線路層級的概觀請參閱[終端機通道規格](/specification/terminal-channel)。\n');
   lines.push(schemaLink('state.schema.json'));
 
   if (stateSf) {
-    lines.push('## State Types\n');
+    lines.push('## 狀態類型\n');
     lines.push(emitStateTypesSection([stateSf]));
   }
   if (actionsSf) {
-    lines.push('## Actions\n');
-    lines.push('Mutate `TerminalState`. Scoped to a terminal URI via the enclosing `ActionEnvelope.channel`.\n');
+    lines.push('## 操作\n');
+    lines.push('變動 `TerminalState`。透過外層的 `ActionEnvelope.channel` 限定於某個終端機 URI。\n');
     lines.push(schemaLink('actions.schema.json'));
     lines.push(emitActionsSection([actionsSf]));
   }
   if (commandsSf) {
-    lines.push('## Commands\n');
+    lines.push('## 指令\n');
     lines.push(schemaLink('commands.schema.json'));
     lines.push(emitCommandsSection(project, [commandsSf]));
   }
@@ -1012,22 +1020,22 @@ function generateChangesetChannelPage(project: Project): string {
   const commandsSf = findChannelSourceFile(project, 'channels-changeset', 'commands.ts');
 
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Changeset Channel\n');
-  lines.push('Reference for the `ahp-changeset:/<id>` channel — server-owned views of file changes (uncommitted, session-wide, per-turn, etc.) that clients can subscribe to and invoke operations on. See the [Changesets guide](/guide/changesets) for an overview of the model.\n');
+  lines.push('# 變更集通道\n');
+  lines.push('`ahp-changeset:/<id>` 通道的參考資料 — 伺服器端持有的檔案變更檢視（未提交、工作階段範圍、每回合等），用戶端可訂閱並對其叫用操作。模型概觀請參閱[變更集指南](/guide/changesets)。\n');
   lines.push(schemaLink('state.schema.json'));
 
   if (stateSf) {
-    lines.push('## State Types\n');
+    lines.push('## 狀態類型\n');
     lines.push(emitStateTypesSection([stateSf]));
   }
   if (actionsSf) {
-    lines.push('## Actions\n');
-    lines.push('Mutate `ChangesetState`. Scoped to a changeset URI via the enclosing `ActionEnvelope.channel`.\n');
+    lines.push('## 操作\n');
+    lines.push('變動 `ChangesetState`。透過外層的 `ActionEnvelope.channel` 限定於某個變更集 URI。\n');
     lines.push(schemaLink('actions.schema.json'));
     lines.push(emitActionsSection([actionsSf]));
   }
   if (commandsSf) {
-    lines.push('## Commands\n');
+    lines.push('## 指令\n');
     lines.push(schemaLink('commands.schema.json'));
     lines.push(emitCommandsSection(project, [commandsSf]));
   }
@@ -1041,22 +1049,22 @@ function generateAnnotationsChannelPage(project: Project): string {
   const commandsSf = findChannelSourceFile(project, 'channels-annotations', 'commands.ts');
 
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Annotations Channel\n');
-  lines.push('Reference for the `ahp-session:/<uuid>/annotations` channel — per-session annotations anchored to file ranges within a session turn. Clients (and the agent host) mutate annotations by dispatching the client-dispatchable `annotations/*` state actions, which the write-ahead reducer applies identically on both peers.\n');
+  lines.push('# 註解通道\n');
+  lines.push('`ahp-session:/<uuid>/annotations` 通道的參考資料 — 工作階段回合內錨定於檔案範圍的每個工作階段註解。用戶端（以及代理主機）透過分派用戶端可分派的 `annotations/*` 狀態操作來變動註解，預寫入 reducer 會在兩端對等地套用這些操作。\n');
   lines.push(schemaLink('state.schema.json'));
 
   if (stateSf) {
-    lines.push('## State Types\n');
+    lines.push('## 狀態類型\n');
     lines.push(emitStateTypesSection([stateSf]));
   }
   if (actionsSf) {
-    lines.push('## Actions\n');
-    lines.push('Mutate `AnnotationsState`. Scoped to an annotations channel URI via the enclosing `ActionEnvelope.channel`.\n');
+    lines.push('## 操作\n');
+    lines.push('變動 `AnnotationsState`。透過外層的 `ActionEnvelope.channel` 限定於某個註解通道 URI。\n');
     lines.push(schemaLink('actions.schema.json'));
     lines.push(emitActionsSection([actionsSf]));
   }
   if (commandsSf) {
-    lines.push('## Commands\n');
+    lines.push('## 指令\n');
     lines.push(schemaLink('commands.schema.json'));
     lines.push(emitCommandsSection(project, [commandsSf]));
   }
@@ -1069,17 +1077,17 @@ function generateOtlpChannelPage(project: Project): string {
   const notificationsSf = findChannelSourceFile(project, 'channels-otlp', 'notifications.ts');
 
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Telemetry Channel\n');
-  lines.push('Reference for the `ahp-otlp:` channels — stateless channels that pass OpenTelemetry logs, traces, and metrics from the agent host to subscribed clients as [OTLP/JSON](https://github.com/open-telemetry/opentelemetry-proto) payloads. See [Telemetry Channel specification](/specification/telemetry-channel) for the wire-level overview, including URI templates and severity filtering.\n');
+  lines.push('# 遙測通道\n');
+  lines.push('`ahp-otlp:` 通道的參考資料 — 無狀態通道，以 [OTLP/JSON](https://github.com/open-telemetry/opentelemetry-proto) 有效負載的形式，將 OpenTelemetry 的日誌、追蹤與指標從代理主機傳遞給已訂閱的用戶端。線路層級的概觀（包含 URI 範本與嚴重性篩選）請參閱[遙測通道規格](/specification/telemetry-channel)。\n');
   lines.push(schemaLink('state.schema.json'));
 
   if (stateSf) {
-    lines.push('## State Types\n');
-    lines.push('The `ahp-otlp:` channels are stateless; the only state type is the capability descriptor the host advertises on `InitializeResult.telemetry`.\n');
+    lines.push('## 狀態類型\n');
+    lines.push('`ahp-otlp:` 通道為無狀態；唯一的狀態類型是主機在 `InitializeResult.telemetry` 上公告的能力描述元。\n');
     lines.push(emitStateTypesSection([stateSf]));
   }
   if (notificationsSf) {
-    lines.push('## Notifications\n');
+    lines.push('## 通知\n');
     lines.push(schemaLink('notifications.schema.json'));
     lines.push(emitNotificationsSection(project, [notificationsSf]));
   }
@@ -1091,8 +1099,8 @@ function generateOtlpChannelPage(project: Project): string {
 function generateErrorCodesPage(project: Project): string {
   currentPage = 'error-codes';
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Error Codes\n');
-  lines.push('AHP uses [JSON-RPC 2.0](https://www.jsonrpc.org/specification) error codes. In addition to the standard JSON-RPC codes, AHP defines application-specific error codes in the `-32000` to `-32099` range.\n');
+  lines.push('# 錯誤碼\n');
+  lines.push('AHP 使用 [JSON-RPC 2.0](https://www.jsonrpc.org/specification) 錯誤碼。除了標準 JSON-RPC 錯誤碼外，AHP 另在 `-32000` 到 `-32099` 的範圍內定義了應用程式專屬錯誤碼。\n');
   lines.push(schemaLink('errors.schema.json'));
 
   const errorsFile = findProtocolSourceFiles(project, 'errors.ts').find((sf) =>
@@ -1101,16 +1109,16 @@ function generateErrorCodesPage(project: Project): string {
   if (!errorsFile) throw new Error('common/errors.ts not found');
 
   // Standard JSON-RPC Codes
-  lines.push('## Standard JSON-RPC Codes\n');
-  lines.push('These codes are defined by the JSON-RPC 2.0 specification:\n');
-  lines.push('| Code | Name | Description |');
+  lines.push('## 標準 JSON-RPC 錯誤碼\n');
+  lines.push('這些錯誤碼由 JSON-RPC 2.0 規格所定義：\n');
+  lines.push('| 代碼 | 名稱 | 說明 |');
   lines.push('|---|---|---|');
   const jsonRpcCodes: Array<{ code: number; name: string; description: string }> = [
-    { code: -32700, name: 'Parse error', description: 'Invalid JSON' },
-    { code: -32600, name: 'Invalid request', description: 'Not a valid JSON-RPC request' },
-    { code: -32601, name: 'Method not found', description: 'Unknown method name' },
-    { code: -32602, name: 'Invalid params', description: 'Invalid method parameters' },
-    { code: -32603, name: 'Internal error', description: 'Unspecified server error' },
+    { code: -32700, name: '剖析錯誤', description: '無效的 JSON' },
+    { code: -32600, name: '無效請求', description: '不是有效的 JSON-RPC 請求' },
+    { code: -32601, name: '找不到方法', description: '未知的方法名稱' },
+    { code: -32602, name: '無效參數', description: '無效的方法參數' },
+    { code: -32603, name: '內部錯誤', description: '未指定的伺服器錯誤' },
   ];
   for (const c of jsonRpcCodes) {
     lines.push(`| \`${c.code}\` | ${c.name} | ${c.description} |`);
@@ -1118,8 +1126,8 @@ function generateErrorCodesPage(project: Project): string {
   lines.push('');
 
   // AHP Application Codes — extract from the source
-  lines.push('## AHP Application Codes\n');
-  lines.push('| Code | Name | Description |');
+  lines.push('## AHP 應用程式錯誤碼\n');
+  lines.push('| 代碼 | 名稱 | 說明 |');
   lines.push('|---|---|---|');
   const ahpCodesVar = errorsFile.getVariableDeclaration('AhpErrorCodes');
   if (ahpCodesVar) {
@@ -1152,24 +1160,24 @@ function generateErrorCodesPage(project: Project): string {
   lines.push('');
 
   // Error Response Format
-  lines.push('## Error Response Format\n');
-  lines.push('All error responses follow the JSON-RPC 2.0 error format:\n');
+  lines.push('## 錯誤回應格式\n');
+  lines.push('所有錯誤回應都遵循 JSON-RPC 2.0 的錯誤格式：\n');
   lines.push('```json');
   lines.push('{');
   lines.push('  "jsonrpc": "2.0",');
   lines.push('  "id": 1,');
   lines.push('  "error": {');
   lines.push('    "code": -32002,');
-  lines.push('    "message": "No agent registered for provider \'unknown\'",');
+  lines.push('    "message": "沒有為提供者 \'unknown\' 註冊的代理程式",');
   lines.push('    "data": {}');
   lines.push('  }');
   lines.push('}');
   lines.push('```\n');
-  lines.push('The `data` field is OPTIONAL and MAY contain additional structured information about the error. Its shape is not defined by the protocol.\n');
+  lines.push('`data` 欄位為 OPTIONAL，且 MAY 包含關於該錯誤的額外結構化資訊。其形狀不由協定定義。\n');
 
   // Typed error-data shapes
-  lines.push('## Typed Error Data\n');
-  lines.push('A handful of error codes carry a typed `data` payload. The mapping is captured by `AhpErrorDetailsMap`; the typed `AhpError<C>` union narrows `data` based on the code.\n');
+  lines.push('## 具型別錯誤資料\n');
+  lines.push('少數錯誤碼會帶有具型別的 `data` 酬載。此對應關係由 `AhpErrorDetailsMap` 捕捉；具型別的 `AhpError<C>` 聯集會依據代碼縮窄 `data`。\n');
   for (const name of ['AuthRequiredErrorData', 'PermissionDeniedErrorData', 'UnsupportedProtocolVersionErrorData', 'AhpErrorDetailsMap']) {
     const iface = errorsFile.getInterface(name);
     if (iface) lines.push(renderInterfaceBlock(iface));
@@ -1180,8 +1188,8 @@ function generateErrorCodesPage(project: Project): string {
   }
 
   // Version Introduction
-  lines.push('## Version Introduction\n');
-  lines.push('All error codes listed above were introduced in protocol version **1**.\n');
+  lines.push('## 版本引入\n');
+  lines.push('上述所有錯誤碼皆於協定版本 **1** 引入。\n');
   return lines.join('\n');
 }
 
@@ -1201,8 +1209,8 @@ function pageForMethod(project: Project, paramsType: string): string | undefined
 function generateMessagesPage(project: Project): string {
   currentPage = 'messages';
   const lines: string[] = [GENERATED_HEADER];
-  lines.push('# Messages Reference\n');
-  lines.push('Complete reference of every JSON-RPC method in the Agent Host Protocol, organized by direction and type. Each method links to the channel reference page that documents its parameters and result.\n');
+  lines.push('# 訊息參考\n');
+  lines.push('代理主機協定中每個 JSON-RPC 方法的完整參考，依方向與類型編排。每個方法都會連結到記錄其參數與結果的通道參考頁面。\n');
 
   const commandMap = parseRegistryInterface(project, 'CommandMap', true);
   const serverCommandMap = parseRegistryInterface(project, 'ServerCommandMap', true);
@@ -1211,13 +1219,15 @@ function generateMessagesPage(project: Project): string {
 
   const refLink = (entry: RegistryEntry): string => {
     const page = pageForMethod(project, entry.paramsType);
-    if (!page) return '_(no params)_';
-    const channelLabel = page === 'common' ? 'Common'
-      : page === 'root' ? 'Root Channel'
-      : page === 'session' ? 'Session Channel'
-      : page === 'terminal' ? 'Terminal Channel'
-      : page === 'changeset' ? 'Changeset Channel'
-      : page === 'otlp' ? 'Telemetry Channel'
+    if (!page) return '_（無參數）_';
+    const channelLabel = page === 'common' ? '通用'
+      : page === 'root' ? '根通道'
+      : page === 'session' ? '工作階段通道'
+      : page === 'chat' ? '聊天通道'
+      : page === 'terminal' ? '終端機通道'
+      : page === 'changeset' ? '變更集通道'
+      : page === 'annotations' ? '註解通道'
+      : page === 'otlp' ? '遙測通道'
       : page;
     return `[${channelLabel}](/reference/${page}#${methodAnchor(entry.method)})`;
   };
@@ -1232,9 +1242,9 @@ function generateMessagesPage(project: Project): string {
     return firstLine.replace(/[.,;:]+$/, '');
   };
 
-  lines.push('## Client → Server Requests\n');
-  lines.push('Methods with an `id` that expect a response. Server-side handlers live on the channel page indicated in the Reference column.\n');
-  lines.push('| Method | Description | Reference |');
+  lines.push('## 用戶端 → 伺服器 請求\n');
+  lines.push('帶有 `id` 且預期會收到回應的方法。伺服器端的處理常式位於「參考」欄所指示的通道頁面上。\n');
+  lines.push('| 方法 | 說明 | 參考 |');
   lines.push('|---|---|---|');
   for (const entry of commandMap) {
     lines.push(`| \`${entry.method}\` | ${escapeMarkdown(briefDescription(entry))} | ${refLink(entry)} |`);
@@ -1242,9 +1252,9 @@ function generateMessagesPage(project: Project): string {
   lines.push('');
 
   if (clientNotifMap.length > 0) {
-    lines.push('## Client → Server Notifications\n');
-    lines.push('Methods with no `id` that expect no response. Every notification carries a top-level `channel: URI`.\n');
-    lines.push('| Method | Description | Reference |');
+    lines.push('## 用戶端 → 伺服器 通知\n');
+    lines.push('不帶 `id` 且不預期收到回應的方法。每個通知都帶有頂層 `channel: URI`。\n');
+    lines.push('| 方法 | 說明 | 參考 |');
     lines.push('|---|---|---|');
     for (const entry of clientNotifMap) {
       lines.push(`| \`${entry.method}\` | ${escapeMarkdown(briefDescription(entry))} | ${refLink(entry)} |`);
@@ -1253,9 +1263,9 @@ function generateMessagesPage(project: Project): string {
   }
 
   if (serverCommandMap.length > 0) {
-    lines.push('## Server → Client Requests\n');
-    lines.push('Methods initiated by the server that the client must respond to.\n');
-    lines.push('| Method | Description | Reference |');
+    lines.push('## 伺服器 → 用戶端 請求\n');
+    lines.push('由伺服器發起、用戶端必須回應的方法。\n');
+    lines.push('| 方法 | 說明 | 參考 |');
     lines.push('|---|---|---|');
     for (const entry of serverCommandMap) {
       lines.push(`| \`${entry.method}\` | ${escapeMarkdown(briefDescription(entry))} | ${refLink(entry)} |`);
@@ -1263,29 +1273,31 @@ function generateMessagesPage(project: Project): string {
     lines.push('');
   }
 
-  lines.push('## Server → Client Notifications\n');
-  lines.push('Pushed by the server without a preceding request. Every notification carries a top-level `channel: URI`.\n');
-  lines.push('| Method | Description | Reference |');
+  lines.push('## 伺服器 → 用戶端 通知\n');
+  lines.push('由伺服器推送、且沒有前置請求的方法。每個通知都帶有頂層 `channel: URI`。\n');
+  lines.push('| 方法 | 說明 | 參考 |');
   lines.push('|---|---|---|');
   for (const entry of serverNotifMap) {
     // `action` has params `ActionEnvelope` which lives in common/actions.ts.
     const refPage = pageForMethod(project, entry.paramsType) ?? 'common';
-    const channelLabel = refPage === 'common' ? 'Common'
-      : refPage === 'root' ? 'Root Channel'
-      : refPage === 'session' ? 'Session Channel'
-      : refPage === 'terminal' ? 'Terminal Channel'
-      : refPage === 'changeset' ? 'Changeset Channel'
-      : refPage === 'otlp' ? 'Telemetry Channel'
+    const channelLabel = refPage === 'common' ? '通用'
+      : refPage === 'root' ? '根通道'
+      : refPage === 'session' ? '工作階段通道'
+      : refPage === 'chat' ? '聊天通道'
+      : refPage === 'terminal' ? '終端機通道'
+      : refPage === 'changeset' ? '變更集通道'
+      : refPage === 'annotations' ? '註解通道'
+      : refPage === 'otlp' ? '遙測通道'
       : refPage;
     const ref = entry.method === 'action'
-      ? `[Common](/reference/common#actionenvelope)`
+      ? `[通用](/reference/common#actionenvelope)`
       : `[${channelLabel}](/reference/${refPage}#${methodAnchor(entry.method)})`;
     lines.push(`| \`${entry.method}\` | ${escapeMarkdown(briefDescription(entry))} | ${ref} |`);
   }
   lines.push('');
 
-  lines.push('## Version Introduction\n');
-  lines.push('All messages listed above were introduced in protocol version **1**.\n');
+  lines.push('## 版本引入\n');
+  lines.push('上述所有訊息皆於協定版本 **1** 引入。\n');
   return lines.join('\n');
 }
 

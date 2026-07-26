@@ -1,5 +1,5 @@
 /**
- * Root Channel Actions — Mutations of the `ahp-root://` state.
+ * 根通道操作 — `ahp-root://` 狀態的變動。
  *
  * @module channels-root/actions
  */
@@ -11,49 +11,48 @@ import { ActionType } from '../common/actions.js';
 // ─── Root Actions ────────────────────────────────────────────────────────────
 
 /**
- * Fired when available agent backends or their models change.
+ * 當可用的代理程式後端或其模型變更時觸發。
  *
  * @category Root Actions
  * @version 1
  */
 export interface RootAgentsChangedAction {
   type: ActionType.RootAgentsChanged;
-  /** Updated agent list */
+  /** 更新後的代理程式清單 */
   agents: AgentInfo[];
 }
 
 /**
- * Fired when the number of active sessions changes.
+ * 當作用中工作階段的數量變更時觸發。
  *
  * @category Root Actions
  * @version 1
  */
 export interface RootActiveSessionsChangedAction {
   type: ActionType.RootActiveSessionsChanged;
-  /** Current count of active sessions */
+  /** 目前作用中工作階段的計數 */
   activeSessions: number;
 }
 
 /**
- * Fired when the list of known terminals changes.
+ * 當已知終端機清單變更時觸發。
  *
- * Full-replacement semantics: the `terminals` array replaces the previous
- * `terminals` entirely.
+ * 全替換語意：`terminals` 陣列完全取代先前的 `terminals`。
  *
  * @category Root Actions
  * @version 1
  */
 export interface RootTerminalsChangedAction {
   type: ActionType.RootTerminalsChanged;
-  /** Updated terminal list (full replacement) */
+  /** 更新後的終端機清單（全替換） */
   terminals: TerminalInfo[];
 }
 
 /**
- * Fired when agent-host configuration values change.
+ * 當代理主機組態值變更時觸發。
  *
- * By default, the reducer merges the new values into `state.config.values`.
- * Set `replace` to `true` to replace all values instead of merging.
+ * 依預設，化簡器會將新值合併進 `state.config.values`。將 `replace` 設為
+ * `true` 以取代所有值，而不是合併。
  *
  * @category Root Actions
  * @version 1
@@ -61,8 +60,8 @@ export interface RootTerminalsChangedAction {
  */
 export interface RootConfigChangedAction {
   type: ActionType.RootConfigChanged;
-  /** Updated config values */
+  /** 更新後的組態值 */
   config: Record<string, unknown>;
-  /** When `true`, replaces all config values instead of merging */
+  /** 為 `true` 時，取代所有組態值而不是合併 */
   replace?: boolean;
 }

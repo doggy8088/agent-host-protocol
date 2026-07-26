@@ -1,5 +1,5 @@
 /**
- * Changeset Channel Reducer — Pure reducer for `ChangesetState`.
+ * 變更集通道 Reducer — `ChangesetState` 的純 reducer。
  *
  * @module channels-changeset/reducer
  */
@@ -11,14 +11,12 @@ import type { ChangesetAction } from '../action-origin.generated.js';
 import { softAssertNever } from '../common/reducer-helpers.js';
 
 /**
- * Pure reducer for changeset state. Handles all {@link ChangesetAction}
- * variants.
+ * 變更集狀態的純 reducer。處理所有 {@link ChangesetAction} 變體。
  *
- * The reducer preserves a stable file order by appending new files via
- * {@link ActionType.ChangesetFileSet} when the id is unknown, and replacing in
- * place when it matches an existing entry. Per-file review lives on
- * {@link ChangesetFile.reviewed} and is toggled (per file, in batches) by the
- * client-dispatchable {@link ActionType.ChangesetFilesReviewChanged}.
+ * reducer 透過在識別碼未知時以 {@link ActionType.ChangesetFileSet} 附加
+ * 新檔案、在符合既有項目時就地取代的方式，保留穩定的檔案順序。每檔案
+ * 的審核存於 {@link ChangesetFile.reviewed}，並由用戶端可分派的
+ * {@link ActionType.ChangesetFilesReviewChanged}（逐檔、批次地）切換。
  */
 export function changesetReducer(state: ChangesetState, action: ChangesetAction, log?: (msg: string) => void): ChangesetState {
   switch (action.type) {

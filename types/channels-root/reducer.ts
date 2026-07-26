@@ -1,5 +1,5 @@
 /**
- * Root Channel Reducer — Pure reducer for `RootState`.
+ * 根通道化簡器 — `RootState` 的純化簡器。
  *
  * @module channels-root/reducer
  */
@@ -10,7 +10,7 @@ import type { RootAction } from '../action-origin.generated.js';
 import { softAssertNever } from '../common/reducer-helpers.js';
 
 /**
- * Pure reducer for root state. Handles all {@link RootAction} variants.
+ * 根狀態的純化簡器。處理所有 {@link RootAction} 變體。
  */
 export function rootReducer(state: RootState, action: RootAction, log?: (msg: string) => void): RootState {
   switch (action.type) {

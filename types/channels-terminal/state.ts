@@ -1,6 +1,5 @@
 /**
- * Terminal State Types — Per-terminal state and content parts exposed on
- * `ahp-terminal:` channels.
+ * 終端機狀態類型 — 在 `ahp-terminal:` 通道上公開的每個終端機狀態與內容片段。
  *
  * @module channels-terminal/state
  */
@@ -10,23 +9,23 @@ import type { URI } from '../common/state.js';
 // ─── Terminal Types ──────────────────────────────────────────────────────────
 
 /**
- * Lightweight terminal metadata exposed on the root state.
+ * 在根狀態上公開的輕量終端機中繼資料。
  *
  * @category Terminal Types
  */
 export interface TerminalInfo {
-  /** Terminal URI (subscribable for full terminal state) */
+  /** 終端機 URI（可訂閱以取得完整終端機狀態） */
   resource: URI;
-  /** Human-readable terminal title */
+  /** 人類可讀的終端機標題 */
   title: string;
-  /** Who currently holds this terminal */
+  /** 目前誰持有此終端機 */
   claim: TerminalClaim;
-  /** Process exit code, if the terminal process has exited */
+  /** 行程結束代碼（若終端機行程已結束） */
   exitCode?: number;
 }
 
 /**
- * Discriminant for terminal claim kinds.
+ * 終端機聲明種類的判別欄位。
  *
  * @category Terminal Types
  */
@@ -36,81 +35,80 @@ export const enum TerminalClaimKind {
 }
 
 /**
- * A terminal claimed by a connected client.
+ * 由已連線的用戶端聲明的終端機。
  *
  * @category Terminal Types
  */
 export interface TerminalClientClaim {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: TerminalClaimKind.Client;
-  /** The `clientId` of the claiming client */
+  /** 聲明此終端機之用戶端的 `clientId` */
   clientId: string;
 }
 
 /**
- * A terminal claimed by a session, optionally scoped to a specific turn or tool call.
+ * 由工作階段聲明的終端機，可選擇性地限定到特定回合或工具呼叫。
  *
  * @category Terminal Types
  */
 export interface TerminalSessionClaim {
-  /** Discriminant */
+  /** 判別欄位 */
   kind: TerminalClaimKind.Session;
-  /** Session URI that claimed the terminal */
+  /** 聲明此終端機的工作階段 URI */
   session: URI;
-  /** Optional turn identifier within the session */
+  /** 工作階段內的選用回合識別碼 */
   turnId?: string;
-  /** Optional tool call identifier within the turn */
+  /** 回合內的選用工具呼叫識別碼 */
   toolCallId?: string;
 }
 
 /**
- * Describes who currently holds a terminal. A terminal may be claimed by
- * either a connected client or a session (e.g. during a tool call).
+ * 描述目前誰持有終端機。終端機可由已連線的用戶端或工作階段聲明（例如在工具呼叫期間）。
  *
  * @category Terminal Types
  */
 export type TerminalClaim = TerminalClientClaim | TerminalSessionClaim;
 
 /**
- * Full state for a single terminal, loaded when a client subscribes to the terminal's URI.
+ * 單一終端機的完整狀態，當用戶端訂閱終端機的 URI 時載入。
  *
  * @category Terminal Types
  */
 export interface TerminalState {
-  /** Human-readable terminal title */
+  /** 人類可讀的終端機標題 */
   title: string;
-  /** Current working directory of the terminal process */
+  /** 終端機行程的當前工作目錄 */
   cwd?: URI;
-  /** Terminal width in columns */
+  /** 終端機寬度（以欄為單位） */
   cols?: number;
-  /** Terminal height in rows */
+  /** 終端機高度（以列為單位） */
   rows?: number;
   /**
-   * Typed content parts, replacing the flat `content: string`.
+   * 具類型的內容片段，取代平坦的 `content: string`。
    *
-   * Naive consumers that only need the raw VT stream can reconstruct it with:
+   * 只需要原始 VT 串流的簡易消費者可用以下方式重建它：
    *   `content.map(p => p.type === 'command' ? p.output : p.value).join('')`
    *
-   * Consumers that need command boundaries can filter by part type.
+   * 需要指令邊界的消費者可依片段類型篩選。
    */
   content: TerminalContentPart[];
-  /** Process exit code, set when the terminal process exits */
+  /** 行程結束代碼，於終端機行程結束時設定 */
   exitCode?: number;
-  /** Who currently holds this terminal */
+  /** 目前誰持有此終端機 */
   claim: TerminalClaim;
   /**
-   * Whether this terminal emits `terminal/commandExecuted` and
-   * `terminal/commandFinished` actions and populates `command`-typed parts.
+   * 此終端機是否發出 `terminal/commandExecuted` 與
+   * `terminal/commandFinished` 操作並填入 `command` 類型的片段。
    *
-   * Clients MUST check this flag before relying on command detection.
-   * Do NOT use the presence of a `command` part as a feature flag — parts
-   * are absent in the normal idle state.
+   * 用戶端 MUST 在依賴指令偵測前檢查此旗標。
+   * 切勿以 `command` 片段的存在與否作為功能旗標 — 片段
+   * 在正常閒置狀態下是不存在的。
    */
   supportsCommandDetection?: boolean;
   /**
-   * Whether this terminal-style resource is backed by a pseudoterminal.
-   * When `false`, output is plain text and clients do not need to parse
-   * VT sequences.
+   * 此終端機風格資源是否由虛擬終端機支撐。
+   * 當值為 `false` 時，輸出為純文字，用戶端不需要解析
+   * VT 序列。
    */
   isPty?: boolean;
 }
@@ -118,7 +116,7 @@ export interface TerminalState {
 // ─── Terminal Content Parts ──────────────────────────────────────────────────
 
 /**
- * A content part within terminal output.
+ * 終端機輸出中的內容片段。
  *
  * @category Terminal Types
  */
@@ -127,46 +125,46 @@ export type TerminalContentPart =
   | TerminalCommandPart;
 
 /**
- * Unstructured terminal output — content before, between, or after commands,
- * or from terminals that do not support command detection.
+ * 非結構化的終端機輸出 — 指令之前、之間或之後的內容，
+ * 或來自不支援指令偵測的終端機。
  *
  * @category Terminal Types
  */
 export interface TerminalUnclassifiedPart {
   type: 'unclassified';
-  /** Accumulated VT output. Appended to by `terminal/data` when no command is executing. */
+  /** 累積的 VT 輸出。當沒有指令執行時，由 `terminal/data` 附加至此。 */
   value: string;
 }
 
 /**
- * A single command: its command line and the output it produced.
+ * 單一指令：其命令列與其產生的輸出。
  *
- * While `isComplete` is false the command is still executing; `output` grows
- * as `terminal/data` actions arrive. At `terminal/commandFinished` the part
- * is mutated in-place with `isComplete: true` and the completion metadata.
+ * 當 `isComplete` 為 false 時，指令仍在執行；隨著 `terminal/data`
+ * 操作抵達，`output` 會增長。在 `terminal/commandFinished` 時，此片段
+ * 會就地變動為 `isComplete: true` 並帶有完成中繼資料。
  *
  * @category Terminal Types
  */
 export interface TerminalCommandPart {
   type: 'command';
   /**
-   * Stable id matching the `commandId` on the corresponding
-   * `terminal/commandExecuted` and `terminal/commandFinished` actions.
+   * 穩定識別碼，與對應的 `terminal/commandExecuted` 與
+   * `terminal/commandFinished` 操作上的 `commandId` 相符。
    */
   commandId: string;
-  /** The command line submitted to the shell. */
+  /** 提交給 shell 的命令列。 */
   commandLine: string;
   /**
-   * Accumulated VT output. Appended to by `terminal/data` while `isComplete`
-   * is false. Shell integration escape sequences are stripped by the server.
+   * 累積的 VT 輸出。當 `isComplete` 為 false 時，由 `terminal/data` 附加至此。
+   * shell 整合逸出序列由伺服器剝除。
    */
   output: string;
-  /** Unix timestamp (ms) when execution started, as reported by the server. */
+  /** 執行開始時的 Unix 時間戳記（毫秒），由伺服器回報。 */
   timestamp: number;
-  /** Whether the command has finished. */
+  /** 指令是否已完成。 */
   isComplete: boolean;
-  /** Shell exit code. Set at completion. `undefined` if unknown. */
+  /** shell 結束代碼。於完成時設定。未知時為 `undefined`。 */
   exitCode?: number;
-  /** Wall-clock duration in milliseconds. Set at completion. */
+  /** 實際耗時（毫秒）。於完成時設定。 */
   durationMs?: number;
 }

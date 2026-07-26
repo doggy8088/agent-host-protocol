@@ -1,5 +1,5 @@
 /**
- * Resource-Watch Channel Commands — `createResourceWatch`.
+ * 資源監視通道指令 — `createResourceWatch`。
  *
  * @module channels-resource-watch/commands
  */
@@ -10,29 +10,28 @@ import type { BaseParams } from '../common/commands.js';
 // ─── createResourceWatch ─────────────────────────────────────────────────────
 
 /**
- * Creates a resource watcher on the receiver's filesystem.
+ * 在接收端的檔案系統上建立資源監視器。
  *
- * The receiver allocates an `ahp-resource-watch:/<id>` channel URI and
- * returns it on {@link CreateResourceWatchResult.channel}. The caller then
- * [`subscribe`](./subscriptions)s to that channel to receive
- * `resourceWatch/changed` actions over the standard action envelope.
+ * 接收端配置一個 `ahp-resource-watch:/<id>` 通道 URI 並
+ * 於 {@link CreateResourceWatchResult.channel} 回傳。呼叫端接著
+ * [`subscribe`](./subscriptions) 至該通道，以透過標準操作信封接收
+ * `resourceWatch/changed` 操作。
  *
- * The watch lifecycle is tied to subscription: when every subscriber has
- * unsubscribed (or the underlying connection drops), the receiver MUST
- * release the watcher. There is no explicit dispose command — `unsubscribe`
- * is the only handle the caller needs.
+ * 監視生命週期與訂閱繫結：當每個訂閱者都已取消訂閱（或底層連線
+ * 中斷）時，接收端 MUST 釋放監視器。沒有明確的 dispose 指令——
+ * `unsubscribe` 是呼叫端所需的唯一控制柄。
  *
- * Like the rest of the `resource*` family, `createResourceWatch` is
- * symmetrical and MAY be sent in either direction. Access is gated through
- * the same permission flow as `resourceRead`/`resourceWrite`.
+ * 如同 `resource*` 家族的其餘部分，`createResourceWatch` 是對稱的，
+ * MAY 在任一方向傳送。存取透過與 `resourceRead`／`resourceWrite`
+ * 相同的權限流程管制。
  *
  * @category Commands
  * @method createResourceWatch
- * @direction Client ↔ Server
+ * @direction 用戶端 ↔ 伺服器
  * @messageType Request
  * @version 1
- * @throws `NotFound` (`-32008`) if `uri` does not exist.
- * @throws `PermissionDenied` (`-32009`) if the caller is not permitted to watch the URI.
+ * @throws `NotFound` (`-32008`) 若 `uri` 不存在。
+ * @throws `PermissionDenied` (`-32009`) 若呼叫端未獲允許監視該 URI。
  * @example
  * ```jsonc
  * // Client → Server
@@ -52,35 +51,35 @@ import type { BaseParams } from '../common/commands.js';
  */
 export interface CreateResourceWatchParams extends BaseParams {
   channel: 'ahp-root://';
-  /** URI to watch. */
+  /** 要監視的 URI。 */
   uri: URI;
   /**
-   * If `true`, the receiver MUST report changes for descendants of `uri`.
-   * If `false` (default), only changes to `uri` itself — and, when `uri`
-   * is a directory, its direct children — are reported.
+   * 若為 `true`，接收端 MUST 回報 `uri` 後代的變更。
+   * 若為 `false`（預設），僅回報 `uri` 本身的變更——且當 `uri`
+   * 為目錄時，回報其直接子項。
    */
   recursive?: boolean;
   /**
-   * Glob patterns or paths relative to `uri` to exclude from reporting.
-   * Wrapped in `{ items }` for forward compatibility.
+   * 相對於 `uri` 的 glob 模式或路徑，用於從回報中排除。
+   * 為向前相容而包裝於 `{ items }`。
    */
   excludes?: { items: string[] };
   /**
-   * Glob patterns or paths relative to `uri` to restrict reporting to.
-   * Omit to report every change under `uri` subject to `excludes`.
-   * Wrapped in `{ items }` for forward compatibility.
+   * 相對於 `uri` 的 glob 模式或路徑，用於限制回報範圍。
+   * 省略以回報 `uri` 下受 `excludes` 限制的每個變更。
+   * 為向前相容而包裝於 `{ items }`。
    */
   includes?: { items: string[] };
 }
 
 /**
- * Result of the `createResourceWatch` command.
+ * `createResourceWatch` 指令的結果。
  */
 export interface CreateResourceWatchResult {
   /**
-   * Receiver-assigned watch channel URI (`ahp-resource-watch:/<id>`). The
-   * caller subscribes to this URI to start receiving change events and
-   * unsubscribes to release the watcher.
+   * 接收端指派的監視通道 URI（`ahp-resource-watch:/<id>`）。
+   * 呼叫端訂閱此 URI 以開始接收變更事件，並取消訂閱以釋放
+   * 監視器。
    */
   channel: URI;
 }
