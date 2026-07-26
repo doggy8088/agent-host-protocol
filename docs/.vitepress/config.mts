@@ -192,10 +192,59 @@ export default withMermaid(defineConfig({
     darkModeSwitchLabel: '主題',
     lightModeSwitchTitle: '切換到淺色模式',
     darkModeSwitchTitle: '切換到深色模式',
+    skipToContentLabel: '跳至內容',
+    langMenuLabel: '變更語言',
+
+    notFound: {
+      title: '找不到頁面',
+      quote: '看來你所尋找的頁面並不存在，或者已被移至他處。',
+      linkLabel: '返回首頁',
+      linkText: '回到首頁',
+    },
 
     editLink: {
       pattern: 'https://github.com/microsoft/agent-host-protocol/edit/main/docs/:path',
       text: '在 GitHub 上編輯此頁',
     },
+  },
+
+  // Translate the handful of screen-reader / aria labels VitePress hardcodes in
+  // the default theme (not exposed via themeConfig) so the UI is fully zh-TW.
+  vite: {
+    plugins: [
+      {
+        name: 'ahp-theme-zh-tw-a11y',
+        enforce: 'pre',
+        transform(code, id) {
+          if (!id.includes('/theme-default/')) return null
+          let out = code
+          if (id.endsWith('VPNavBarMenu.vue')) {
+            out = out.replace('Main Navigation', '主導覽')
+          } else if (id.endsWith('VPNavBarExtra.vue')) {
+            out = out.replace('label="extra navigation"', 'label="額外導覽"')
+          } else if (id.endsWith('VPNavBarHamburger.vue')) {
+            out = out.replace('aria-label="mobile navigation"', 'aria-label="行動導覽"')
+          } else if (id.endsWith('VPSidebar.vue')) {
+            out = out.replace('Sidebar Navigation', '側邊欄導覽')
+          } else if (id.endsWith('VPDocFooter.vue')) {
+            out = out.replace('>Pager<', '>頁面導覽<')
+          } else if (id.endsWith('VPSidebarItem.vue')) {
+            out = out.replace('aria-label="toggle section"', 'aria-label="切換區段"')
+          } else if (id.endsWith('VPSkipLink.vue')) {
+            out = out.replace("'Skip to content'", "'跳至內容'")
+          } else if (id.endsWith('NotFound.vue')) {
+            out = out
+              .replace("'PAGE NOT FOUND'", "'找不到頁面'")
+              .replace("'Take me home'", "'回到首頁'")
+              .replace("'go to home'", "'返回首頁'")
+              .replace(/But if you don't change your direction[\s\S]*?heading\./, '看來你所尋找的頁面並不存在，或者已被移至他處。')
+          } else {
+            return null
+          }
+          if (out === code) return null
+          return { code: out, map: null }
+        },
+      },
+    ],
   },
 }))
