@@ -10,7 +10,7 @@
 
 ## 慣例
 
-此規格中的關鍵字「MUST」、「MUST NOT」、「REQUIRED」、「SHALL」、「SHALL NOT」、「SHOULD」、「SHOULD NOT」、「RECOMMENDED」、「MAY」和「OPTIONAL」應依照 [RFC 2119]({u}) 中的描述進行解釋。
+此規格中的關鍵字「MUST」、「MUST NOT」、「REQUIRED」、「SHALL」、「SHALL NOT」、「SHOULD」、「SHOULD NOT」、「RECOMMENDED」、「MAY」和「OPTIONAL」應依照 [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) 中的描述進行解釋。
 
 ## 協定版本
 
