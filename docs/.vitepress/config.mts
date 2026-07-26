@@ -1,15 +1,67 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 
+// Canonical origin of the published GitHub Pages site (custom domain, served at root).
+const SITE_URL = 'https://agent-host-protocol.gh.miniasp.com'
+const SITE_TITLE = '代理主機協定'
+const SITE_DESCRIPTION = '代理主機協定文件 — 為 AI 代理程式工作階段提供同步的多用戶端狀態協定'
+const OG_IMAGE = `${SITE_URL}/og.png`
+
 export default withMermaid(defineConfig({
   lang: 'zh-TW',
-  title: '代理主機協定',
-  description: '代理主機協定文件 — 為 AI 代理程式工作階段提供同步的多用戶端狀態協定',
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   base: '/',
 
   head: [
     ['link', { rel: 'stylesheet', href: 'https://unpkg.com/@vscode/codicons/dist/codicon.css' }],
+
+    // Icons
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32.png' }],
+    ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }],
+    ['link', { rel: 'mask-icon', href: '/favicon.svg', color: '#57a6ff' }],
+    ['meta', { name: 'theme-color', content: '#0f172a' }],
+    ['meta', { name: 'color-scheme', content: 'light dark' }],
+
+    // SEO
+    ['meta', { name: 'robots', content: 'index, follow, max-image-preview: large' }],
+    ['meta', { name: 'author', content: 'Microsoft' }],
+    ['meta', { name: 'generator', content: 'VitePress' }],
+
+    // Open Graph (static defaults; per-page title/description/url set in transformHead)
+    ['meta', { property: 'og:site_name', content: SITE_TITLE }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:locale', content: 'zh_TW' }],
+    ['meta', { property: 'og:image', content: OG_IMAGE }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { property: 'og:image:alt', content: SITE_TITLE }],
+
+    // Twitter Card
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: OG_IMAGE }],
+    ['meta', { name: 'twitter:image:alt', content: SITE_TITLE }],
   ],
+
+  // Per-page SEO: canonical URL + OpenGraph/Twitter title/description/url.
+  transformHead({ pageData }) {
+    const rel: string = pageData.relativePath
+    const path = rel === 'index.md' ? '' : rel.replace(/\.md$/, '')
+    const url = `${SITE_URL}${path ? '/' + path : '/'}`
+    const title: string = pageData.title || SITE_TITLE
+    const description: string = pageData.description || SITE_DESCRIPTION
+    const fullTitle = title === SITE_TITLE ? title : `${title} | ${SITE_TITLE}`
+
+    return [
+      ['link', { rel: 'canonical', href: url }],
+      ['meta', { property: 'og:title', content: fullTitle }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:url', content: url }],
+      ['meta', { name: 'twitter:title', content: fullTitle }],
+      ['meta', { name: 'twitter:description', content: description }],
+    ]
+  },
 
   themeConfig: {
     nav: [
