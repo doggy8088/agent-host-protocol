@@ -37,6 +37,7 @@ export default withMermaid(defineConfig({
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
     ['meta', { property: 'og:image:alt', content: SITE_TITLE }],
+    ['meta', { property: 'og:image:type', content: 'image/png' }],
 
     // Twitter Card
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
